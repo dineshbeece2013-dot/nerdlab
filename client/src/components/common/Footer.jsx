@@ -5,8 +5,11 @@ import { Terminal, Shield, Cpu, Code2, Workflow } from 'lucide-react';
 const Footer = () => {
   return (
     <footer className="bg-slate-950 border-t border-slate-900 text-slate-400 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
-        <div className="space-y-4">
+      {/* Sized to content and spread apart, rather than three equal columns:
+          the link lists are short, so equal thirds left the last one with a
+          half-empty cell and a gap against the right edge. */}
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:justify-between gap-10 md:gap-12">
+        <div className="space-y-4 md:max-w-sm">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center">
               <Terminal className="w-4 h-4 text-sky-400" />
