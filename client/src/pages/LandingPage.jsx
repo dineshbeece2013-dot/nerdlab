@@ -10,10 +10,18 @@ import {
   CheckCircle,
   Zap,
   Workflow,
+  FileCode,
 } from 'lucide-react';
 
 const LandingPage = () => {
   const categories = [
+    {
+      name: 'YAML Configuration',
+      icon: FileCode,
+      color: 'from-emerald-500 to-teal-600',
+      badge: 'Fundamentals',
+      desc: 'Start here. Text and numbers, lists and nesting, and how to write a settings file the tools below all depend on.',
+    },
     {
       name: 'Git Version Control',
       icon: GitBranch,
@@ -128,9 +136,9 @@ const LandingPage = () => {
           </p>
         </div>
 
-        {/* Five modules: 3-then-2 on laptops, all five in a row on wide
-            screens. A 4-column grid would strand the fifth card alone. */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        {/* Six modules in even rows: 2x3 on tablets, 3x2 from laptops up.
+            Squeezing all six across would leave the cards too narrow. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {categories.map((cat, idx) => {
             const Icon = cat.icon;
             return (

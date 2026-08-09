@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Terminal, Shield, Cpu, Code2, Workflow } from 'lucide-react';
+import { Terminal, Shield, Cpu, Code2, Workflow, FileCode } from 'lucide-react';
 
 const Footer = () => {
   return (
@@ -24,6 +24,7 @@ const Footer = () => {
         <div>
           <h4 className="text-white text-sm font-semibold mb-4 uppercase tracking-wider">Technologies</h4>
           <ul className="space-y-2 text-sm">
+            <li className="flex items-center space-x-2"><FileCode className="w-4 h-4 text-emerald-400" /><span>YAML Configuration</span></li>
             <li className="flex items-center space-x-2"><Code2 className="w-4 h-4 text-sky-400" /><span>Git Version Control</span></li>
             <li className="flex items-center space-x-2"><Cpu className="w-4 h-4 text-emerald-400" /><span>Docker Containers</span></li>
             <li className="flex items-center space-x-2"><Shield className="w-4 h-4 text-purple-400" /><span>Terraform IaC</span></li>
