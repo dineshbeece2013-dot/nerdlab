@@ -13,9 +13,11 @@
 #
 #   sudo bash deploy/deploy.sh
 #
-# Re-running it is safe: it updates the checkout, reinstalls dependencies,
-# rebuilds the frontend and restarts the service. It will NOT overwrite an
-# existing /opt/nerdlab/server/.env, so your secrets and DB password survive.
+# Re-running it is safe and cheap. Packages already installed are not touched
+# (apt is skipped entirely when nothing is missing), dependencies are only
+# reinstalled when a lockfile changed, and the frontend is only rebuilt when
+# its sources changed. Pass FORCE_BUILD=yes to rebuild regardless. An existing
+# /opt/nerdlab/server/.env is never overwritten, so secrets survive.
 #
 set -euo pipefail
 
@@ -36,12 +38,25 @@ die()  { printf '\033[1;31m[error]\033[0m %s\n' "$*" >&2; exit 1; }
 [ "$(id -u)" -eq 0 ] || die "Run this with sudo or as root."
 
 # ---------------------------------------------------------------- packages ---
-log "Installing system packages"
-export DEBIAN_FRONTEND=noninteractive
-apt-get update -qq
 # The minimal image ships almost nothing, so ca-certificates/curl/gnupg come first.
-apt-get install -y -qq --no-install-recommends \
-  ca-certificates curl gnupg git nginx postgresql postgresql-contrib openssl ufw
+PACKAGES="ca-certificates curl gnupg git nginx postgresql postgresql-contrib openssl ufw"
+export DEBIAN_FRONTEND=noninteractive
+
+missing=""
+for pkg in $PACKAGES; do
+  dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "^install ok installed$" || missing="$missing $pkg"
+done
+
+if [ -n "$missing" ]; then
+  log "Installing system packages:$missing"
+  apt-get update -qq
+  # shellcheck disable=SC2086
+  apt-get install -y -qq --no-install-recommends $missing
+else
+  # Nothing to fetch — skipping apt-get update too, since refreshing the
+  # package indexes alone costs tens of megabytes on every redeploy.
+  log "System packages already installed — skipping apt"
+fi
 
 # ------------------------------------------------------------------- node ---
 need_node=yes
@@ -160,12 +175,49 @@ chown "$APP_USER":"$APP_USER" "$ENV_FILE"
 chmod 600 "$ENV_FILE"
 
 # ------------------------------------------------------------ dependencies ---
-log "Installing server dependencies"
-su -s /bin/bash "$APP_USER" -c "cd '$APP_DIR/server' && npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund"
+# npm ci wipes node_modules and rebuilds it, and the Vite build is the most
+# memory-hungry step in this script. Both are skipped when their inputs have
+# not changed, so a redeploy that only touches lab HTML costs almost nothing.
+# Delete $STATE_DIR (or pass FORCE_BUILD=yes) to force the full path.
+STATE_DIR="$APP_DIR/.deploy-state"
+install -d -o "$APP_USER" -g "$APP_USER" "$STATE_DIR"
 
-log "Building the frontend"
-su -s /bin/bash "$APP_USER" -c "cd '$APP_DIR/client' && npm ci --no-audit --no-fund || npm install --no-audit --no-fund"
-su -s /bin/bash "$APP_USER" -c "cd '$APP_DIR/client' && npm run build"
+fingerprint() { sha256sum "$@" 2>/dev/null | sha256sum | cut -d' ' -f1; }
+unchanged() {  # unchanged <name> <current-hash>
+  [ "${FORCE_BUILD:-no}" = yes ] && return 1
+  [ -f "$STATE_DIR/$1" ] && [ "$(cat "$STATE_DIR/$1")" = "$2" ]
+}
+remember() { printf '%s' "$2" > "$STATE_DIR/$1"; chown "$APP_USER":"$APP_USER" "$STATE_DIR/$1"; }
+
+server_hash="$(fingerprint "$APP_DIR/server/package.json" "$APP_DIR/server/package-lock.json")"
+if unchanged server-deps "$server_hash" && [ -d "$APP_DIR/server/node_modules" ]; then
+  log "Server dependencies unchanged — skipping install"
+else
+  log "Installing server dependencies"
+  su -s /bin/bash "$APP_USER" -c "cd '$APP_DIR/server' && npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund"
+  remember server-deps "$server_hash"
+fi
+
+client_hash="$(fingerprint "$APP_DIR/client/package.json" "$APP_DIR/client/package-lock.json")"
+if unchanged client-deps "$client_hash" && [ -d "$APP_DIR/client/node_modules" ]; then
+  log "Frontend dependencies unchanged — skipping install"
+else
+  log "Installing frontend dependencies"
+  su -s /bin/bash "$APP_USER" -c "cd '$APP_DIR/client' && npm ci --no-audit --no-fund || npm install --no-audit --no-fund"
+  remember client-deps "$client_hash"
+fi
+
+# Rebuild when anything the bundle is made from has changed.
+src_hash="$(find "$APP_DIR/client/src" "$APP_DIR/client/index.html" \
+              "$APP_DIR/client/vite.config.js" "$APP_DIR/client/tailwind.config.js" \
+              -type f -print0 2>/dev/null | sort -z | xargs -0 sha256sum 2>/dev/null | sha256sum | cut -d' ' -f1)"
+if unchanged client-build "$src_hash" && [ -f "$APP_DIR/client/dist/index.html" ]; then
+  log "Frontend unchanged — skipping build"
+else
+  log "Building the frontend"
+  su -s /bin/bash "$APP_USER" -c "cd '$APP_DIR/client' && npm run build"
+  remember client-build "$src_hash"
+fi
 
 # --------------------------------------------------------------- database ---
 FIRST_RUN=no

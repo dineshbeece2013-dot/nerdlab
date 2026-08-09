@@ -54,13 +54,33 @@ It prints the public URL when it finishes, along with the health-check results.
 
 ## Re-deploying
 
-Run the same command again. It pulls the latest `main`, reinstalls dependencies,
-rebuilds the frontend and restarts the service.
+Run the same command again. It pulls the latest `main`, rebuilds what changed and
+restarts the service.
+
+**A second run is cheap.** Every expensive step is skipped when its inputs have not
+changed:
+
+| Step | On a re-run |
+|---|---|
+| System packages | Checked with `dpkg-query`. If nothing is missing, even `apt-get update` is skipped — refreshing the indexes alone costs tens of MB. Nothing is re-downloaded. |
+| Node.js | Skipped when the installed major version is already new enough. |
+| Repository | Shallow `git fetch` of new commits only, not a fresh clone. |
+| `npm ci` | Skipped unless `package.json` / `package-lock.json` changed. This matters: `npm ci` deletes `node_modules` and rebuilds it. |
+| Frontend build | Skipped unless something under `client/src`, `index.html` or the Vite/Tailwind config changed. This is the memory-hungry step. |
+| `db:migrate` | Skipped whenever the schema exists — that script drops every table. |
+
+Fingerprints live in `/opt/nerdlab/.deploy-state`. Delete that directory, or pass
+`FORCE_BUILD=yes`, to force a full rebuild:
+
+```bash
+sudo FORCE_BUILD=yes bash /opt/nerdlab/deploy/deploy.sh
+```
+
+So a redeploy that only adds a lab HTML file installs nothing and builds nothing — it
+fetches the commit, re-runs the additive migrations and the seed, and restarts the API.
 
 It will **not** overwrite an existing `server/.env`, so the generated database password
-and JWT secrets survive. It also skips `db:migrate` when the schema already exists —
-that script drops every table — and applies only the additive migrations in
-`server/db/migrations/`.
+and JWT secrets survive.
 
 To redeploy without re-running the seed:
 
@@ -82,6 +102,7 @@ Every setting is an environment variable with a sensible default:
 | `DB_NAME` / `DB_USER` | `nerdlab` | database and role |
 | `NODE_MAJOR` | `22` | Node version to install |
 | `SEED_DB` | `yes` | run `db:seed` |
+| `FORCE_BUILD` | `no` | rebuild even when nothing changed |
 | `CLIENT_URL` | detected external IP | used for CORS and reset links |
 
 ## After the first deploy
