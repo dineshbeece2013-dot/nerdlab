@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAML Task 1: The Basics</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            padding: 2rem 1.5rem 4rem;
+            margin: 0;
+            line-height: 1.6;
+        }
+        .container { max-width: 860px; margin: 0 auto; }
+        .panel {
+            background-color: #1e293b;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border: 1px solid #334155;
+        }
+        h1 { color: #38bdf8; margin: 0.6rem 0 0.4rem; font-size: 1.75rem; }
+        h2 { color: #38bdf8; font-size: 1.1rem; }
+        .badge {
+            display: inline-block; background: #0284c7; color: #fff;
+            padding: 0.25rem 0.75rem; border-radius: 9999px;
+            font-size: 0.875rem; font-weight: 600;
+        }
+        .lede { color: #cbd5e1; }
+        code { background: #0b1220; padding: 0.1rem 0.35rem; border-radius: 4px; color: #a5f3fc; font-size: 0.92em; }
+        pre {
+            background-color: #090d16; color: #a5f3fc; padding: 1rem;
+            border-radius: 8px; overflow-x: auto; border: 1px solid #1e293b;
+            font-size: 0.85rem; margin: 0.75rem 0 0;
+        }
+
+        /* ---------- incident status bar ---------- */
+        #status {
+            position: sticky; top: 0; z-index: 20;
+            margin: 1.25rem 0; padding: 0.85rem 1.1rem;
+            background: #16213a; border: 1px solid #334155; border-radius: 12px;
+            display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: center;
+            font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem;
+        }
+        #status .item { display: flex; align-items: center; gap: 0.45rem; color: #94a3b8; }
+        #status .val { color: #e2e8f0; font-weight: 700; }
+        #svc-state.down { color: #f87171; }
+        #svc-state.degraded { color: #fbbf24; }
+        #svc-state.healthy { color: #34d399; }
+        #bar { flex: 1 1 160px; min-width: 140px; height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; border: 1px solid #334155; }
+        #fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5e9, #10b981); transition: width 0.45s ease; }
+
+        /* ---------- terminal ---------- */
+        #term {
+            background: #060910; border: 1px solid #1e293b; border-radius: 10px;
+            padding: 0.9rem 1rem; font-family: ui-monospace, Consolas, monospace;
+            font-size: 0.8rem; line-height: 1.7; max-height: 190px; overflow-y: auto;
+            margin-bottom: 1.5rem;
+        }
+        #term div { white-space: pre-wrap; word-break: break-word; }
+        .t-time { color: #475569; }
+        .t-pager { color: #f87171; }
+        .t-pipe  { color: #38bdf8; }
+        .t-priya { color: #c084fc; }
+        .t-ok    { color: #34d399; }
+        .t-warn  { color: #fbbf24; }
+
+        /* ---------- scenes ---------- */
+        .scene {
+            border: 1px solid #334155; border-radius: 12px; background: #1a2437;
+            margin-bottom: 1.1rem; overflow: hidden;
+        }
+        .scene.locked { opacity: 0.55; }
+        .scene.active { border-color: #38bdf8; box-shadow: 0 0 0 1px rgba(56,189,248,0.25); }
+        .scene.solved { border-color: #10b981; background: #101f1c; }
+        .scene-head {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 1rem 1.25rem; cursor: default;
+        }
+        .scene.solved .scene-head, .scene.collapsible .scene-head { cursor: pointer; }
+        .scene-num {
+            flex: none; width: 1.9rem; height: 1.9rem; border-radius: 8px;
+            background: #0b1220; border: 1px solid #334155; color: #94a3b8;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.85rem;
+        }
+        .scene.active .scene-num { background: #0284c7; border-color: #38bdf8; color: #fff; }
+        .scene.solved .scene-num { background: #065f46; border-color: #10b981; color: #d1fae5; }
+        .scene-title { font-weight: 700; color: #f1f5f9; flex: 1; }
+        .scene-state { font-size: 0.75rem; font-family: ui-monospace, Consolas, monospace; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+        .scene.solved .scene-state { color: #34d399; }
+        .scene-body { padding: 0 1.25rem 1.35rem; display: none; }
+        .scene.open .scene-body { display: block; }
+        .scene-body p { color: #cbd5e1; }
+
+        .voice {
+            border-left: 3px solid #c084fc; background: #1b1630;
+            padding: 0.65rem 0.9rem; border-radius: 0 8px 8px 0; margin: 0.9rem 0;
+            color: #e9d5ff; font-size: 0.92rem;
+        }
+        .voice strong { color: #c084fc; }
+        .brief {
+            background: #16213a; border: 1px solid #334155; border-left: 4px solid #f59e0b;
+            border-radius: 0 8px 8px 0; padding: 0.8rem 1rem; margin: 0.9rem 0;
+            font-size: 0.92rem; color: #e2e8f0;
+        }
+        .brief h4 { margin: 0 0 0.35rem; color: #fbbf24; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+        .brief ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+        .brief li { margin-bottom: 0.2rem; }
+
+        .editor-label {
+            display: flex; justify-content: space-between; align-items: baseline;
+            font-family: ui-monospace, Consolas, monospace; font-size: 0.75rem;
+            color: #64748b; margin-top: 1rem;
+        }
+        textarea.editor {
+            width: 100%; min-height: 150px; background: #060910; color: #a5f3fc;
+            border: 1px solid #334155; border-radius: 8px; padding: 0.85rem 1rem;
+            font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem;
+            line-height: 1.65; resize: vertical; tab-size: 4; white-space: pre;
+            overflow-wrap: normal; overflow-x: auto;
+        }
+        textarea.editor:focus { outline: none; border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,0.2); }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.85rem; align-items: center; }
+        button {
+            background: #0ea5e9; color: #fff; border: none; border-radius: 8px;
+            padding: 0.6rem 1.15rem; font-weight: 700; cursor: pointer; font-size: 0.88rem;
+            font-family: inherit; transition: background 0.15s ease;
+        }
+        button:hover { background: #38bdf8; }
+        button.ghost { background: #24324a; color: #cbd5e1; }
+        button.ghost:hover { background: #334155; }
+        .scene.solved button.run { background: #10b981; cursor: default; }
+
+        .out { margin-top: 0.9rem; display: none; }
+        .out.show { display: block; }
+        .out-head { font-family: ui-monospace, Consolas, monospace; font-size: 0.75rem; color: #64748b; margin-bottom: 0.35rem; }
+        .parsed { background: #060910; border: 1px solid #1e293b; border-radius: 8px; padding: 0.8rem 1rem; font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; color: #cbd5e1; margin: 0; }
+        .parsed .ty { color: #64748b; }
+        .verdict { margin-top: 0.7rem; font-size: 0.9rem; padding: 0.7rem 0.9rem; border-radius: 8px; }
+        .verdict.bad { background: #2a1215; border: 1px solid #7f1d1d; color: #fca5a5; }
+        .verdict.good { background: #052e22; border: 1px solid #10b981; color: #6ee7b7; font-weight: 600; }
+        .verdict .lbl { font-weight: 700; }
+
+        .hints { margin-top: 0.8rem; }
+        .hint {
+            display: none; background: #0b1220; border: 1px dashed #475569;
+            border-radius: 8px; padding: 0.6rem 0.9rem; margin-bottom: 0.5rem;
+            font-size: 0.88rem; color: #cbd5e1;
+        }
+        .hint.show { display: block; }
+        .hint b { color: #94a3b8; }
+
+        .locked-note { padding: 0 1.25rem 1.1rem; color: #64748b; font-size: 0.88rem; }
+
+        .act {
+            margin: 1.75rem 0 1rem; padding: 0.9rem 1.15rem;
+            border-radius: 10px; background: #16213a; border: 1px solid #334155;
+            border-left: 4px solid #38bdf8;
+        }
+        .act.night { border-left-color: #f87171; }
+        .act .act-kicker {
+            font-family: ui-monospace, Consolas, monospace; font-size: 0.72rem;
+            letter-spacing: 0.09em; text-transform: uppercase; color: #38bdf8; font-weight: 700;
+        }
+        .act.night .act-kicker { color: #f87171; }
+        .act h2 { margin: 0.2rem 0 0.3rem; font-size: 1.15rem; color: #f1f5f9; }
+        .act p { margin: 0; color: #94a3b8; font-size: 0.9rem; }
+
+        #finale { display: none; margin-top: 1.5rem; }
+        #rollout { background: #060910; border: 1px solid #1e293b; border-radius: 10px; padding: 0.9rem 1rem; font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; line-height: 1.75; }
+        #done-banner {
+            display: none; margin-top: 1.25rem; background: #052e22;
+            border: 1px solid #10b981; color: #6ee7b7;
+            padding: 1.1rem 1.25rem; border-radius: 10px; font-weight: bold;
+        }
+        #done-banner p { color: #a7f3d0; font-weight: normal; margin: 0.6rem 0 0; font-size: 0.9rem; }
+        .debrief { margin-top: 1.5rem; }
+        .debrief li { margin-bottom: 0.35rem; color: #cbd5e1; }
+        .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="panel">
+        <span class="badge">YAML Level 1</span>
+        <h1>The Basics</h1>
+
+        <p class="lede">
+            <strong>You do not need to know anything to start this.</strong> By the end you will have
+            written a real settings file, line by line, from an empty box.
+        </p>
+
+        <h2>So what is YAML?</h2>
+        <p class="lede">
+            Programs need settings. Which port to use, how many copies to run, whether to switch on
+            extra logging. Somebody has to write those settings down in a file, and the program has
+            to be able to read them back.
+        </p>
+        <p class="lede">
+            <strong>YAML is a way of writing settings that both people and computers can read.</strong>
+            At its simplest it is one setting per line: a name, a colon, a space, then the value.
+        </p>
+        <pre>service: checkout
+port: 80
+enabled: true</pre>
+        <p class="lede">
+            That is genuinely it. Three settings. You can read them without knowing a thing about
+            programming — which is the whole point of YAML, and why almost every modern tool uses
+            it. (You say it "YAM-ul", and nobody will mind either way.)
+        </p>
+        <p class="lede">
+            The catch is that YAML is <em>fussy</em> in a few places, and when you get one of those
+            places wrong it does not politely tell you. It quietly does something else instead.
+            Learning where those places are is most of the job.
+        </p>
+
+        <h2>How this works</h2>
+        <p class="lede">
+            It is your first evening on the team. Priya, the engineer training you, gives you four
+            short lessons. You write every line yourself — there is no copying, and the last two
+            lessons start from an empty box.
+        </p>
+        <p class="lede">
+            In each lesson you type into the box on screen and press a button. This page then reads
+            your YAML for real, exactly the way a computer would, and shows you what it understood.
+            Nothing is marked correct unless it genuinely works.
+        </p>
+        <p class="lede">
+            Learn it properly tonight. In <strong>Part 2</strong> this same file breaks at 3:14 in
+            the morning, and you are the one holding the pager.
+        </p>
+
+        <div id="status" role="status" aria-live="polite">
+            <span class="item">TIME <span class="val" id="clock">20:10</span></span>
+            <span class="item">CHECKOUT <span class="val healthy" id="svc-state">RUNNING</span></span>
+            <span class="item">LESSON <span class="val" id="repairs">0/4</span></span>
+            <div id="bar" role="img" aria-label="Progress through the lessons"><div id="fill"></div></div>
+        </div>
+
+        <div id="term" aria-live="polite" aria-label="Team chat and laptop messages"></div>
+
+        <div id="scenes"></div>
+
+        <div id="finale">
+            <h2>End of shift</h2>
+            <div id="rollout" aria-live="polite"></div>
+            <div id="done-banner">
+                Lessons finished — your points have been awarded.
+                <p>You can now read and write a YAML settings file. That is a real skill, and you got it in four lessons.</p>
+            </div>
+            <div class="debrief">
+                <h2>What you learned this evening</h2>
+                <ul>
+                    <li><strong>A setting is a name, a colon, a space, and a value.</strong> The space after the colon is not optional.</li>
+                    <li><strong>YAML guesses what kind of value you wrote</strong> — text, whole number, decimal number, true/false, or nothing at all. Quote marks stop it guessing and keep your value as text.</li>
+                    <li><strong>Space at the start of a line means "inside".</strong> Two spaces per level, using the space bar, never the Tab key.</li>
+                    <li><strong>A dash and a space starts one item in a list.</strong></li>
+                    <li><strong>Quote anything that only looks like a number.</strong> Version numbers, codes, anything with a leading zero. This is the habit that saves you at 3 AM.</li>
+                </ul>
+                <p class="lede">
+                    That is enough to read most of the YAML you will ever meet — a Docker Compose file, a
+                    Kubernetes settings file, a GitHub Actions workflow. They all work exactly like this.
+                </p>
+                <p class="lede">
+                    <strong>Next: YAML Part 2 — 3:14 AM, The Callout.</strong> The checkout service goes down in
+                    the night, this same file is broken in six places, and the on-call engineer is you.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* =========================================================================
+   A small YAML parser. It is deliberately real: every check in this lab
+   inspects the structure this parser produces, not the text you typed.
+   Supported: documents, maps, lists, scalars with type inference, quoting,
+   comments, block scalars (| and >), anchors, aliases, merge keys, and
+   simple flow collections.
+   ========================================================================= */
+function yamlError(line, msg) { return { line: line, msg: msg }; }
+
+function stripComment(s) {
+    var out = '', q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { out += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; out += c; continue; }
+        if (c === '#' && (i === 0 || /\s/.test(s.charAt(i - 1)))) break;
+        out += c;
+    }
+    return out;
+}
+
+function unquote(s) {
+    if (s.length > 1 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+        return s.slice(1, -1).replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
+    }
+    if (s.length > 1 && s.charAt(0) === "'" && s.charAt(s.length - 1) === "'") {
+        return s.slice(1, -1).replace(/''/g, "'");
+    }
+    return s;
+}
+
+function splitTop(s, sep) {
+    var parts = [], depth = 0, q = null, cur = '';
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { cur += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; cur += c; continue; }
+        if (c === '[' || c === '{') depth++;
+        if (c === ']' || c === '}') depth--;
+        if (c === sep && depth === 0) { parts.push(cur); cur = ''; continue; }
+        cur += c;
+    }
+    if (cur.trim() !== '' || parts.length) parts.push(cur);
+    return parts;
+}
+
+function parseScalar(s, line) {
+    s = s.trim();
+    if (s === '') return null;
+    if ((s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') ||
+        (s.charAt(0) === "'" && s.charAt(s.length - 1) === "'")) return unquote(s);
+    if (s.charAt(0) === '[' && s.charAt(s.length - 1) === ']') {
+        var inner = s.slice(1, -1).trim();
+        if (inner === '') return [];
+        return splitTop(inner, ',').map(function (p) { return parseScalar(p, line); });
+    }
+    if (s.charAt(0) === '{' && s.charAt(s.length - 1) === '}') {
+        var body = s.slice(1, -1).trim(), obj = {};
+        if (body === '') return obj;
+        splitTop(body, ',').forEach(function (pair) {
+            var kv = splitKey(pair.trim(), line);
+            obj[kv.key] = parseScalar(kv.rest, line);
+        });
+        return obj;
+    }
+    if (/^(null|~)$/i.test(s)) return null;
+    if (/^(true|yes|on)$/i.test(s)) return true;
+    if (/^(false|no|off)$/i.test(s)) return false;
+    if (/^[-+]?\d+$/.test(s)) return parseInt(s, 10);
+    if (/^[-+]?(\d+\.\d*|\.\d+|\d+)([eE][-+]?\d+)?$/.test(s) && /[.eE]/.test(s)) return parseFloat(s);
+    return s;
+}
+
+function splitKey(s, line) {
+    var q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; continue; }
+        if (c === ':' && (i + 1 >= s.length || s.charAt(i + 1) === ' ')) {
+            return { key: unquote(s.slice(0, i).trim()), rest: s.slice(i + 1).trim() };
+        }
+    }
+    throw yamlError(line, 'line ' + line + ' is not a "name: value" pair. YAML needs a colon and then a space between the name and its value.');
+}
+
+function isKeyValue(s) {
+    try { splitKey(s, 0); return true; } catch (e) { return false; }
+}
+
+function peekLine(ctx) {
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        var s = stripComment(raw).replace(/\s+$/, '');
+        if (s.trim() === '') { ctx.i++; continue; }
+        var indent = s.match(/^ */)[0].length;
+        return { indent: indent, content: s.slice(indent), line: ctx.offset + ctx.i + 1 };
+    }
+    return null;
+}
+
+function parseBlockScalar(ctx, indent, ind) {
+    var literal = ind.charAt(0) === '|';
+    var chomp = ind.length > 1 ? ind.charAt(1) : '';
+    var body = [], blockIndent = null;
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        if (raw.trim() === '') { body.push(''); ctx.i++; continue; }
+        var ind2 = raw.match(/^ */)[0].length;
+        if (ind2 <= indent) break;
+        if (blockIndent === null) blockIndent = ind2;
+        body.push(raw.slice(Math.min(blockIndent, ind2)));
+        ctx.i++;
+    }
+    while (body.length && body[body.length - 1] === '') body.pop();
+    var out;
+    if (literal) {
+        out = body.join('\n');
+    } else {
+        out = '';
+        for (var k = 0; k < body.length; k++) {
+            if (body[k] === '') { out += '\n'; continue; }
+            if (out !== '' && out.charAt(out.length - 1) !== '\n') out += ' ';
+            out += body[k];
+        }
+    }
+    if (chomp !== '-' && out !== '') out += '\n';
+    return out;
+}
+
+function parseValue(ctx, indent, rest, line) {
+    var anchor = null;
+    var m = /^&([A-Za-z0-9_\-]+)\s*/.exec(rest);
+    if (m) { anchor = m[1]; rest = rest.slice(m[0].length).trim(); }
+    var val;
+    if (rest === '') {
+        // A block sequence may sit at its parent key's own indentation.
+        var nxt = peekLine(ctx);
+        if (nxt && nxt.indent === indent && /^-(\s|$)/.test(nxt.content)) {
+            val = parseSeq(ctx, indent);
+        } else {
+            val = parseNode(ctx, indent + 1);
+        }
+    } else if (/^[|>][-+]?$/.test(rest)) {
+        val = parseBlockScalar(ctx, indent, rest);
+    } else if (/^\*[A-Za-z0-9_\-]+$/.test(rest)) {
+        var name = rest.slice(1);
+        if (!(name in ctx.anchors)) {
+            throw yamlError(line, 'line ' + line + ' points at *' + name +
+                ', but nothing above it in this part of the file was labelled &' + name + '.');
+        }
+        val = ctx.anchors[name];
+    } else {
+        val = parseScalar(rest, line);
+    }
+    if (anchor) ctx.anchors[anchor] = val;
+    return val;
+}
+
+function parseMap(ctx, indent) {
+    var map = {}, explicit = {}, merges = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' is pushed too far to the right. It does not line up with anything above it. Inside a list item, the keys line up with the first key after the dash.');
+        if (/^-(\s|$)/.test(p.content)) throw yamlError(p.line, 'line ' + p.line + ' starts with a dash, so YAML reads it as a list item. A "name: value" pair was expected here instead.');
+        var kv = splitKey(p.content, p.line);
+        ctx.i++;
+        var value = parseValue(ctx, p.indent, kv.rest, p.line);
+        if (kv.key === '<<') { merges.push(value); }
+        else { map[kv.key] = value; explicit[kv.key] = true; }
+    }
+    for (var a = 0; a < merges.length; a++) {
+        var src = merges[a];
+        var list = Array.isArray(src) ? src : [src];
+        for (var b = 0; b < list.length; b++) {
+            var o = list[b];
+            if (!o || typeof o !== 'object') continue;
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k) && !explicit[k]) map[k] = o[k];
+        }
+    }
+    return map;
+}
+
+function parseSeq(ctx, indent) {
+    var arr = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' starts further to the right than the list item above it.');
+        // A key at the sequence's own indentation ends the sequence; whoever
+        // called us decides whether that key is legal there.
+        if (!/^-(\s|$)/.test(p.content)) break;
+        var after = p.content.slice(1);
+        var lead = after.match(/^ */)[0].length;
+        var content = after.trim();
+        ctx.i++;
+        if (content === '') {
+            arr.push(parseNode(ctx, indent + 1));
+        } else if (isKeyValue(content)) {
+            var itemIndent = indent + 1 + lead;
+            var pad = new Array(itemIndent + 1).join(' ');
+            ctx.lines[ctx.i - 1] = pad + content;
+            ctx.i--;
+            arr.push(parseMap(ctx, itemIndent));
+        } else {
+            arr.push(parseScalar(content, p.line));
+        }
+    }
+    return arr;
+}
+
+function parseNode(ctx, indent) {
+    var p = peekLine(ctx);
+    if (!p || p.indent < indent) return null;
+    if (/^-(\s|$)/.test(p.content)) return parseSeq(ctx, p.indent);
+    return parseMap(ctx, p.indent);
+}
+
+function parseYaml(text) {
+    var all = text.replace(/\r\n?/g, '\n').split('\n');
+    for (var i = 0; i < all.length; i++) {
+        if (/^ *\t/.test(all[i])) {
+            return { ok: false, error: yamlError(i + 1, 'line ' + (i + 1) + ' starts with a TAB character. YAML only allows real spaces at the start of a line. A Tab there stops the file being read at all — it is not just untidy.') };
+        }
+    }
+    var chunks = [], cur = [], start = 0;
+    for (i = 0; i < all.length; i++) {
+        if (/^---\s*(#.*)?$/.test(all[i]) || /^\.\.\.\s*$/.test(all[i])) {
+            chunks.push({ lines: cur, offset: start });
+            cur = []; start = i + 1; continue;
+        }
+        cur.push(all[i]);
+    }
+    chunks.push({ lines: cur, offset: start });
+
+    var docs = [];
+    try {
+        for (var c = 0; c < chunks.length; c++) {
+            var blank = chunks[c].lines.every(function (l) { return stripComment(l).trim() === ''; });
+            if (blank) continue;
+            var ctx = { lines: chunks[c].lines.slice(), offset: chunks[c].offset, i: 0, anchors: {} };
+            var doc = parseNode(ctx, 0);
+            var leftover = peekLine(ctx);
+            if (leftover) throw yamlError(leftover.line, 'line ' + leftover.line + ' does not belong to anything above it. Check how far in it starts.');
+            docs.push(doc);
+        }
+    } catch (e) {
+        if (e && e.msg) return { ok: false, error: e };
+        return { ok: false, error: yamlError(0, 'something in this file could not be read: ' + e) };
+    }
+    if (!docs.length) return { ok: false, error: yamlError(1, 'there is nothing in the file yet — only blank lines and comments. Write your first line, then press the button again.') };
+    return { ok: true, docs: docs, data: docs[0] };
+}
+
+/* ---------- structure rendering: show learners what YAML actually produced ---------- */
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function typeName(v) {
+    if (v === null) return 'null';
+    if (Array.isArray(v)) return 'list';
+    if (typeof v === 'object') return 'map';
+    if (typeof v === 'number') return Number.isInteger(v) ? 'int' : 'float';
+    return typeof v;
+}
+function renderStructure(v, indent) {
+    indent = indent || '';
+    var out = '';
+    if (Array.isArray(v)) {
+        if (!v.length) return indent + '(empty list)\n';
+        v.forEach(function (item) {
+            if (item && typeof item === 'object') {
+                out += indent + '-\n' + renderStructure(item, indent + '    ');
+            } else {
+                out += indent + '- ' + scalarLine(item) + '\n';
+            }
+        });
+        return out;
+    }
+    if (v && typeof v === 'object') {
+        for (var k in v) {
+            if (!Object.prototype.hasOwnProperty.call(v, k)) continue;
+            var val = v[k];
+            if (val && typeof val === 'object') {
+                out += indent + k + ':  [' + typeName(val) + ']\n' + renderStructure(val, indent + '  ');
+            } else {
+                out += indent + k + ': ' + scalarLine(val) + '\n';
+            }
+        }
+        return out;
+    }
+    return indent + scalarLine(v) + '\n';
+}
+function scalarLine(v) {
+    var shown;
+    if (typeof v === 'string') shown = JSON.stringify(v);
+    else shown = String(v);
+    if (shown.length > 70) shown = shown.slice(0, 67) + '..."';
+    return shown + '   [' + typeName(v) + ']';
+}
+function deepEq(a, b) {
+    if (a === b) return true;
+    if (typeof a !== typeof b) return false;
+    if (a === null || b === null) return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (typeof a !== 'object') return false;
+    var ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (var i = 0; i < ka.length; i++) {
+        if (!Object.prototype.hasOwnProperty.call(b, ka[i])) return false;
+        if (!deepEq(a[ka[i]], b[ka[i]])) return false;
+    }
+    return true;
+}
+
+/* =========================================================================
+   The incident, scene by scene.
+   ========================================================================= */
+var TASK_ID = 5;
+
+var SCENES = [
+{
+    id: 1,
+    clock: '20:25',
+    title: 'Your first two lines of YAML',
+    story: '<p>Yesterday evening, 8 PM. First shift on the team. Priya slides a laptop across the desk.</p>' +
+           '<p>A line of YAML is just a <strong>name</strong>, a <strong>colon</strong>, a <strong>space</strong>, ' +
+           'and then a <strong>value</strong>:</p>' +
+           '<pre>service: checkout\n^^^^^^^  ^^^^^^^^\nname     value</pre>' +
+           '<p>The space after the colon matters. <code>service:checkout</code> without it is not two things, ' +
+           'it is one long piece of text. Anything after a <code>#</code> is a note for humans and is ignored ' +
+           'by the computer.</p>' +
+           '<p>Start with something harmless: print your own name badge for the building pass.</p>',
+    voice: { who: 'Priya (the engineer training you)', line: '"Two lines. Your name, and your role. If you can write those, you can read every settings file in this company."' },
+    brief: ['a line <code>name:</code> followed by your name — anything you like',
+            'a line <code>role:</code> followed by <code>trainee</code>',
+            'remember the space after each colon'],
+    start: '# Write your two lines below this comment.\n# Like this:   name: value\n\n',
+    hints: ['Type <code>name:</code> then a space, then whatever you want to be called.',
+            'The second line is <code>role:</code> then a space, then the word <code>trainee</code>.',
+            'It should look like this, on two lines:<br><code>name: Sam</code><br><code>role: trainee</code>'],
+    validate: function (r) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        var d = r.data || {};
+        if (Array.isArray(d) || typeof d !== 'object') return { ok: false, msg: 'This should be two <code>name: value</code> lines, one under the other.' };
+        if (!('name' in d)) return { ok: false, msg: 'There is no <code>name</code> line yet. Write <code>name:</code> then a space, then anything you like.' };
+        if (typeof d.name === 'number' || typeof d.name === 'boolean') {
+            return { ok: false, msg: 'Your name came back as a ' + typeName(d.name) + ' rather than text, because it looks like a number or a yes/no word to YAML. Put quote marks around it to keep it as text — you will meet this again later tonight.' };
+        }
+        if (typeof d.name !== 'string' || !d.name.trim()) return { ok: false, msg: 'The <code>name</code> line has no value after the colon. Remember the space, then the value.' };
+        if (!('role' in d)) return { ok: false, msg: 'Good — the name is there. Now add a second line: <code>role: trainee</code>.' };
+        if (d.role !== 'trainee') return { ok: false, msg: '<code>role</code> came back as <code>' + esc(JSON.stringify(d.role)) + '</code>. For tonight it needs to say exactly <code>trainee</code>.' };
+        return { ok: true, log: 'badge printed — welcome aboard, ' + esc(String(d.name)) };
+    }
+},
+{
+    id: 2,
+    clock: '20:40',
+    title: 'Text, numbers and true or false',
+    story: '<p>Here is the part that catches everybody, so it is worth ten minutes now.</p>' +
+           '<p>YAML looks at your value and <strong>guesses what kind of thing it is</strong>. There are five kinds ' +
+           'you will meet:</p>' +
+           '<pre>text (a "string")   checkout      any words\nwhole number        3             no decimal point\ndecimal number      0.5           has a decimal point\ntrue or false       true          also: false\nnothing at all      (left empty)  called "null"</pre>' +
+           '<p>Why care? Because <code>3</code> and <code>"3"</code> are not the same to a computer. One is a ' +
+           'quantity it can count with; the other is just a character on a page. Put <strong>quote marks</strong> ' +
+           'around a value and YAML stops guessing and keeps it as text.</p>' +
+           '<p>Fill in one value of each kind. Press the button and the result box will tell you, in square ' +
+           'brackets, exactly what kind YAML decided each one was.</p>',
+    voice: { who: 'Priya', line: '"Nobody reads this list and remembers it. You remember it the first time a version number turns into the wrong number. Which happens to everyone. Usually at night."' },
+    brief: ['<code>service_name</code> — any text you like',
+            '<code>replicas</code> — a whole number',
+            '<code>cpu_limit</code> — a decimal number, such as <code>0.5</code>',
+            '<code>debug</code> — <code>true</code> or <code>false</code>',
+            '<code>notes</code> — leave it empty, so it is nothing at all'],
+    start: '# Put a value after each colon.\n# Leave the last one empty on purpose.\n\nservice_name:\nreplicas:\ncpu_limit:\ndebug:\nnotes:\n',
+    hints: ['Look at the labels in square brackets in the result box: <code>[string]</code> is text, <code>[int]</code> is a whole number, <code>[float]</code> is a decimal, <code>[boolean]</code> is true/false, <code>[null]</code> is nothing.',
+            'A decimal number needs a decimal point in it, like <code>0.5</code> or <code>1.5</code>. A whole number must not have one.',
+            'For example: <code>service_name: checkout</code>, <code>replicas: 3</code>, <code>cpu_limit: 0.5</code>, <code>debug: true</code>, and leave <code>notes:</code> with nothing after it.'],
+    validate: function (r, text) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        var d = r.data || {};
+        if (typeof d.service_name !== 'string' || !d.service_name.trim()) {
+            return { ok: false, msg: '<code>service_name</code> came back as <code>' + typeName(d.service_name) + '</code>. It should be text — any words will do. If your text looks like a number, put quote marks around it.' };
+        }
+        if (typeof d.replicas !== 'number' || !isFinite(d.replicas)) {
+            return { ok: false, msg: '<code>replicas</code> came back as <code>' + typeName(d.replicas) + '</code>. It should be a whole number, with no quote marks around it.' };
+        }
+        if (!Number.isInteger(d.replicas)) {
+            return { ok: false, msg: '<code>replicas</code> is <code>' + d.replicas + '</code>, which is a decimal. A whole number has no decimal point in it.' };
+        }
+        var looksDecimal = /cpu_limit:\s*[-+]?\d*\.\d+/.test(text);
+        if (typeof d.cpu_limit !== 'number' || !isFinite(d.cpu_limit)) {
+            return { ok: false, msg: '<code>cpu_limit</code> came back as <code>' + typeName(d.cpu_limit) + '</code>. It should be a decimal number, such as <code>0.5</code>. No quote marks.' };
+        }
+        if (Number.isInteger(d.cpu_limit) && !looksDecimal) {
+            return { ok: false, msg: '<code>cpu_limit</code> is <code>' + d.cpu_limit + '</code>, a whole number. Give it a decimal point — something like <code>0.5</code>.' };
+        }
+        if (typeof d.debug !== 'boolean') {
+            return { ok: false, msg: '<code>debug</code> came back as <code>' + typeName(d.debug) + '</code>. It should be <code>true</code> or <code>false</code>, written plainly with no quote marks.' };
+        }
+        if (!('notes' in d)) return { ok: false, msg: 'The <code>notes</code> line has gone. Put it back, and leave it empty after the colon.' };
+        if (d.notes !== null) {
+            return { ok: false, msg: '<code>notes</code> came back as <code>' + typeName(d.notes) + '</code>. Leave it completely empty after the colon so it is nothing at all — that is what "null" means.' };
+        }
+        return { ok: true, log: 'one of each: text, whole number, decimal, true/false, and nothing' };
+    }
+},
+{
+    id: 3,
+    clock: '21:00',
+    title: 'Settings inside settings, and lists',
+    story: '<p>Real files are not flat. Two more shapes and you have the whole language.</p>' +
+           '<p><strong>Settings inside a setting.</strong> Push lines to the right with spaces, and they belong ' +
+           'to the line above:</p>' +
+           '<pre>limits:\n  memory: 256Mi\n  cpu: 500m</pre>' +
+           '<p>memory and cpu are inside limits. Use <strong>two spaces</strong> per level, and use the space bar — ' +
+           '<strong>never the Tab key</strong>. That will matter more than you would believe.</p>' +
+           '<p><strong>A list.</strong> A dash and a space at the start of each line:</p>' +
+           '<pre>ports:\n  - 80\n  - 443</pre>' +
+           '<p>Now build one yourself, from the description below. Nothing is filled in — this is the first ' +
+           'file you write from scratch.</p>',
+    voice: { who: 'Priya', line: '"Indented means inside. A dash means one of many. Those two ideas cover about ninety percent of every file you will ever open."' },
+    brief: ['<code>service</code> is <code>checkout</code>',
+            '<code>replicas</code> is the whole number <code>2</code>',
+            'inside <code>limits</code>: <code>memory</code> is <code>256Mi</code> and <code>cpu</code> is <code>500m</code>',
+            '<code>ports</code> is a list of two numbers: <code>80</code> and <code>443</code>'],
+    start: '# Write the whole thing yourself. Two spaces to go one level in.\n\n',
+    hints: ['Start with the two plain lines: <code>service: checkout</code> and <code>replicas: 2</code>.',
+            'Then <code>limits:</code> on its own line with nothing after it, and the two settings under it, each starting with two spaces.',
+            'Finish with <code>ports:</code> on its own line, then <code>&nbsp;&nbsp;- 80</code> and <code>&nbsp;&nbsp;- 443</code> underneath.'],
+    validate: function (r) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        var d = r.data || {};
+        if (d.service !== 'checkout') return { ok: false, msg: '<code>service</code> should be <code>checkout</code>. Right now it is <code>' + esc(JSON.stringify(d.service)) + '</code>.' };
+        if (d.replicas !== 2) return { ok: false, msg: '<code>replicas</code> should be the number <code>2</code>, with no quote marks. Right now it is <code>' + esc(JSON.stringify(d.replicas)) + '</code>.' };
+        if (!d.limits || typeof d.limits !== 'object' || Array.isArray(d.limits)) {
+            return { ok: false, msg: '<code>limits</code> should have two settings inside it. Put <code>limits:</code> on its own line, then indent <code>memory</code> and <code>cpu</code> underneath by two spaces.' };
+        }
+        if (!deepEq(d.limits, { memory: '256Mi', cpu: '500m' })) {
+            return { ok: false, msg: 'Inside <code>limits</code> I found <code>' + esc(JSON.stringify(d.limits)) + '</code>. It should hold exactly <code>memory: 256Mi</code> and <code>cpu: 500m</code>.' };
+        }
+        if (!Array.isArray(d.ports)) return { ok: false, msg: '<code>ports</code> should be a list. Each item goes on its own line, starting with a dash and a space.' };
+        if (!deepEq(d.ports, [80, 443])) return { ok: false, msg: '<code>ports</code> came out as <code>' + esc(JSON.stringify(d.ports)) + '</code>. It should be the two numbers <code>80</code> and <code>443</code>, in that order, with no quote marks.' };
+        return { ok: true, log: 'first file written from scratch — nesting and a list, both correct' };
+    }
+},
+{
+    id: 4,
+    clock: '21:20',
+    title: 'The one habit that saves you later',
+    story: '<p>Last lesson before the end of the shift, and it is the one Priya actually cares about.</p>' +
+           '<p>Remember that YAML guesses. A version number like <code>1.4</code> looks exactly like a decimal ' +
+           'number, so YAML turns it into one. Usually you get away with it. Sometimes you do not, and the ' +
+           'difference between <code>1.10</code> and <code>1.1</code> costs you a night.</p>' +
+           '<p><strong>The habit: put quote marks around anything that only looks like a number.</strong> ' +
+           'Version numbers, codes, phone numbers, anything with a leading zero.</p>' +
+           '<pre>version: 1.4     becomes the number 1.4\nversion: "1.4"   stays the text 1.4</pre>' +
+           '<p>Write the small file below. This is the real settings file for the checkout service — the one ' +
+           'that is going to break in about six hours.</p>',
+    voice: { who: 'Priya', line: '"Quote your version numbers. That is the whole lesson. Go home, get some sleep."' },
+    brief: ['a comment line somewhere, starting with <code>#</code>',
+            '<code>service</code> is <code>checkout</code>',
+            '<code>version</code> is the <em>text</em> <code>1.4</code> — quote marks needed',
+            '<code>enabled</code> is <code>true</code>',
+            '<code>ports</code> is a list with just the number <code>80</code> in it'],
+    start: '# A line starting with a hash is a note for humans.\n# Write the file under this one.\n\n',
+    hints: ['You already have a comment at the top — you can keep it, or write your own.',
+            'Without quote marks, <code>version: 1.4</code> becomes a decimal number. Check the label in the result box.',
+            'The version line should be exactly <code>version: "1.4"</code>.'],
+    validate: function (r, text) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        var d = r.data || {};
+        var hasComment = text.split('\n').some(function (l) { return l.trim().charAt(0) === '#'; });
+        if (!hasComment) return { ok: false, msg: 'There is no comment line. Add a line somewhere that starts with <code>#</code> — it is a note for people, and the computer ignores it.' };
+        if (d.service !== 'checkout') return { ok: false, msg: '<code>service</code> should be <code>checkout</code>.' };
+        if (typeof d.version === 'number') {
+            return { ok: false, msg: '<code>version</code> came back as the number <code>' + d.version + '</code>, not text. That is exactly the trap. Put quote marks around it: <code>version: "1.4"</code>.' };
+        }
+        if (d.version !== '1.4') return { ok: false, msg: '<code>version</code> should be the text <code>1.4</code>. Right now it is <code>' + esc(JSON.stringify(d.version)) + '</code>.' };
+        if (d.enabled !== true) return { ok: false, msg: '<code>enabled</code> should be <code>true</code>, written plainly with no quote marks. Right now it is <code>' + esc(JSON.stringify(d.enabled)) + '</code>.' };
+        if (!deepEq(d.ports, [80])) return { ok: false, msg: '<code>ports</code> should be a list holding just the number <code>80</code>. Right now it is <code>' + esc(JSON.stringify(d.ports)) + '</code>.' };
+        return { ok: true, log: 'settings file written, version safely quoted. end of shift.' };
+    }
+},
+];
+
+/* ---------- incident channel ---------- */
+var CLOCK = '20:10';
+function log(kind, who, text) {
+    var term = document.getElementById('term');
+    var row = document.createElement('div');
+    var t = document.createElement('span');
+    t.className = 't-time';
+    t.textContent = '[' + CLOCK + '] ';
+    var w = document.createElement('span');
+    w.className = 't-' + kind;
+    w.textContent = who + ' ';
+    var m = document.createElement('span');
+    m.textContent = text;
+    row.appendChild(t); row.appendChild(w); row.appendChild(m);
+    term.appendChild(row);
+    term.scrollTop = term.scrollHeight;
+}
+
+/* ---------- scene rendering ---------- */
+var solved = {};
+var reported = false;
+
+function buildScenes() {
+    var host = document.getElementById('scenes');
+    SCENES.forEach(function (sc, idx) {
+        if (idx === 0) {
+            var act = document.createElement('div');
+            act.className = 'act';
+            act.innerHTML = '<div class="act-kicker">Yesterday evening, 8 PM</div>' +
+                '<h2>Learning the file</h2>' +
+                '<p>Four short lessons. You write every line yourself. Nothing here can break anything.</p>';
+            host.appendChild(act);
+        }
+        var card = document.createElement('section');
+        card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+        card.id = 'scene-' + sc.id;
+
+        var head = document.createElement('div');
+        head.className = 'scene-head';
+        head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+            '<h2 class="scene-title">' + sc.title + '</h2>' +
+            '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+        head.addEventListener('click', function () {
+            if (card.classList.contains('locked')) return;
+            card.classList.toggle('open');
+        });
+        card.appendChild(head);
+
+        var lockNote = document.createElement('p');
+        lockNote.className = 'locked-note';
+        lockNote.textContent = 'Locked — fix the problem above this one first.';
+        if (idx !== 0) card.appendChild(lockNote);
+
+        var body = document.createElement('div');
+        body.className = 'scene-body';
+        body.innerHTML =
+            sc.story +
+            '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+            '<div class="brief"><h4>Make all of this true</h4><ul>' +
+            sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') +
+            '</ul></div>' +
+            '<div class="editor-label"><span>your practice file — lesson ' + sc.id + ' of 4</span>' +
+            '<span>spaces only, no Tab key</span></div>';
+
+        var ta = document.createElement('textarea');
+        ta.className = 'editor';
+        ta.value = sc.start;
+        ta.spellcheck = false;
+        ta.setAttribute('aria-label', 'YAML editor for scene ' + sc.id + ': ' + sc.title);
+        body.appendChild(ta);
+
+        var row = document.createElement('div');
+        row.className = 'btn-row';
+        var runBtn = document.createElement('button');
+        runBtn.className = 'run';
+        runBtn.type = 'button';
+        runBtn.textContent = 'Read the file';
+        var hintBtn = document.createElement('button');
+        hintBtn.className = 'ghost';
+        hintBtn.type = 'button';
+        hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+        var resetBtn = document.createElement('button');
+        resetBtn.className = 'ghost';
+        resetBtn.type = 'button';
+        resetBtn.textContent = 'Start over';
+        row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+        body.appendChild(row);
+
+        var hints = document.createElement('div');
+        hints.className = 'hints';
+        sc.hints.forEach(function (h, hi) {
+            var el = document.createElement('div');
+            el.className = 'hint';
+            el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+            hints.appendChild(el);
+        });
+        body.appendChild(hints);
+
+        var out = document.createElement('div');
+        out.className = 'out';
+        out.innerHTML = '<div class="out-head">what the computer actually understood</div><pre class="parsed"></pre><div class="verdict"></div>';
+        body.appendChild(out);
+
+        card.appendChild(body);
+        host.appendChild(card);
+
+        var shown = 0;
+        hintBtn.addEventListener('click', function () {
+            if (shown >= sc.hints.length) return;
+            hints.children[shown].classList.add('show');
+            shown++;
+            hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+        });
+        resetBtn.addEventListener('click', function () {
+            if (solved[sc.id]) return;
+            ta.value = sc.start;
+            out.classList.remove('show');
+            ta.focus();
+        });
+        runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
+        ta.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
+        });
+    });
+}
+
+function runScene(sc, ta, out, runBtn, card) {
+    if (solved[sc.id]) return;
+    var text = ta.value;
+    var res = parseYaml(text);
+    var pre = out.querySelector('.parsed');
+    var verdict = out.querySelector('.verdict');
+    out.classList.add('show');
+
+    if (res.ok) {
+        var body = '';
+        res.docs.forEach(function (d, i) {
+            if (res.docs.length > 1) body += '# part ' + (i + 1) + ' of the file\n';
+            body += renderStructure(d, '');
+        });
+        pre.textContent = body;
+    } else {
+        pre.textContent = 'Could not read the file. It stopped at line ' + res.error.line + '.';
+    }
+
+    var v = sc.validate(res, text);
+    if (!v.ok) {
+        verdict.className = 'verdict bad';
+        verdict.innerHTML = '<span class="lbl">✗ Not yet — </span>' + v.msg;
+        log('pipe', 'laptop  ', res.ok ? 'file reads fine, but it is not what was asked for yet' : 'could not read your file (line ' + res.error.line + ')');
+        return;
+    }
+
+    verdict.className = 'verdict good';
+    verdict.innerHTML = '<span class="lbl">✓ Fixed. </span>' + v.log;
+    solveScene(sc, card, runBtn, ta, v);
+}
+
+function solveScene(sc, card, runBtn, ta, v) {
+    solved[sc.id] = true;
+    CLOCK = sc.clock;
+    card.classList.remove('active');
+    card.classList.add('solved', 'collapsible');
+    card.querySelector('.scene-state').textContent = 'fixed';
+    runBtn.textContent = 'Fixed';
+    ta.readOnly = true;
+
+    var count = Object.keys(solved).length;
+    document.getElementById('repairs').textContent = count + '/' + SCENES.length;
+    document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+    document.getElementById('clock').textContent = CLOCK;
+
+    log('ok', 'laptop  ', 'lesson ' + sc.id + ' of 4 done — ' + v.log);
+
+    if (count === SCENES.length) {
+        log('priya', 'priya   ', '"That is the lot. You can read a settings file now. Go home."');
+        finish();
+        return;
+    }
+
+    // collapse the solved scene, open and unlock the next one
+    card.classList.remove('open');
+    var next = SCENES[SCENES.indexOf(sc) + 1];
+    var nextCard = document.getElementById('scene-' + next.id);
+    nextCard.classList.remove('locked');
+    nextCard.classList.add('active', 'open', 'collapsible');
+    nextCard.querySelector('.scene-state').textContent = 'active';
+    var note = nextCard.querySelector('.locked-note');
+    if (note) note.parentNode.removeChild(note);
+    nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+    // Single source of truth for completion: fired only after every scene's
+    // validator has passed against the real parsed structure.
+    if (!reported) {
+        reported = true;
+        window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+    }
+    var finale = document.getElementById('finale');
+    finale.style.display = 'block';
+    finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    var steps = [
+        ['t-pipe', 'laptop ', 'checking your file … reads cleanly, no errors'],
+        ['t-ok', 'laptop ', 'lessons complete: names and values, the five kinds of value, nesting, lists, quoting'],
+        ['t-pipe', 'laptop ', 'saving your file as the checkout settings … saved'],
+        ['t-priya', 'priya  ', '"Good. You are on call with me tonight, but nothing ever happens on a Tuesday."'],
+        ['t-warn', 'clock  ', '21:20 — end of shift'],
+        ['t-warn', 'clock  ', '… 03:14 …']
+    ];
+    var host = document.getElementById('rollout');
+    steps.forEach(function (s, i) {
+        setTimeout(function () {
+            var row = document.createElement('div');
+            var w = document.createElement('span');
+            w.className = s[0];
+            w.textContent = s[1] + '  ';
+            var m = document.createElement('span');
+            m.textContent = s[2];
+            row.appendChild(w); row.appendChild(m);
+            host.appendChild(row);
+            if (i === steps.length - 1) document.getElementById('done-banner').style.display = 'block';
+        }, 450 * (i + 1));
+    });
+}
+
+buildScenes();
+log('pipe', 'laptop  ', 'training laptop ready. checkout service running normally.');
+log('priya', 'priya   ', '"Right. Four lessons, then you go home. Tonight you are on call with me."');
+log('pipe', 'laptop  ', 'nothing you type here can break anything. try things.');
+</script>
+</body>
+</html>

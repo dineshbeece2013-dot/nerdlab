@@ -1,0 +1,80 @@
+-- Seed Data for DevOps Learning Platform
+
+-- 1. Insert Default Categories
+INSERT INTO categories (id, name, slug, description, icon) VALUES
+(1, 'Git Version Control', 'git', 'Master distributed source control, branching strategies, rebase, and GitHub workflows.', 'GitBranch'),
+(2, 'Docker & Containers', 'docker', 'Learn containerization, Dockerfiles, docker-compose, and container networking.', 'Container'),
+(3, 'Terraform IaC', 'terraform', 'Infrastructure as Code with HashiCorp Terraform, HCL, states, and modules.', 'Layers'),
+(4, 'Kubernetes Orchestration', 'kubernetes', 'Manage containerized applications with K8s pods, deployments, services, and ingress.', 'Server'),
+(5, 'YAML Configuration', 'yaml', 'Learn YAML — the simple text format used to write settings for almost every modern tool.', 'FileCode'),
+(6, 'Ansible Automation', 'ansible', 'Run one command and change every server. Inventories, playbooks, roles and safe rollouts.', 'Workflow')
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  icon = EXCLUDED.icon;
+
+-- 2. Insert Default Courses
+INSERT INTO courses (id, category_id, title, slug, description, level, is_published) VALUES
+(1, 1, 'Git & GitHub Essentials', 'git-essentials', 'Hands-on practical guide to mastering version control.', 'Beginner', true),
+(2, 2, 'Docker Fundamentals & Microservices', 'docker-fundamentals', 'Containerize applications and orchestrate with Docker Compose.', 'Intermediate', true),
+(3, 3, 'Terraform Infrastructure Automation', 'terraform-automation', 'Automate cloud infrastructure provisioning cleanly.', 'Intermediate', true),
+(4, 4, 'Kubernetes Administration & Deployment', 'k8s-administration', 'Deploy resilient clusters and microservices on K8s.', 'Advanced', true),
+(5, 5, 'YAML for DevOps Engineers', 'yaml-for-devops', 'Learn to read and write the settings files that every DevOps tool expects. No prior experience needed.', 'Beginner', true),
+(6, 6, 'Ansible Quest: Intern to Automation Lead', 'ansible-quest', 'A four-part story. You inherit a rack of undocumented servers as an intern and leave owning the automation platform.', 'Beginner', true)
+ON CONFLICT (id) DO UPDATE SET
+  category_id = EXCLUDED.category_id,
+  title = EXCLUDED.title,
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  level = EXCLUDED.level,
+  is_published = EXCLUDED.is_published;
+
+-- 3. Insert Default Modules
+INSERT INTO modules (id, course_id, title, sequence_order, description) VALUES
+(1, 1, 'Git Basics & Repositories', 1, 'Understanding working tree, staging, and commits.'),
+(2, 2, 'Docker Basics & Images', 1, 'Building efficient Docker containers.'),
+(3, 3, 'Terraform HCL Basics', 1, 'Writing declarative HCL configurations.'),
+(4, 4, 'Kubernetes Core Concepts', 1, 'Pods, ReplicaSets, and Deployments.'),
+(5, 5, 'YAML Syntax Fundamentals', 1, 'Names and values, lists, text over several lines, and reusing settings.'),
+(6, 6, 'The Ansible Quest', 1, 'Four chapters: take the keys, make it safe to run twice, survive the rollout, own the platform.')
+ON CONFLICT (id) DO UPDATE SET
+  course_id = EXCLUDED.course_id,
+  title = EXCLUDED.title,
+  sequence_order = EXCLUDED.sequence_order,
+  description = EXCLUDED.description;
+
+-- 4. Insert Default Tasks
+-- The Git/Docker/Terraform/Kubernetes entries are placeholders: they hold the
+-- category open in the catalogue and are flagged is_coming_soon until a real
+-- lab is written for them.
+INSERT INTO tasks (id, module_id, category_id, title, slug, description, difficulty, points, estimated_minutes, file_path, is_coming_soon) VALUES
+(1, 1, 1, 'Git Task 1: Basic Commit & Branching', 'git-task-1', 'Learn how to initialize a repository, create commits, and work with branches.', 'Easy', 100, 20, 'tasks/git/task1.html', TRUE),
+(2, 2, 2, 'Docker Task 1: Build & Run Web Container', 'docker-task-1', 'Write a Dockerfile for a web server and run it on port 8080.', 'Medium', 150, 30, 'tasks/docker/task1.html', TRUE),
+(3, 3, 3, 'Terraform Task 1: Provision Web Server', 'terraform-task-1', 'Write Terraform HCL to provision an Nginx web server instance.', 'Medium', 150, 35, 'tasks/terraform/task1.html', TRUE),
+(4, 4, 4, 'Kubernetes Task 1: Deploy Pods & Services', 'kubernetes-task-1', 'Create a Kubernetes Deployment and expose it via a NodePort Service.', 'Hard', 200, 45, 'tasks/kubernetes/task1.html', TRUE),
+(5, 5, 5, 'YAML Task 1: The Basics', 'yaml-task-1', 'Start from zero. What YAML actually is, the difference between text, whole numbers, decimals and true/false, and how to write a settings file line by line from an empty box. No prior experience needed.', 'Easy', 100, 25, 'tasks/yaml/task1.html', FALSE),
+(6, 5, 5, 'YAML Part 2 - 3:14 AM The Callout', 'yaml-task-2', 'A payment service goes down in the night and the settings file is broken in six places. Fix each fault for real — tabs, values that changed type, misaligned lists, block text, reused settings, and splitting one file into two.', 'Medium', 150, 30, 'tasks/yaml/task2.html', FALSE),
+(7, 6, 6, 'Ansible Quest 1: Take the Keys', 'ansible-task-1', 'You inherit a rack of servers nobody documented. Write the inventory, reach the machines with ad-hoc commands, and hand-write your first playbook. Intern to Junior SRE.', 'Easy', 150, 45, 'tasks/ansible/task1.html', FALSE),
+(8, 6, 6, 'Ansible Quest 2: Safe to Run Twice', 'ansible-task-2', 'web02 is throwing 502s. Fix it with modules that describe a result, then make the fix idempotent — it has to run twice and change nothing the second time. Junior SRE to SRE.', 'Medium', 200, 50, 'tasks/ansible/task2.html', FALSE),
+(9, 6, 6, 'Ansible Quest 3: Blast Radius', 'ansible-task-3', 'Split the monolith into roles, then roll a change out in batches that stop themselves when they go wrong. Ends with a real rolling upgrade: drain, deploy, health check, back into the load balancer. SRE to Senior SRE.', 'Hard', 250, 55, 'tasks/ansible/task3.html', FALSE),
+(10, 6, 6, 'Ansible Quest 4: The Handover', 'ansible-task-4', 'Stop running the playbooks and start owning the platform. Get secrets out of the repository, pin your collections, and gate every change on lint, converge and an idempotence check. Senior SRE to Automation Lead.', 'Hard', 250, 60, 'tasks/ansible/task4.html', FALSE)
+-- Re-seeding refreshes the catalogue copy. Student progress lives in
+-- student_progress and is keyed by task id, so it survives these updates.
+ON CONFLICT (id) DO UPDATE SET
+  module_id = EXCLUDED.module_id,
+  category_id = EXCLUDED.category_id,
+  title = EXCLUDED.title,
+  slug = EXCLUDED.slug,
+  description = EXCLUDED.description,
+  difficulty = EXCLUDED.difficulty,
+  points = EXCLUDED.points,
+  estimated_minutes = EXCLUDED.estimated_minutes,
+  file_path = EXCLUDED.file_path,
+  is_coming_soon = EXCLUDED.is_coming_soon;
+
+-- Reset Sequences to avoid ID collisions
+SELECT setval('categories_id_seq', (SELECT MAX(id) FROM categories));
+SELECT setval('courses_id_seq', (SELECT MAX(id) FROM courses));
+SELECT setval('modules_id_seq', (SELECT MAX(id) FROM modules));
+SELECT setval('tasks_id_seq', (SELECT MAX(id) FROM tasks));

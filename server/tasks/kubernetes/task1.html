@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Task 1: Deploy Pods & Services</title>
+    <style>
+        body { font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 2rem; margin: 0; }
+        .container { max-width: 800px; margin: 0 auto; background: #1e293b; padding: 2rem; border-radius: 12px; border: 1px solid #334155; }
+        h1 { color: #3b82f6; }
+        pre { background: #090d16; color: #bfdbfe; padding: 1rem; border-radius: 8px; overflow-x: auto; }
+        .step { margin-bottom: 1.5rem; border-left: 4px solid #3b82f6; padding-left: 1rem; }
+        .btn-complete { background: #10b981; color: white; padding: 0.75rem 1.5rem; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
+
+        .verify {
+            margin-top: 2rem;
+            border-top: 2px solid #334155;
+            padding-top: 1.5rem;
+        }
+        .verify h2 { color: #38bdf8; font-size: 1.1rem; }
+        #progress-wrap { margin-bottom: 1.25rem; font-weight: 600; color: #cbd5e1; }
+        #bar { height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; margin-top: 0.5rem; border: 1px solid #334155; }
+        #fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5e9, #10b981); transition: width 0.35s ease; }
+        .check-item {
+            background: #16213a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+        }
+        .check-item.done { border-color: #10b981; background: #0d2620; }
+        .check-item p { margin: 0 0 0.6rem; color: #e2e8f0; }
+        .check-item input {
+            background: #090d16;
+            border: 1px solid #334155;
+            color: #a5f3fc;
+            border-radius: 8px;
+            padding: 0.6rem 0.8rem;
+            width: 100%;
+            max-width: 460px;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        .check-item button {
+            margin-left: 0.5rem;
+            background: #0ea5e9;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            padding: 0.6rem 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .check-item button:hover { background: #38bdf8; }
+        .check-item.done button { background: #10b981; cursor: default; }
+        .feedback { display: block; margin-top: 0.5rem; font-size: 0.85rem; color: #94a3b8; min-height: 1.2em; }
+        .check-item.done .feedback { color: #10b981; font-weight: 600; }
+        .feedback.bad { color: #f87171; }
+        #done-banner {
+            display: none;
+            margin-top: 1.5rem;
+            background: #052e22;
+            border: 1px solid #10b981;
+            color: #6ee7b7;
+            padding: 1rem 1.25rem;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Kubernetes Task 1: Deploy Pods & Services</h1>
+        <p>In this lab exercise, create a Kubernetes Deployment manifest and expose it via NodePort Service.</p>
+        
+        <div class="step">
+            <h3>Step 1: Create deployment.yaml</h3>
+            <pre>apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: nginx
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.21
+        ports:
+        - containerPort: 80</pre>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Apply Manifest</h3>
+            <pre>kubectl apply -f deployment.yaml
+kubectl get pods</pre>
+        </div>
+
+        <div class="verify">
+            <h2>Verification — complete every check to earn your points</h2>
+            <div id="progress-wrap">
+                <span id="progress-text">0 of 3 checks passed</span>
+                <div id="bar"><div id="fill"></div></div>
+            </div>
+
+            <div class="check-item" data-step="1">
+                <p><strong>Check 1.</strong> Which kind of Kubernetes object does deployment.yaml define?</p>
+                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(1);}" />
+                <button type="button" onclick="checkStep(1)">Verify</button>
+                <span class="feedback"></span>
+            </div>
+
+            <div class="check-item" data-step="2">
+                <p><strong>Check 2.</strong> Which command applies deployment.yaml to the cluster?</p>
+                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(2);}" />
+                <button type="button" onclick="checkStep(2)">Verify</button>
+                <span class="feedback"></span>
+            </div>
+
+            <div class="check-item" data-step="3">
+                <p><strong>Check 3.</strong> Which command lists the running pods?</p>
+                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(3);}" />
+                <button type="button" onclick="checkStep(3)">Verify</button>
+                <span class="feedback"></span>
+            </div>
+            <div id="done-banner">All checks passed — your points have been awarded.</div>
+        </div>
+    </div>
+
+    <script>
+        var TASK_ID = 4;
+        var ANSWERS = {
+            1: /^Deployment$/i,
+            2: /^kubectl\s+apply\s+-f\s+deployment\.yaml$/i,
+            3: /^kubectl\s+get\s+pods$/i
+        };
+        var TOTAL = Object.keys(ANSWERS).length;
+        var completed = {};
+        var reported = false;
+
+        function render() {
+            var count = Object.keys(completed).length;
+            document.getElementById('progress-text').textContent = count + ' of ' + TOTAL + ' checks passed';
+            document.getElementById('fill').style.width = (count / TOTAL * 100) + '%';
+
+            if (count === TOTAL && !reported) {
+                reported = true;
+                document.getElementById('done-banner').style.display = 'block';
+                // Single source of truth for completion: fired only when every check passes.
+                window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+            }
+        }
+
+        function checkStep(n) {
+            var el = document.querySelector('.check-item[data-step="' + n + '"]');
+            var feedback = el.querySelector('.feedback');
+            if (completed[n]) return;
+
+            var value = el.querySelector('input').value.trim();
+            if (!value) { feedback.textContent = 'Enter an answer first.'; feedback.className = 'feedback bad'; return; }
+
+            if (!ANSWERS[n].test(value)) {
+                feedback.textContent = 'Not quite — re-read the step above and try again.';
+                feedback.className = 'feedback bad';
+                return;
+            }
+
+            completed[n] = true;
+            el.classList.add('done');
+            feedback.textContent = 'Correct';
+            feedback.className = 'feedback';
+            el.querySelector('button').textContent = 'Passed';
+            el.querySelector('input').readOnly = true;
+            render();
+        }
+
+        render();
+    </script>
+</body>
+</html>

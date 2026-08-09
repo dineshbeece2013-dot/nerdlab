@@ -1,0 +1,1975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANSIBLE QUEST — The Handover</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --line:#334155;
+    --green:#34d399; --green-dim:#10b981; --amber:#fbbf24;
+    --cyan:#38bdf8; --red:#f87171; --purple:#c084fc;
+    --text:#e2e8f0; --muted:#94a3b8;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:radial-gradient(1100px 600px at 50% -10%, #1e293b 0%, transparent 60%), var(--bg);
+    color:var(--text);
+    font-family:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    font-size:15px; line-height:1.6; display:flex; flex-direction:column;
+  }
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:99;
+    background:repeating-linear-gradient(to bottom, rgba(255,255,255,.018) 0 1px, transparent 1px 3px);
+  }
+
+  header{
+    position:sticky; top:0; z-index:20; background:rgba(15,23,42,.93); backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line); padding:9px 18px;
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  }
+  .brand{font-weight:700; color:var(--green); letter-spacing:2px; font-size:13px}
+  .brand small{color:var(--muted); letter-spacing:0; font-weight:400; display:block; font-size:10px}
+  .stats{display:flex; gap:14px; margin-left:auto; flex-wrap:wrap; align-items:center}
+  .stat{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px}
+  .stat b{display:block; font-size:14px; letter-spacing:0; text-transform:none}
+  .stat.xp b{color:var(--amber)} .stat.rank b{color:var(--purple)}
+  .stat.up b{color:var(--green)} .stat.ch b{color:var(--cyan)} .stat.fr b{color:var(--amber)}
+  .bar{width:92px; height:5px; background:#0b1220; border-radius:3px; overflow:hidden; margin-top:5px}
+  .bar i{display:block; height:100%; background:var(--green); transition:width .5s ease, background .4s}
+  .hbtn{
+    background:transparent; border:1px solid var(--line); color:var(--muted); font-family:inherit;
+    font-size:10px; padding:6px 10px; border-radius:5px; cursor:pointer; letter-spacing:1px; text-transform:uppercase;
+  }
+  .hbtn:hover{border-color:var(--green-dim); color:var(--green)}
+
+  main{flex:1; overflow-y:auto; padding:24px 18px 56px}
+  .wrap{max-width:840px; margin:0 auto}
+  .blk{animation:fade .35s ease both; margin:0 0 14px}
+  @keyframes fade{from{opacity:0; transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .crumb{font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin:0 0 14px}
+  .crumb b{color:var(--green); font-weight:400}
+
+  .chaptercard{
+    border:1px solid var(--green-dim); border-left-width:4px;
+    background:linear-gradient(90deg,rgba(74,222,128,.07),transparent);
+    padding:15px 18px; border-radius:6px; margin:0 0 18px;
+  }
+  .chaptercard .k{color:var(--green); font-size:11px; letter-spacing:3px}
+  .chaptercard h2{margin:6px 0 4px; font-size:21px; color:#f1f5f9; letter-spacing:.5px}
+  .chaptercard p{margin:0; color:var(--muted); font-size:13px}
+
+  .dateline{font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--amber);
+            border-left:2px solid var(--amber); padding-left:10px; opacity:.85}
+  .narr{color:var(--text)}
+  .sys{color:var(--amber)}
+  .sys::before{content:"[SYS] "; color:#a16207}
+  .out{color:var(--green-dim); white-space:pre-wrap}
+  .npc{border-left:2px solid var(--cyan); padding-left:12px; color:#bae6fd}
+  .npc b{color:var(--cyan)}
+  code{background:#0b1220; color:var(--amber); padding:1px 6px; border-radius:4px; font-size:.92em}
+
+  .brief{border:1px solid var(--line); background:var(--panel); border-radius:6px; padding:14px 18px; margin:0 0 16px}
+  .brief h3{margin:0 0 10px; font-size:12px; letter-spacing:2px; color:var(--cyan); text-transform:uppercase}
+  .brief ul{margin:0; padding-left:18px}
+  .brief li{margin:6px 0}
+  pre{background:#090d16; border:1px solid var(--line); border-radius:6px; padding:12px 14px;
+      overflow-x:auto; margin:10px 0; color:#a5f3fc; font-size:13.5px; line-height:1.65}
+
+  /* annotated code walk-through */
+  .walk{margin:12px 0 4px; border:1px solid var(--line); border-radius:6px; overflow:hidden}
+  .walk .wh{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--cyan);
+            padding:8px 12px; background:#090d16; border-bottom:1px solid var(--line)}
+  .walk table{width:100%; border-collapse:collapse; font-size:13px; margin:0}
+  .walk td{padding:7px 12px; border-bottom:1px solid #16213a; vertical-align:top}
+  .walk td:first-child{color:#a5f3fc; white-space:pre; width:47%; background:#090d16; font-size:12.5px}
+  .walk td:last-child{color:var(--text); font-size:13px}
+  .walk tr:last-child td{border-bottom:0}
+
+  details.manual{border:1px solid var(--line); background:var(--panel); border-radius:6px; margin:0 0 16px}
+  details.manual summary{cursor:pointer; padding:9px 14px; font-size:11px; letter-spacing:2px;
+    text-transform:uppercase; color:var(--cyan); list-style:none; user-select:none}
+  details.manual summary::-webkit-details-marker{display:none}
+  details.manual summary::before{content:"\25B8  "}
+  details.manual[open] summary::before{content:"\25BE  "}
+  details.manual .inner{padding:0 16px 14px}
+  details.manual ul{margin:0; padding-left:18px}
+  details.manual li{margin:5px 0}
+
+  .relic{border:1px dashed var(--amber); border-radius:6px; background:rgba(251,191,36,.05); padding:12px 16px; margin:0 0 14px}
+  .relic .lab{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--amber)}
+  .relic .sha{color:var(--muted); font-size:12px; margin-top:6px}
+  .relic .msg{color:#fde68a; margin-top:4px; font-style:italic}
+
+  /* ---- fragment recovery screen (its own look, not task feedback) ---- */
+  .frag-scan{
+    color:var(--green-dim); font-size:12.5px; line-height:1.8;
+    border-left:2px solid var(--green-dim); padding-left:12px; margin:0 0 20px;
+  }
+  .fragcard{
+    position:relative; overflow:hidden;
+    border:1px solid rgba(251,191,36,.35); border-radius:10px;
+    background:
+      radial-gradient(420px 180px at 12% -30%, rgba(251,191,36,.13) 0%, transparent 70%),
+      rgba(251,191,36,.035);
+    padding:24px 26px 20px; margin:0 0 20px;
+  }
+  .fragcard::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--amber); opacity:.55;
+  }
+  .fr-k{
+    font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--amber); margin-bottom:16px;
+  }
+  .fr-sha{color:#fde68a; font-size:17px; letter-spacing:1px}
+  .fr-meta{color:var(--muted); font-size:12px; margin-top:3px}
+  .fr-msg{
+    color:#fde68a; font-style:italic; font-size:15.5px; line-height:1.75;
+    margin:18px 0 0; padding:14px 0 0; border-top:1px dashed rgba(251,191,36,.25);
+  }
+  .fr-msg::before{content:"\201C"} .fr-msg::after{content:"\201D"}
+  .fr-pips{display:flex; gap:6px; margin:22px 0 0}
+  .fr-pips i{
+    width:22px; height:4px; border-radius:2px; background:#334155; transition:background .4s ease;
+  }
+  .fr-pips i.on{background:var(--amber)}
+  .fr-foot{color:var(--muted); font-size:11.5px; letter-spacing:.5px; margin-top:9px}
+
+  /* ---- promotion + completion code (quest screens) ---- */
+  .promo{border:1px solid rgba(192,132,252,.35); border-radius:8px; background:rgba(192,132,252,.06);
+         padding:12px 16px; margin:14px 0}
+  .promo-k{font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--purple)}
+  .promo-r{margin-top:5px; color:var(--muted); font-size:15px}
+  .promo-r b{color:var(--purple)}
+  .fr-pips i.past{opacity:.4}
+  .cando{margin:6px 0 14px; padding-left:20px; color:var(--text); font-size:13.5px}
+  .cando li{margin:4px 0}
+  .codebox{border:1px dashed var(--green-dim); border-radius:8px; background:#0b1220;
+           padding:12px 16px; margin:14px 0; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .code-k{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); width:100%}
+  .code-v{color:var(--green); font-size:17px; letter-spacing:1.5px; user-select:all}
+  .codebox .btn{margin-left:auto}
+
+  .chal{border:1px solid #334155; background:var(--panel); border-radius:8px; padding:16px 18px; margin:0 0 16px}
+  .chal .tag{font-size:10px; letter-spacing:2px; color:var(--purple); text-transform:uppercase}
+  .chal .q{margin:8px 0 12px; color:#f8fafc}
+  .opts{display:flex; flex-direction:column; gap:8px}
+  .opt{text-align:left; background:#090d16; border:1px solid var(--line); color:var(--text);
+       font-family:inherit; font-size:14px; padding:10px 13px; border-radius:6px; cursor:pointer; transition:.15s}
+  .opt:hover:not(:disabled){border-color:var(--green-dim); background:#0e1a22; transform:translateX(3px)}
+  .opt:disabled{cursor:default; opacity:.55}
+  .opt.right{border-color:var(--green); color:var(--green); opacity:1; background:rgba(74,222,128,.08)}
+  .opt.wrong{border-color:var(--red); color:var(--red); opacity:1}
+
+  .shape{color:var(--muted); font-size:12.5px; margin:2px 0 8px}
+  .shape em{color:var(--cyan); font-style:normal}
+  .term{display:flex; align-items:center; gap:8px; background:#090d16; border:1px solid var(--line);
+        border-radius:6px; padding:9px 12px}
+  .term span{color:var(--green); font-weight:700}
+  .term input{flex:1; background:transparent; border:0; outline:0; color:var(--green);
+              font-family:inherit; font-size:14.5px; min-width:0}
+
+  .bank{display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; align-items:center}
+  .bank .lab{font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); width:100%}
+  .tok{background:#0b1220; border:1px solid #334155; color:var(--amber); font-family:inherit;
+       font-size:13px; padding:5px 11px; border-radius:14px; cursor:pointer; transition:.12s}
+  .tok:hover:not(:disabled){border-color:var(--green); color:var(--green); transform:translateY(-1px)}
+  .tok:disabled{opacity:.3; cursor:default}
+  .tok.used{opacity:.35}
+
+  .blank{background:#0b1220; border:1px solid #334155; border-bottom:2px solid var(--amber);
+         color:var(--amber); font-family:inherit; font-size:13.5px; padding:1px 6px; border-radius:4px; outline:0}
+  .blank:focus{border-color:var(--green); box-shadow:0 0 0 2px rgba(74,222,128,.15)}
+  .blank.ok{border-color:var(--green); color:var(--green); border-bottom-color:var(--green)}
+  .blank.no{border-color:var(--red); color:var(--red); border-bottom-color:var(--red)}
+
+  /* ---- code editor for "type it yourself" ---- */
+  .edwrap{border:1px solid #334155; border-radius:6px; overflow:hidden; margin-top:6px; background:#090d16}
+  .edbar{display:flex; align-items:center; gap:10px; padding:6px 12px; background:#16213a;
+         border-bottom:1px solid var(--line); font-size:11px; color:var(--muted); letter-spacing:1px}
+  .edbar b{color:var(--amber); font-weight:400}
+  textarea.editor{
+    display:block; width:100%; min-height:230px; background:transparent; border:0; outline:0; resize:vertical;
+    color:#a5f3fc; font-family:inherit; font-size:13.5px; line-height:1.7; padding:12px 14px; tab-size:2;
+  }
+  textarea.editor::placeholder{color:#334155}
+
+  .reqs{margin-top:12px; border:1px solid var(--line); border-radius:6px; background:#090d16; padding:10px 14px}
+  .reqs .lab{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:7px}
+  .req{display:flex; gap:9px; align-items:flex-start; padding:3px 0; font-size:13px; color:var(--muted)}
+  .req .mk{width:14px; flex:none; text-align:center}
+  .req.on{color:#6ee7b7} .req.on .mk{color:var(--green)}
+  .req.off .mk{color:#334155}
+  .parseerr{border:1px solid #7f1d1d; background:rgba(248,113,113,.09); color:#fca5a5;
+            border-radius:6px; padding:10px 13px; margin-top:11px; font-size:13px}
+
+  .runout{background:#0b1220; border:1px solid var(--green-dim); border-radius:6px; padding:12px 14px;
+          margin-top:12px; color:#a5f3fc; font-size:12.5px; line-height:1.6; white-space:pre-wrap; overflow-x:auto}
+  .runout .rk{color:var(--cyan)} .runout .rc{color:var(--amber)} .runout .rg{color:var(--green)}
+  .runout .rr{color:var(--red)} .runout .ry{color:var(--muted)}
+
+  .row{display:flex; gap:9px; margin-top:12px; flex-wrap:wrap}
+  .btn{background:var(--green); color:#04150b; border:0; font-family:inherit; font-weight:700;
+       font-size:13px; padding:9px 18px; border-radius:6px; cursor:pointer; letter-spacing:.5px}
+  .btn:hover{filter:brightness(1.12)}
+  .btn.ghost{background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400}
+  .btn.ghost:hover{color:var(--amber); border-color:var(--amber)}
+  .btn:disabled{opacity:.4; cursor:default; filter:none}
+
+  .fb{border-radius:6px; padding:11px 14px; margin:10px 0 0; font-size:13.5px; animation:fade .3s ease both}
+  .fb.good{background:rgba(74,222,128,.09); border:1px solid var(--green-dim); color:#6ee7b7}
+  .fb.bad{background:rgba(248,113,113,.09); border:1px solid #7f1d1d; color:#fca5a5}
+  .fb.hint{background:rgba(251,191,36,.08); border:1px solid #a16207; color:#fde68a}
+  .fb b{color:inherit}
+  .fb .lead{display:block; margin-bottom:5px}
+  .fb ul{margin:6px 0 0; padding-left:18px}
+  .fb li{margin:3px 0}
+
+  .veil{position:fixed; inset:0; z-index:60; background:rgba(2,6,23,.92); backdrop-filter:blur(4px);
+        display:flex; align-items:center; justify-content:center; padding:22px; overflow-y:auto}
+  .card{background:var(--panel); border:1px solid var(--green-dim); border-radius:10px;
+        padding:26px 30px; max-width:700px; width:100%; max-height:88vh; overflow-y:auto}
+  .card h1{margin:0 0 4px; font-size:28px; color:var(--green); letter-spacing:3px}
+  .card h2{margin:0 0 14px; font-size:15px; color:var(--amber); letter-spacing:1px; font-weight:400}
+  .card p{color:var(--text); font-size:14px}
+  .card .dim{color:var(--muted); font-size:13px}
+  .letter{border-left:2px solid var(--amber); padding:2px 0 2px 16px; margin:14px 0;
+          color:#fde68a; font-size:14px; white-space:pre-wrap; line-height:1.75}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+  .chip{background:#090d16; border:1px solid var(--line); color:var(--muted); border-radius:6px;
+        padding:7px 11px; font-size:12px; cursor:pointer; font-family:inherit}
+  .chip:hover{border-color:var(--green-dim); color:var(--green)}
+  .chip.done{color:var(--green); border-color:var(--green-dim)}
+  .chip.locked{opacity:.35; cursor:not-allowed}
+  table.cheat{width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px}
+  table.cheat td{padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top}
+  table.cheat td:first-child{color:var(--amber); white-space:nowrap; width:36%}
+  @media(max-width:640px){
+    body{font-size:14px}
+    .stats{gap:10px} .stat b{font-size:13px} .bar{width:70px}
+    main{padding:16px 12px 40px}
+    .card{padding:20px 18px}
+    .walk td:first-child{width:auto; display:block; border-bottom:0}
+    .walk td:last-child{display:block; padding-top:0}
+  }
+
+  /* --- NerdLab embed ---------------------------------------------------
+     The platform viewer forces html/body to height:auto, so the lab owns its
+     own viewport through this shell. That keeps `main` scrolling internally
+     and keeps position:fixed overlays inside the visible frame. */
+  .questshell{ height:100vh; min-height:520px; display:flex; flex-direction:column; overflow:hidden; }
+  body{ background:var(--bg); }
+  body::after{ display:none; }   /* scanline overlay reads as noise on the platform */
+</style>
+</head>
+<body>
+
+<div class="questshell">
+<header>
+  <div class="brand">ANSIBLE&nbsp;QUEST<small>automation lead</small></div>
+  <div class="stats">
+    <div class="stat ch">CH<b id="s-ch">—</b></div>
+    <div class="stat fr">FRAGMENTS<b id="s-fr">0/2</b></div>
+    <div class="stat rank">RANK<b id="s-rank">Senior SRE</b></div>
+    <div class="stat up">SERVERS UP<b id="s-up">100%</b><div class="bar"><i id="s-bar" style="width:100%"></i></div></div>
+    <button class="hbtn" id="b-frag">Fragments</button>
+    <button class="hbtn" id="b-note">Notebook</button>
+    <button class="hbtn" id="b-map">Chapters</button>
+  </div>
+</header>
+
+<main id="main"><div class="wrap" id="log"></div></main>
+</div>
+
+<script>
+/* ============================================================
+   ANSIBLE QUEST — "The Handover"
+   Blank marker in fill-in code is @1@ … @9@  (avoids Jinja {{ }})
+   ============================================================ */
+
+const TUNE = { triesBeforeReveal:3, damage:4, revealXP:8 };
+
+/* ===== QUEST CONFIG ===== */
+const QUEST = { n:1, of:1, roman:'', title:'The Handover',
+  rankStart:'Senior SRE', rankEnd:'Automation Lead',
+  chFrom:1, chTo:2, chTotal:2, fragOffset:0, fragTotal:2,
+  isFinal:true, next:'' };
+const STORY_SO_FAR = 'You can already roll a change across four hundred machines without dropping a request. Meridian arrive in three days. There are database passwords in plain text in your repository, nobody can reproduce a run twice the same way, and a locked file left behind by the engineer who quit is still sitting on that desktop.';
+const QUEST_GOAL   = 'Stop being the person who runs the playbooks and become the person who owns the platform. Two chapters, then a final lab: write the file that has to pass the pipeline, not just the run.';
+const QUEST_CAN    = '<li>get secrets out of the repository and explain what vault does and does not protect</li><li>pin collections so a run in six months does the same thing as today</li><li>gate every change on lint, a converge and an idempotence check</li><li>turn a playbook into continuous drift detection instead of a one-off fix</li>';
+const NEXT_UP      = '';
+const START_LABEL  = 'Open the repository →';
+/* ===== end quest config ===== */
+
+/* ============================================================
+   CONTENT
+   ============================================================ */
+const CHAPTERS = [
+{
+  id:1, title:"What Emma Locked", sub:"Secrets, and where they really belong",
+  story:[
+    "date:Day 8 · 08:00 · Meridian audit in 3 days",
+    "sys:repo scan — 4 files contain credential-shaped strings",
+    "out:$ grep -rn \"password\" group_vars/\ngroup_vars/databases.yml:12: db_password: Nerdlab2019!\ngroup_vars/all.yml:7:      api_token: sk-live-8f21c4ae91\ngroup_vars/prod.yml:23:   grafana_admin_pass: admin",
+    "npc:PRIYA (CTO)|Every one of those is in git. Every one of them is in the history, which means deleting the line changes nothing. Meridian's auditor will find this in four minutes.",
+    "npc:DEV (on-call)|We rotated that database password in 2021. It is still in the log from 2019. So is the one before it.",
+    "There is a way to keep secrets in a repository and a way to keep them out of one. This chapter is about knowing which problem you have.",
+    "npc:PRIYA (CTO)|And there is an envelope in Emma's exit paperwork. HR would not open it. It says: <i>for whoever can explain what is inside the vault file, and why I locked it instead of deleting it.</i>"
+  ],
+  brief:{
+    h:"Field Manual — Secrets",
+    lines:[
+      "<b>Ansible Vault</b> encrypts a file at rest with a password. Encrypted, it is safe to commit; the playbook reads it transparently at run time.",
+      "<code>ansible-vault create | encrypt | edit | view | rekey FILE</code>. Convention: keep encrypted values in <code>group_vars/&lt;group&gt;/vault.yml</code> and reference them from a plain <code>vars.yml</code>.",
+      "Supply the password with <code>--ask-vault-pass</code> interactively, or <code>--vault-password-file</code> in automation.",
+      "<code>no_log: true</code> hides a task's arguments and output from the log. Without it, a secret you carefully encrypted is printed in full by a failed task.",
+      "What vault does <b>not</b> give you: per-secret rotation, an access log, or a way to share one value with a system that is not Ansible. Rotation is a commit; access is all-or-nothing.",
+      "When those matter, the secret belongs in a manager — HashiCorp Vault, AWS Secrets Manager — and Ansible fetches it at run time with a <b>lookup</b>. Nothing sensitive is ever in the repo."
+    ],
+    code:"# group_vars/prod/vault.yml   (encrypted at rest)\n$ANSIBLE_VAULT;1.1;AES256\n35316264623437333064666532653834...\n\n# in the play\n  vars_files:\n    - group_vars/prod/vault.yml\n\n  tasks:\n    - name: Write the application credentials\n      ansible.builtin.template:\n        src: app.env.j2\n        dest: /etc/app/app.env\n        mode: \"0600\"\n      no_log: true",
+    annot:[
+      ["$ANSIBLE_VAULT;1.1;AES256","The header of an encrypted file. Safe to commit — useless without the password."],
+      ["  vars_files:","Load variables from files at play start. Vault files are decrypted automatically."],
+      ["        mode: \"0600\"","Only root can read it on the server. Encrypting in git and then writing it world-readable protects nothing."],
+      ["      no_log: true","Keeps the rendered content out of the run log — including when the task fails."]
+    ]
+  },
+  ch:[
+    {type:"cmd", xp:25,
+      q:"Encrypt the new secrets file at <code>group_vars/prod/vault.yml</code> so it can be committed.",
+      shape:"ansible-vault <em>&lt;verb&gt;</em> <em>&lt;file&gt;</em>",
+      bank:["ansible-vault","encrypt","group_vars/prod/vault.yml","lock","--encrypt"],
+      answers:["ansible-vault encrypt group_vars/prod/vault.yml","ansible-vault encrypt group_vars/prod/vault.yaml"],
+      hint:"The verb is the plain English word for what you are doing to the file.",
+      why:"<code>encrypt</code> works on a file that already exists; <code>create</code> makes a new one and opens your editor. "+
+          "<code>edit</code> decrypts to a temp file, opens it, and re-encrypts on save — never decrypt in place and forget.<br><br>"+
+          "<code>rekey</code> is the one people forget exists. When someone leaves the team, the vault password walked out with them, and "+
+          "<code>ansible-vault rekey</code> on every vault file is part of the offboarding checklist. Nerdlab did not do that in March."
+    },
+    {type:"mc", xp:30,
+      q:"You vault every secret and commit the files. Which of these problems is <b>still</b> unsolved?",
+      options:["Secrets are readable by anyone who clones the repo",
+               "You cannot tell who read a secret, or rotate one without a commit and a deploy",
+               "Playbooks can no longer read the values at run time",
+               "The secrets are visible in the git history"],
+      correct:1,
+      why:"Vault fixes confidentiality at rest, and that is genuinely most of the problem. What it cannot do is tell you <i>who used a "+
+          "secret and when</i>, or let you change one without a commit, a review and a deploy.<br><br>"+
+          "So the honest rule is: vault is right for values that change on human timescales — an internal API token, a service account. "+
+          "For anything that must rotate on a schedule, be shared with systems that are not Ansible, or produce an audit trail, the secret "+
+          "belongs in a secret manager and Ansible should fetch it at run time with a lookup."
+    },
+    {type:"fill", xp:30,
+      q:"Load the vault file and stop the credential task from printing itself into the log.",
+      code:"- name: Configure the application\n  hosts: webservers\n  become: true\n\n  @1@:\n    - group_vars/prod/vault.yml\n\n  tasks:\n    - name: Write the credentials file\n      ansible.builtin.template:\n        src: app.env.j2\n        dest: /etc/app/app.env\n        mode: \"0600\"\n      @2@: true",
+      blanks:[{a:["vars_files"],w:14},{a:["no_log"],w:10}],
+      bank:["vars_files","no_log","vault_files","secret","quiet"],
+      hint:"One key loads variables from files. The other is two words joined by an underscore and means exactly what it says.",
+      why:"<code>no_log: true</code> is the line that gets skipped and then regretted. Ansible prints a failed task's arguments to help you "+
+          "debug — including the decrypted password you just carefully vaulted, straight into the CI log, which is usually readable by more "+
+          "people than the repository.<br><br>"+
+          "The trade is real: with <code>no_log</code> on, that task is much harder to debug. Put it on the tasks that touch secrets, and "+
+          "nowhere else."
+    },
+    {type:"mc", xp:30,
+      q:"Your CI runner needs the vault password to deploy. What is the least-bad arrangement?",
+      options:["Commit the password in a file called <code>.vault_pass</code> and add it to <code>.gitignore</code>",
+               "Inject it into the runner as a masked secret and pass <code>--vault-password-file</code> pointing at a file written at run time",
+               "Use <code>--ask-vault-pass</code> and have an engineer type it when the pipeline pauses",
+               "Store it in the playbook as a variable so the pipeline stays fully automated"],
+      correct:1,
+      why:"The password has to reach the runner somehow, so the question is only whether it is ever <i>at rest</i> somewhere it should not be. "+
+          "A masked CI secret written to a short-lived file, referenced by <code>--vault-password-file</code>, keeps it out of the repository, "+
+          "out of the process list, and out of the log.<br><br>"+
+          "<code>.gitignore</code> is not a security control — it protects you from one mistake, once, until someone runs <code>git add -f</code>. "+
+          "And a pipeline that pauses for a human is a pipeline nobody runs, which is how you end up back at manual deploys."
+    },
+    {type:"write", xp:45,
+      q:"Write a play on <code>webservers</code> with <code>become: true</code> that loads <code>group_vars/prod/vault.yml</code> through <code>vars_files:</code>, and has one <code>template</code> task writing a credentials file with <code>mode: \"0600\"</code> and <code>no_log: true</code>.",
+      file:"secrets.yml",
+      placeholder:"---\n- name: \n  hosts: webservers\n  become: true\n\n  vars_files:\n    - \n\n  tasks:\n    - name: \n      ansible.builtin.template:\n        src: \n        dest: \n        mode: \"0600\"\n      no_log: true\n",
+      hint:"<code>vars_files:</code> is a play key at two spaces, holding a list of file paths. The template task needs <code>src:</code>, <code>dest:</code>, a quoted <code>mode:</code> and <code>no_log: true</code> as a task key — not a module argument.",
+      solution:'---\n- name: Install the application credentials\n  hosts: webservers\n  become: true\n\n  vars_files:\n    - group_vars/prod/vault.yml\n\n  tasks:\n    - name: Write the credentials file\n      ansible.builtin.template:\n        src: app.env.j2\n        dest: /etc/app/app.env\n        owner: root\n        mode: "0600"\n      no_log: true',
+      check(doc){
+        const p  = Y.play(doc);
+        const vf = p ? Y.list(p.vars_files) : [];
+        const tp = Y.byMod(p,'template')[0];
+        return [
+          req(!!(p && Y.eq(p.hosts,'webservers')), '<code>hosts: webservers</code>'),
+          req(!!(p && Y.yes(p.become)), '<code>become: true</code>'),
+          req(vf.length >= 1, 'A <code>vars_files:</code> list'),
+          req(vf.some(f=> /vault/.test(String(f))), 'It loads the vault file'),
+          req(!!tp, 'A <code>template</code> task'),
+          req(!!(tp && tp.name), 'The task has a <code>name:</code>'),
+          req(!!(tp && Y.arg(tp,'src') && Y.arg(tp,'dest')), 'It has <code>src:</code> and <code>dest:</code>'),
+          req(!!(tp && String(Y.arg(tp,'mode')) === '0600'), '<code>mode: "0600"</code> — root only'),
+          req(!!(tp && Y.yes(tp.no_log)), '<code>no_log: true</code> on the task')
+        ];
+      },
+      why:"Notice where <code>no_log</code> sits: at the task level, beside <code>name:</code>, not inside the module's arguments. Task "+
+          "keywords control how Ansible runs the task; module arguments are the module's own business. Getting that wrong produces a "+
+          "confusing error about an unsupported parameter.<br><br>"+
+          "Three protections stacked here, and all three are needed: encrypted at rest in git, hidden from the log at run time, and readable "+
+          "only by root on the machine. Miss any one and the other two do not save you."
+    }
+  ],
+  outro:[
+    "out:$ ansible-vault view HANDOVER.vault\nVault password: ********\n\n# for whoever comes next\n#\n# i did not lock this to keep you out. i locked it so that the\n# only person who could read it would be someone who had already\n# learned enough to deserve it.\n#\n# there is nothing clever inside. inventory, roles, the runbook,\n# and the passwords, rotated the week i left.\n#\n# the code was never the handover. you are.\n#                                              — emma",
+    "The file is forty lines of inventory and a runbook you could have written yourself by now. That, apparently, was the point.",
+    "npc:PRIYA (CTO)|Eleven years, and the last thing she did was make sure the next person had to learn it properly."
+  ],
+  relic:{ sha:"d19f6c3", date:"2022-09-01", msg:"vaulted everything today. also wrote down what vault does NOT do, because the next person will assume it is an access control system. it is a locked drawer, not a security guard." },
+  hook:"Priya puts the envelope down. \"Three days. Meridian will not ask whether it works — they will ask how you know it still works next month.\""
+},
+
+{
+  id:2, title:"The Platform", sub:"Collections, pipelines and drift",
+  story:[
+    "date:Day 9 · 09:00 · audit in 2 days",
+    "npc:PRIYA (CTO)|Their auditor sent the questions ahead. None of them are about Ansible.",
+    "out:MERIDIAN — PRE-AUDIT QUESTIONS\n  1. Where does this code come from, and how is it verified?\n  2. Can you reproduce a run from six months ago?\n  3. Who approved the last production change?\n  4. Who can read production secrets, and how do you know?\n  5. How do you know production still matches the code today?",
+    "Every one of those is answerable, and none of them are answered by a playbook. They are answered by the machinery around it.",
+    "npc:DEV (on-call)|Question five is the one that scares me. We fix a server, someone logs in a month later and changes it by hand, and nothing tells us.",
+    "npc:PRIYA (CTO)|Then that is your last job as an engineer here, and your first as the person who owns this. Make the answers true, not aspirational."
+  ],
+  brief:{
+    h:"Field Manual — The platform around the playbook",
+    lines:[
+      "<b>Collections</b> are how modules ship. Write them fully qualified — <code>ansible.builtin.copy</code>, <code>community.general.haproxy</code> — so resolution is deterministic and dependencies are visible.",
+      "<code>requirements.yml</code> lists the collections a repo needs. <b>Pin exact versions.</b> A range means a run next month can behave differently with no commit.",
+      "<b>ansible-lint</b> enforces the house style. <code>profile: production</code> is the strict ruleset; <code>warn_list</code> keeps known debt visible, <code>skip_list</code> silences it.",
+      "<b>Molecule</b> tests a role for real: <code>create → converge → idempotence → verify → destroy</code>. <code>molecule converge</code> is the fast inner loop; <code>molecule test</code> is the gate.",
+      "The <b>idempotence</b> stage is the highest-value automated test in Ansible: it runs the role twice and fails if anything reports changed.",
+      "An <b>execution environment</b> is a container image holding ansible-core, the pinned collections and their Python dependencies — built with <code>ansible-builder</code>, run identically on a laptop and in the controller.",
+      "<b>Drift detection</b>: schedule the same playbook with <code>--check --diff</code>. Anything reported as <i>would change</i> is a machine somebody edited by hand."
+    ],
+    code:"# requirements.yml\ncollections:\n  - name: community.general\n    version: \"9.0.1\"\n  - name: ansible.posix\n    version: \"1.5.4\"\n\n# .ansible-lint\nprofile: production\nwarn_list:\n  - name[template]\n\n# the pipeline\nansible-lint  ->  molecule converge  ->  molecule idempotence  ->  molecule verify  ->  publish",
+    annot:[
+      ["  - name: community.general","A collection this repository depends on, by namespace and name."],
+      ["    version: \"9.0.1\"","Pinned exactly. Bumping it becomes a pull request someone reviews."],
+      ["profile: production","The strictest built-in lint ruleset. Weaker profiles exist for adopting it gradually."],
+      ["warn_list:","Findings stay visible but do not fail the build — debt you intend to pay."],
+      ["molecule idempotence","Runs the role a second time and fails if anything says changed."]
+    ]
+  },
+  ch:[
+    {type:"mc", xp:30,
+      q:"Why do you make fully qualified collection names mandatory in every repository you own?",
+      options:["FQCNs run faster — Ansible skips module path resolution",
+               "Short names are removed in current ansible-core",
+               "They make resolution deterministic when two collections ship a module with the same name, and they make the dependency visible in the file",
+               "Vault cannot decrypt variables used by short-name modules"],
+      correct:2,
+      why:"Two installed collections can both provide a module called <code>user</code>. With a short name, which one runs depends on search "+
+          "order — which depends on what is installed, which depends on the machine. That is a reproducibility problem and a supply-chain "+
+          "problem wearing the same hat.<br><br>"+
+          "The secondary benefit is documentation: someone reading a task can see it needs <code>community.general</code>, and can check that "+
+          "<code>requirements.yml</code> actually pins it."
+    },
+    {type:"fill", xp:30,
+      q:"Pin the two collections this repository depends on. The top-level key, and the key that makes the version exact.",
+      code:"# requirements.yml\n@1@:\n  - name: community.general\n    @2@: \"9.0.1\"\n\n  - name: ansible.posix\n    version: \"1.5.4\"",
+      blanks:[{a:["collections"],w:14},{a:["version"],w:10}],
+      bank:["collections","version","roles","requires","source"],
+      hint:"The file can list both <code>roles</code> and <code>collections</code>; here you want the plural of the thing collections are. The second key is the exact word for a released number.",
+      why:"The same file can carry a <code>roles:</code> list, and both are installed by <code>ansible-galaxy install -r requirements.yml</code>.<br><br>"+
+          "The reason to pin exactly rather than write <code>&gt;=9.0.0</code>: a floating range means your pipeline can change behaviour on a "+
+          "Tuesday because someone else released something. Pin it, let a bot open the bump as a pull request, and let a human read the "+
+          "changelog. This is the same discipline every other language applies to its lockfile."
+    },
+    {type:"cmd", xp:30,
+      q:"Run the full test lifecycle for the nginx role — create, converge, idempotence, verify, destroy.",
+      shape:"<em>&lt;tool&gt;</em> <em>&lt;subcommand&gt;</em>",
+      bank:["molecule","test","converge","verify","--all"],
+      answers:["molecule test","molecule test --all","molecule -s default test"],
+      hint:"The tool is named after the smallest unit of a compound. The subcommand is the one that means all of it.",
+      why:"<code>molecule test</code> is the gate: it builds a clean instance, applies the role, runs it again to check idempotence, asserts "+
+          "the end state, and destroys everything. Anything that passes here works on a machine that is not yours.<br><br>"+
+          "For day-to-day work you use <code>molecule converge</code> instead — it applies the role and <i>leaves the instance up</i>, so you "+
+          "can <code>molecule login</code> and look around. Iterate with converge, gate with test."
+    },
+    {type:"mc", xp:30,
+      q:"You need every Ansible run in the company to report its results to your observability stack. Forty repositories, four hundred playbooks. Which extension point?",
+      options:["A custom module, added as the last task of every play",
+               "A callback plugin, enabled centrally in <code>ansible.cfg</code> or baked into the execution environment",
+               "A filter plugin registered in the collection",
+               "A dynamic inventory plugin with a post-run hook"],
+      correct:1,
+      why:"Callback plugins observe the run itself — <code>v2_runner_on_ok</code>, <code>v2_playbook_on_stats</code> and friends — on the "+
+          "control node. Enable one centrally and every playbook reports, with no edits to any of the four hundred.<br><br>"+
+          "Knowing which plugin type solves a problem is a lead-level distinction: <b>modules</b> do work on targets, <b>filters</b> transform "+
+          "data inside Jinja, <b>lookups</b> fetch data at run time, <b>inventory plugins</b> source hosts, <b>callbacks</b> watch the run. "+
+          "Reaching for the wrong one usually means editing hundreds of files that did not need to change."
+    },
+    {type:"write", xp:50,
+      q:"Write <code>requirements.yml</code>: a <code>collections:</code> list with <b>two</b> entries, each having a <code>name:</code> and an <b>exactly pinned</b> <code>version:</code> (no <code>&gt;=</code>, no <code>*</code>).",
+      file:"requirements.yml",
+      placeholder:"---\ncollections:\n  - name: \n    version: \"\"\n",
+      hint:"The top-level key is <code>collections:</code>. Each entry starts with <code>- name:</code> and has <code>version:</code> indented to line up underneath it. Quote the version so YAML keeps it a string.",
+      solution:'---\ncollections:\n  - name: community.general\n    version: "9.0.1"\n\n  - name: ansible.posix\n    version: "1.5.4"',
+      check(doc){
+        const cs = (doc && !Array.isArray(doc) && Array.isArray(doc.collections)) ? doc.collections : [];
+        const pinned = cs.filter(c=> c && c.version !== undefined && c.version !== null &&
+                                     /^[0-9]+\.[0-9]+/.test(String(c.version)) &&
+                                     !/[><*^~]|latest/.test(String(c.version)));
+        return [
+          req(!!(doc && !Array.isArray(doc)), 'The file is a mapping, not a list of plays'),
+          req(cs.length >= 2, 'A <code>collections:</code> list with two entries'),
+          req(cs.length >= 2 && cs.every(c=> c && c.name), 'Every entry has a <code>name:</code>'),
+          req(cs.length >= 2 && cs.every(c=> c && /\./.test(String(c.name))), 'Each name is <code>namespace.collection</code>'),
+          req(cs.length >= 2 && cs.every(c=> c && c.version !== undefined && c.version !== null), 'Every entry has a <code>version:</code>'),
+          req(pinned.length === cs.length && cs.length >= 2, 'Every version is an exact number — no ranges or wildcards')
+        ];
+      },
+      why:"This file is the answer to Meridian's second question. With it, a run six months from now installs the same code as a run today; "+
+          "without it, \"reproducible\" is a hope.<br><br>"+
+          "The next step, when you want that guarantee to cover Python libraries and ansible-core itself, is an execution environment: the "+
+          "pinned collections and their dependencies baked into a container image that the laptop and the controller both run. Same inputs, "+
+          "same behaviour, everywhere."
+    }
+  ],
+  outro:[
+    "out:$ ansible-playbook site.yml --check --diff --limit webservers\n\nTASK [Nginx config is rendered] ***************\nchanged: [web07.nerdlab.co.in]\n--- /etc/nginx/nginx.conf\n+++ rendered from nginx.conf.j2\n-worker_processes 1;\n+worker_processes 4;\n\nPLAY RECAP ************************************\nweb07.nerdlab.co.in : ok=6  changed=1  failed=0",
+    "One machine out of four hundred. Someone edited web07 by hand three weeks ago and told nobody. The scheduled check-mode run found it in eleven seconds, and changed nothing.",
+    "npc:DEV (on-call)|That job runs every morning now. If a server stops matching the repo, we get a report instead of an outage.",
+    "npc:PRIYA (CTO)|Question five, answered. Tomorrow you write the file they will actually read."
+  ],
+  relic:{ sha:"f0e7a44", date:"2024-07-19", msg:"eleven years in one line: the playbook was never the hard part. the hard part was making it something a company could rely on without relying on me. if you are reading this, you got there. do not become the single point of failure i was." },
+  hook:"Meridian arrive at nine tomorrow. Priya sends one line: \"Write it as if the next person here has never met you.\""
+}
+];
+
+/* ---------- LAB 4 · the final capstone · Automation Lead ---------- */
+const LAB4 = {
+  title:"Audit Day",
+  xp:200, twice:true,
+  runBtn:"Sign the audit pack →",
+  story:[
+    "date:Day 10 · 08:40 · Meridian arrive in 20 minutes",
+    "npc:PRIYA (CTO)|One file. It has to pass the pipeline, not just run — lint, then a converge, then the idempotence gate.",
+    "npc:DEV (on-call)|Every module fully qualified. Every task named. Nothing with <code>state: latest</code>. Mode on every file you write, <code>no_log</code> on the one that carries the credential, and the secret comes from the vault file — not from a line in this playbook.",
+    "This is the last thing you write as an engineer here. The pipeline runs it the way Meridian's auditor will read it."
+  ],
+  q:"Write <code>site.yml</code>: one play on <code>webservers</code>, <code>become: true</code>, loading <code>group_vars/prod/vault.yml</code> via <code>vars_files:</code>. Tasks: install <code>nginx</code> (<b>present</b>); write the credentials file from a template with <code>mode: \"0600\"</code> and <code>no_log: true</code>; render the nginx config from a template with a <code>mode:</code> and a <code>notify:</code>; ensure the service is <b>started and enabled</b>. Add the matching handler. Every module fully qualified.",
+  file:"site.yml",
+  placeholder:"---\n- name: \n  hosts: webservers\n  become: true\n\n  vars_files:\n    - \n\n  tasks:\n    - name: \n      ansible.builtin.package:\n\n  handlers:\n    - name: \n",
+  hint:"Four tasks and one handler. Fully qualified names everywhere — <code>ansible.builtin.package</code>, <code>ansible.builtin.template</code>, <code>ansible.builtin.service</code>. The credentials task carries <code>mode: \"0600\"</code> and <code>no_log: true</code> as a task key. The config task carries <code>mode: \"0644\"</code> and <code>notify:</code> matching your handler name exactly. Use <code>state: present</code>, never <code>latest</code>, and put no password literal anywhere in the file.",
+  solution:'---\n- name: Web tier — audit build\n  hosts: webservers\n  become: true\n\n  vars_files:\n    - group_vars/prod/vault.yml\n\n  tasks:\n    - name: Nginx is installed\n      ansible.builtin.package:\n        name: nginx\n        state: present\n      tags: packages\n\n    - name: Application credentials are in place\n      ansible.builtin.template:\n        src: app.env.j2\n        dest: /etc/nginx/app.env\n        owner: root\n        mode: "0600"\n      no_log: true\n      notify: Restart nginx\n      tags: config\n\n    - name: Nginx config is rendered from the template\n      ansible.builtin.template:\n        src: nginx.conf.j2\n        dest: /etc/nginx/nginx.conf\n        mode: "0644"\n      notify: Restart nginx\n      tags: config\n\n    - name: Nginx is running and enabled\n      ansible.builtin.service:\n        name: nginx\n        state: started\n        enabled: true\n      tags: service\n\n  handlers:\n    - name: Restart nginx\n      ansible.builtin.service:\n        name: nginx\n        state: restarted',
+  check(doc){
+    const p  = Y.play(doc);
+    const ts = Y.tasks(p);
+    const vf = p ? Y.list(p.vars_files) : [];
+    const pk = Y.anyMod(p,['package','apt','dnf','yum'])[0];
+    const tps= ts.filter(t=> Y.mod(t).short === 'template');
+    const sec= tps.filter(t=> Y.yes(t.no_log))[0];
+    const cfg= tps.filter(t=> t.notify)[0];
+    const sv = Y.anyMod(p,['service','systemd']).filter(t=> !Y.eq(Y.arg(t,'state'),'restarted'))[0];
+    const hs = Y.handlers(p);
+    return [
+      req(!!(p && Y.eq(p.hosts,'webservers') && Y.yes(p.become)), '<code>hosts: webservers</code> with <code>become: true</code>'),
+      req(vf.some(f=> /vault/.test(String(f))), '<code>vars_files:</code> loads the vault file'),
+      req(!!(pk && Y.eq(Y.arg(pk,'name'),'nginx') && Y.eq(Y.arg(pk,'state'),'present')), '<code>nginx</code> installed with <code>state: present</code>'),
+      req(tps.length >= 2, 'Two <code>template</code> tasks — credentials and config'),
+      req(!!sec, 'One of them has <code>no_log: true</code>'),
+      req(!!(sec && String(Y.arg(sec,'mode')) === '0600'), 'The credentials file is <code>mode: "0600"</code>'),
+      req(!!cfg, 'The config template has a <code>notify:</code>'),
+      req(hs.length >= 1 && !!cfg && hs.some(h=> Y.eq(h.name, cfg.notify)), 'A handler whose name matches that <code>notify:</code>'),
+      req(hs.some(h=> Y.eq(Y.arg(h,'state'),'restarted')), 'The handler restarts nginx'),
+      req(!!(sv && Y.eq(Y.arg(sv,'state'),'started') && Y.yes(Y.arg(sv,'enabled'))), 'The service is <code>started</code> and <code>enabled</code>'),
+      req(ts.length >= 4 && ts.every(t=> t && t.name), 'Every task has a <code>name:</code>')
+    ];
+  },
+  /* the CI gate — style and safety rules, checked on the raw file */
+  lint(doc, raw){
+    const p  = Y.play(doc);
+    const ts = Y.tasks(p).concat(Y.handlers(p));
+    const fileTasks = ts.filter(t=> ['template','copy','file','lineinfile'].indexOf(Y.mod(t).short) >= 0);
+    const secretish = /(^|\s)(\w*(password|passwd|secret|token|api_key|apikey))\s*:\s*["']?[^\s"'{][^\s"']{3,}/im;
+    return [
+      req(ts.length > 0 && ts.every(t=> t && t.name), 'name[missing] — every task and handler is named'),
+      req(ts.every(t=> /\./.test(String(Y.mod(t).key || ''))), 'fqcn[action-core] — every module is fully qualified'),
+      req(!ts.some(t=> Y.eq(Y.arg(t,'state'),'latest')), 'package-latest — no <code>state: latest</code> in production code'),
+      req(!ts.some(t=> ['command','shell'].indexOf(Y.mod(t).short) >= 0 && t.changed_when === undefined),
+          'no-changed-when — no <code>command</code>/<code>shell</code> without <code>changed_when</code>'),
+      req(fileTasks.length > 0 && fileTasks.every(t=> Y.arg(t,'mode') !== undefined && Y.arg(t,'mode') !== null),
+          'risky-file-permissions — every file written sets an explicit <code>mode:</code>'),
+      req(!secretish.test(String(raw||'')), 'secrets — no credential literal in the playbook'),
+      req(ts.some(t=> Y.yes(t.no_log)), 'no-log-password — the task carrying the secret sets <code>no_log</code>')
+    ];
+  },
+  doneCrumb:"Capstone &nbsp;·&nbsp; <b>Audit passed</b>",
+  done:[
+    "date:Day 10 · 16:20 · Meridian, closing session",
+    "out:MERIDIAN — PRE-AUDIT QUESTIONS\n  1. Where does this code come from?          signed collections, pinned in requirements.yml\n  2. Can you reproduce a run from six months ago?   yes — pinned deps, execution environment\n  3. Who approved the last production change?       git, reviewed, in the log\n  4. Who can read production secrets?               vault + no_log; rotation via the manager\n  5. Does production still match the code?          checked every morning, --check --diff",
+    "npc:PRIYA (CTO)|They asked one question I could not answer. \"What happens if this person leaves?\"",
+    "npc:PRIYA (CTO)|And then their auditor answered it himself. He said: nothing much — it is all written down, it is all tested, and any of you could run it.",
+    "Ten days ago that sentence was not true about this company. It is the entire thing Emma tried to leave behind, and the only thing she could not write into a file.",
+    "npc:DEV (on-call)|Renewal signed for three years. Also — I slept through the night. Twice.",
+    "You look at the desktop. HANDOVER.vault is still there, unlocked now, forty ordinary lines. Underneath it, a new file you made this morning: <code>ONBOARDING.md</code>, for whoever comes next."
+  ],
+  doneBtn:"Close the handover →"
+};
+
+let LAB = LAB4;
+
+const CHEATSHEET = [
+  ["ansible-vault create | encrypt | edit","Make / lock / safely change a secrets file"],
+  ["ansible-vault view | rekey","Read it / change the vault password"],
+  ["--ask-vault-pass | --vault-password-file","Supply the password by hand / in CI"],
+  ["vars_files:","Load variables from files, vault included"],
+  ["no_log: true","Keep this task's data out of the log"],
+  ["mode: \"0600\"","Root-only on the server"],
+  ["lookup('...') at run time","Fetch a secret from a manager, never commit it"],
+  ["ansible.builtin.copy (FQCN)","namespace.collection.module — always"],
+  ["requirements.yml + version: \"9.0.1\"","Pin every collection exactly"],
+  ["ansible-galaxy install -r requirements.yml","Install the pinned dependencies"],
+  ["ansible-lint --profile production","The strict house ruleset"],
+  ["warn_list / skip_list","Visible debt / silenced rule"],
+  ["molecule converge","Apply the role, leave the instance up"],
+  ["molecule test","create → converge → idempotence → verify → destroy"],
+  ["ansible-builder build","Build the execution environment image"],
+  ["ansible-navigator run","Run inside that image locally"],
+  ["--check --diff on a schedule","Drift detection: report, do not change"],
+  ["callback plugin","Watch every run centrally, no playbook edits"],
+  ["serial: / max_fail_percentage:","Batches / failure budget"],
+  ["block: / rescue: / always:","try / except / finally"],
+  ["delegate_to: lb01","Run this task on another machine"],
+  ["notify: / handlers:","Queue work / where it waits"]
+];
+
+
+
+/* ============================================================
+   A small YAML reader.
+   It understands the subset playbooks are written in: lists,
+   key/value maps, nesting by indentation, comments and quotes.
+   It reports the LINE NUMBER of a mistake, which is most of
+   what makes the feedback useful.
+   ============================================================ */
+function parseYAML(text){
+  if(/\t/.test(text)){
+    const ln = text.split('\n').findIndex(l=> l.indexOf('\t') >= 0) + 1;
+    throw {line:ln, msg:'There is a TAB character on this line. YAML never allows tabs for indentation — use spaces.'};
+  }
+  const raw = text.split('\n');
+  const L = [];                                   // {text, n} with blanks/comments removed
+  raw.forEach((l,idx)=>{
+    const stripped = l.replace(/\s+$/,'');
+    const t = stripped.trim();
+    if(t === '' || t.charAt(0) === '#' || t === '---' || t === '...') return;
+    L.push({text: stripped, n: idx+1});
+  });
+  if(!L.length) throw {line:1, msg:'The file is empty. Nothing to run.'};
+
+  let i = 0;
+  const ind  = s => s.match(/^ */)[0].length;
+  const unq  = v => {
+    v = v.trim();
+    const c = v.charAt(0);
+    if((c === '"' || c === "'") && v.charAt(v.length-1) === c) return v.slice(1,-1);
+    return v;
+  };
+  const isItem = s => /^\s*-(\s|$)/.test(s);
+
+  function block(col){
+    if(i >= L.length) return null;
+    return isItem(L[i].text) ? seq(col) : map(col);
+  }
+  function seq(col){
+    const arr = [];
+    while(i < L.length){
+      const {text, n} = L[i], cur = ind(text);
+      if(cur < col) break;
+      if(cur > col) throw {line:n, msg:'This line is indented too far for the list it belongs to.'};
+      if(!isItem(text)) break;
+      const m = text.match(/^(\s*)-\s*(.*)$/);
+      const rest = m[2];
+      if(rest === ''){                              // "-" alone: block on the next line
+        i++;
+        if(i < L.length && ind(L[i].text) > col) arr.push(block(ind(L[i].text)));
+        else arr.push(null);
+      } else if(/^[^:#]+:(\s|$)/.test(rest)){       // "- key: value" starts a map
+        const contentCol = text.indexOf(rest, m[1].length);
+        L[i] = {text: ' '.repeat(contentCol) + rest, n};   // rewrite, do not advance
+        arr.push(map(contentCol));
+      } else {
+        arr.push(unq(rest));                        // plain list item
+        i++;
+      }
+    }
+    return arr;
+  }
+  function map(col){
+    const obj = {};
+    while(i < L.length){
+      const {text, n} = L[i], cur = ind(text);
+      if(cur < col) break;
+      if(cur > col) throw {line:n, msg:'This line is indented further than the line above it, but nothing here opens a new block.'};
+      if(isItem(text)) break;
+      const m = text.match(/^\s*([^:#]+?)\s*:\s*(.*)$/);
+      if(!m) throw {line:n, msg:'This line is not <code>key: value</code>. Every mapping line needs a colon and a space after it.'};
+      const key = m[1].trim();
+      const val = m[2].trim();
+      if(Object.prototype.hasOwnProperty.call(obj, key))
+        throw {line:n, msg:'The key <code>'+key+'</code> appears twice at the same level. Each key may appear only once.'};
+      i++;
+      if(val === '' || val.charAt(0) === '#'){
+        if(i < L.length && ind(L[i].text) > cur)                    obj[key] = block(ind(L[i].text));
+        else if(i < L.length && ind(L[i].text) === cur && isItem(L[i].text)) obj[key] = seq(cur);
+        else obj[key] = null;
+      } else {
+        obj[key] = unq(val);
+      }
+    }
+    return obj;
+  }
+  const doc = block(ind(L[0].text));
+  if(i < L.length) throw {line:L[i].n, msg:'This line does not line up with anything above it. Check the indentation.'};
+  return doc;
+}
+
+/* ---------- helpers used by every checker ---------- */
+const NOT_MODULE = ['name','when','loop','notify','become','become_user','tags','args','register',
+                    'vars','with_items','loop_control','ignore_errors','delegate_to','changed_when','failed_when'];
+const Y = {
+  plays(doc){ return Array.isArray(doc) ? doc : (doc && typeof doc === 'object' ? [doc] : []); },
+  play(doc){ return Y.plays(doc)[0] || null; },
+  list(v){ return Array.isArray(v) ? v : []; },
+  tasks(p){ return p ? Y.list(p.tasks) : []; },
+  handlers(p){ return p ? Y.list(p.handlers) : []; },
+  mod(t){
+    if(!t || typeof t !== 'object') return {key:null, short:null, val:null};
+    for(const k of Object.keys(t)){
+      if(NOT_MODULE.indexOf(k) === -1)
+        return {key:k, short:k.replace(/^ansible\.builtin\./,''), val:t[k]};
+    }
+    return {key:null, short:null, val:null};
+  },
+  byMod(p, short){ return Y.tasks(p).filter(t=> Y.mod(t).short === short); },
+  anyMod(p, shorts){ return Y.tasks(p).filter(t=> shorts.indexOf(Y.mod(t).short) >= 0); },
+  arg(t, k){ const v = Y.mod(t).val; return (v && typeof v === 'object') ? v[k] : undefined; },
+  yes(v){ return ['true','yes','on','True','Yes'].indexOf(String(v)) >= 0; },
+  eq(a,b){ return String(a==null?'':a).trim().toLowerCase() === String(b).toLowerCase(); },
+  jinja(v, name){ const s = String(v==null?'':v); return new RegExp('\\{\\{\\s*'+name+'\\s*\\}\\}').test(s); }
+};
+const req = (ok, text) => ({ok:!!ok, text:text});
+
+/* ============================================================
+   THE SIMULATOR — pretends to run a playbook against 2 hosts
+   ============================================================ */
+/* The test fleet. Each machine knows which groups it belongs to and what
+   family it runs, which is all that hosts: and when: need to behave
+   the way they would against real servers. A lab may supply its own. */
+const SIM_FLEET = [
+  {name:'web01.nerdlab.co.in', groups:['webservers'], os_family:'Debian', distro:'Ubuntu'},
+  {name:'web02.nerdlab.co.in', groups:['webservers'], os_family:'Debian', distro:'Ubuntu'},
+  {name:'db01.nerdlab.co.in',  groups:['databases'],  os_family:'Debian', distro:'Ubuntu'}
+];
+
+function simFleet(){ return (typeof LAB !== 'undefined' && LAB && LAB.fleet) ? LAB.fleet : SIM_FLEET; }
+
+function simHosts(pattern){
+  const p = String(pattern == null ? 'all' : pattern).trim();
+  const fleet = simFleet();
+  if(p === 'all' || p === '') return fleet;
+  return fleet.filter(h=> h.name === p || h.name.split('.')[0] === p || h.groups.indexOf(p) >= 0);
+}
+
+/* Enough of a Jinja reader to resolve the conditions this course teaches. */
+function simWhen(expr, host){
+  if(expr == null) return true;
+  const s = String(expr);
+  const fam = s.match(/os_family[^=!]*([=!]=)\s*["']?([A-Za-z]+)/);
+  if(fam) return fam[1] === '==' ? host.os_family === fam[2] : host.os_family !== fam[2];
+  const dis = s.match(/distribution[^=!]*([=!]=)\s*["']?([A-Za-z]+)/);
+  if(dis) return dis[1] === '==' ? host.distro === dis[2] : host.distro !== dis[2];
+  return true;
+}
+
+function pad(label, width){
+  const n = Math.max(4, width - label.length - 1);
+  return label + ' ' + '*'.repeat(n);
+}
+function simulate(doc, runNo){
+  const out = [];
+  const plays = Y.plays(doc);
+  if(!plays.length) return ['ERROR! playbook must be a list of plays'];
+  const order = [], recap = {};
+  const touch = h =>{
+    if(!recap[h.name]){ recap[h.name] = {ok:0, changed:0, skipped:0}; order.push(h.name); }
+    return recap[h.name];
+  };
+  const first = runNo === 1;
+
+  plays.forEach((play, pi)=>{
+    if(pi) out.push('');
+    const hosts = simHosts(play.hosts);
+    out.push('<span class="rk">'+pad('PLAY ['+(play.name || 'play')+']', 60)+'</span>');
+    out.push('');
+    if(!hosts.length){
+      out.push('<span class="ry">skipping: no hosts matched \''+String(play.hosts)+'\'</span>');
+      return;
+    }
+    out.push('<span class="rk">'+pad('TASK [Gathering Facts]', 60)+'</span>');
+    hosts.forEach(h=>{ out.push('<span class="rg">ok: ['+h.name+']</span>'); touch(h).ok++; });
+
+    const notified = [];
+    Y.tasks(play).forEach(t=>{
+      const m = Y.mod(t);
+      if(!m.short) return;
+      out.push('');
+      out.push('<span class="rk">'+pad('TASK ['+(t.name || m.short)+']', 60)+'</span>');
+
+      /* is this task idempotent on a second run? */
+      let changes;
+      if(first) changes = true;
+      else if(['apt','dnf','yum','package'].indexOf(m.short) >= 0 && Y.eq(Y.arg(t,'state'),'latest')) changes = true;
+      else if((m.short === 'command' || m.short === 'shell') && !(t.args && t.args.creates)) changes = true;
+      else changes = false;
+      if(m.short === 'debug') changes = false;
+
+      const items = Y.list(t.loop);
+      hosts.forEach(h=>{
+        if(!simWhen(t.when, h)){
+          out.push('<span class="ry">skipping: ['+h.name+']</span>');
+          touch(h).skipped++;
+          return;
+        }
+        const targets = items.length ? items : [null];
+        targets.forEach(it=>{
+          const suffix = it === null ? '' : ' => (item='+it+')';
+          if(m.short === 'debug'){
+            const msg = (m.val && typeof m.val === 'object') ? (m.val.msg || '') : '';
+            out.push('<span class="rg">ok: ['+h.name+'] => {</span>');
+            out.push('<span class="rg">    "msg": "'+String(msg)
+              .replace(/\{\{\s*ansible_hostname\s*\}\}/g, h.name.split('.')[0])
+              .replace(/\{\{\s*ansible_facts\[.os_family.\]\s*\}\}/g, h.os_family)+'"</span>');
+            out.push('<span class="rg">}</span>');
+            touch(h).ok++;
+          } else if(changes){
+            out.push('<span class="rc">changed: ['+h.name+']'+suffix+'</span>');
+            touch(h).ok++; touch(h).changed++;
+            if(t.notify && notified.indexOf(t.notify) === -1) notified.push(t.notify);
+          } else {
+            out.push('<span class="rg">ok: ['+h.name+']'+suffix+'</span>');
+            touch(h).ok++;
+          }
+        });
+      });
+    });
+
+    Y.handlers(play).forEach(hd=>{
+      if(notified.indexOf(hd.name) === -1) return;
+      out.push('');
+      out.push('<span class="rk">'+pad('RUNNING HANDLER ['+hd.name+']', 60)+'</span>');
+      hosts.forEach(host=>{
+        out.push('<span class="rc">changed: ['+host.name+']</span>');
+        touch(host).ok++; touch(host).changed++;
+      });
+    });
+  });
+
+  out.push('');
+  out.push('<span class="rk">'+pad('PLAY RECAP', 60)+'</span>');
+  order.forEach(n=>{
+    const r = recap[n];
+    out.push('<span class="'+(r.changed?'rc':'rg')+'">'+n.padEnd(24)+
+             ': ok='+r.ok+'    changed='+r.changed+'    unreachable=0    failed=0    skipped='+r.skipped+'</span>');
+  });
+  return out;
+}
+
+/* ============================================================
+   ENGINE
+   ============================================================ */
+const S = { ch:0, q:0, xp:0, up:100, tries:0, hinted:false, done:[], frags:[], lab:false, labDone:false };
+const log  = document.getElementById('log');
+const main = document.getElementById('main');
+
+const esc = s => String(s).replace(/&(?!\w+;|#)/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const md  = s => s.replace(/\*([^*]+)\*/g,"<i>$1</i>");
+
+function add(html, cls){
+  const d = document.createElement('div');
+  d.className = 'blk ' + (cls||'');
+  d.innerHTML = html;
+  log.appendChild(d);
+  return d;
+}
+function screen(){ log.innerHTML = ''; }
+function focusQuiet(el){ if(!el) return; try{ el.focus({preventScroll:true}); }catch(e){} }
+function toTop(){
+  main.scrollTop = 0;
+  requestAnimationFrame(()=>{ main.scrollTop = 0; requestAnimationFrame(()=>{ main.scrollTop = 0; }); });
+}
+function bringIntoView(el){ if(el && el.scrollIntoView) el.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+function nextBtn(label, fn){
+  const r = document.createElement('div'); r.className = 'blk row';
+  const b = document.createElement('button');
+  b.className = 'btn'; b.innerHTML = label; b.onclick = fn;
+  r.appendChild(b); log.appendChild(r);
+  setTimeout(()=> focusQuiet(b), 120);
+  return b;
+}
+function line(part){
+  if(part.startsWith('date:'))      add(part.slice(5).trim(),'dateline');
+  else if(part.startsWith('sys:'))  add(md(part.slice(4).trim()),'sys');
+  else if(part.startsWith('out:'))  add(esc(part.slice(4)).replace(/\n/g,'<br>'),'out');
+  else if(part.startsWith('npc:')){
+    const body = part.slice(4), cut = body.indexOf('|');
+    add('<b>'+body.slice(0,cut)+':</b> '+md(body.slice(cut+1)),'npc');
+  }
+  else add(md(part),'narr');
+}
+
+/* Rank is earned by finishing the quest — every chapter plus the capstone —
+   not accumulated from XP. XP is the score; the rank is the qualification. */
+function rankOf(){ return (S.done.length >= CHAPTERS.length && S.labDone) ? QUEST.rankEnd : QUEST.rankStart; }
+
+/* A short code the student can hand in. The trailing letter is a checksum
+   over the rest, so a casually edited score stops matching. */
+function completionCode(){
+  const core = 'ALEAD-'+S.xp+'-'+S.up+'-'+S.frags.length;
+  let h = 7;
+  for(let i=0;i<core.length;i++) h = (h*31 + core.charCodeAt(i)) % 26;
+  return core+'-'+String.fromCharCode(65+h);
+}
+function hud(){
+  document.getElementById('s-rank').textContent = rankOf();
+  document.getElementById('s-up').textContent   = S.up + '%';
+  document.getElementById('s-ch').textContent   = (S.lab ? 'LAB' : CHAPTERS[S.ch].id + '/' + QUEST.chTotal);
+  document.getElementById('s-fr').textContent   = (QUEST.fragOffset + S.frags.length) + '/' + QUEST.fragTotal;
+  const bar = document.getElementById('s-bar');
+  bar.style.width = S.up + '%';
+  bar.style.background = S.up > 70 ? 'var(--green)' : S.up > 35 ? 'var(--amber)' : 'var(--red)';
+}
+function award(n){ S.xp += n; hud(); }
+function damage(n){
+  S.up = Math.max(0, S.up - n); hud();
+  if(S.up === 0){
+    S.up = 60; hud();
+    add("<b>Something broke.</b> Server uptime hit zero. Priya undoes the change, buys you a coffee, and puts the servers back to 60%. Nobody is fired. Nobody ever is. Keep going.", 'fb hint');
+  }
+}
+
+function norm(s){ return String(s).replace(/[‘’“”]/g,'"').replace(/\s+/g,' ').trim().toLowerCase(); }
+function normCmd(s){ return norm(s).replace(/^\$\s*/,'').replace(/"/g,'').replace(/'/g,''); }
+function normFill(s){
+  let t = norm(s).replace(/:$/,'').replace(/^["']|["']$/g,'');
+  return t.replace(/\{\{\s*/g,'{{ ').replace(/\s*\}\}/g,' }}');
+}
+const shuffle = a => a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(p=>p[1]);
+
+/* ============================================================
+   FLOW
+   ============================================================ */
+let briefHTML = '';
+
+function walkTable(annot){
+  if(!annot) return '';
+  return '<div class="walk"><div class="wh">Line by line</div><table>'+
+    annot.map(([c,e])=>'<tr><td>'+esc(c)+'</td><td>'+e+'</td></tr>').join('')+'</table></div>';
+}
+function briefBody(b){
+  return '<ul>'+b.lines.map(l=>'<li>'+l+'</li>').join('')+'</ul>'+
+         (b.code ? '<pre>'+esc(b.code)+'</pre>' : '') + walkTable(b.annot);
+}
+function crumb(extra){
+  const c = CHAPTERS[S.ch];
+  return '<div class="crumb blk">Chapter '+c.id+' / '+QUEST.chTotal+' &nbsp;·&nbsp; <b>'+c.title+'</b>'+
+         (extra ? ' &nbsp;·&nbsp; '+extra : '')+'</div>';
+}
+
+function startChapter(i){
+  S.ch = i; S.q = 0; S.lab = false;
+  const c = CHAPTERS[i];
+  hud(); screen(); toTop();
+  briefHTML = '<summary>'+c.brief.h+'</summary><div class="inner">'+briefBody(c.brief)+'</div>';
+  add('<div class="k">CHAPTER '+String(c.id).padStart(2,'0')+'</div><h2>'+c.title+'</h2><p>'+c.sub+'</p>','chaptercard');
+  c.story.forEach(line);
+  nextBtn('Open the field manual →', showBrief);
+  toTop();
+}
+function showBrief(){
+  const c = CHAPTERS[S.ch];
+  screen(); toTop();
+  add(crumb('Field manual'));
+  add('<h3>'+c.brief.h+'</h3>'+briefBody(c.brief), 'brief');
+  nextBtn('Start the '+c.ch.length+' challenges →', ()=>{ S.q = 0; askNext(); });
+  toTop();
+}
+function askNext(){
+  const c = CHAPTERS[S.ch];
+  if(S.q >= c.ch.length) return endChapter();
+  S.tries = 0; S.hinted = false;
+  screen(); toTop();
+  add(crumb('Challenge '+(S.q+1)+' of '+c.ch.length));
+  const det = document.createElement('details');
+  det.className = 'manual blk';
+  det.innerHTML = briefHTML;
+  log.appendChild(det);
+  render(c.ch[S.q]);
+  toTop();
+}
+
+function makeBank(tokens, onPick){
+  const wrap = document.createElement('div');
+  wrap.className = 'bank';
+  wrap.innerHTML = '<div class="lab">Tap to use — some of these are decoys</div>';
+  shuffle(tokens.slice()).forEach(t=>{
+    const b = document.createElement('button');
+    b.className = 'tok'; b.type = 'button'; b.textContent = t;
+    b.onclick = ()=> onPick(t, b);
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
+
+/* ---------- the code editor used by "write" tasks and the lab ---------- */
+function buildEditor(spec, onCheck){
+  const box = document.createElement('div');
+  box.className = 'edwrap';
+  box.innerHTML = '<div class="edbar">FILE <b>'+spec.file+'</b> &nbsp;·&nbsp; spaces only, never tabs &nbsp;·&nbsp; Tab key inserts 2 spaces</div>';
+  const ta = document.createElement('textarea');
+  ta.className = 'editor'; ta.spellcheck = false;
+  ta.placeholder = spec.placeholder || '';
+  box.appendChild(ta);
+
+  ta.addEventListener('keydown', e=>{
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      const s = ta.selectionStart, en = ta.selectionEnd;
+      ta.value = ta.value.slice(0,s) + '  ' + ta.value.slice(en);
+      ta.selectionStart = ta.selectionEnd = s + 2;
+      ta.dispatchEvent(new Event('input'));
+    }
+  });
+
+  const reqBox = document.createElement('div');
+  reqBox.className = 'reqs';
+  reqBox.innerHTML = '<div class="lab">Requirements — these tick as you type</div><div class="reqlist"></div>';
+
+  const errBox = document.createElement('div');
+  errBox.style.display = 'none';
+  errBox.className = 'parseerr';
+
+  function evaluate(){
+    const text = ta.value;
+    let reqs = null, perr = null;
+    if(spec.raw){
+      try { reqs = spec.check(null, text); } catch(e){ reqs = []; }
+    } else if(!text.trim()){
+      /* empty editor: show the checklist with nothing ticked, and no scary error yet */
+      try { reqs = spec.check(null, ''); } catch(e){ reqs = null; }
+    } else {
+      try { reqs = spec.check(parseYAML(text), text); }
+      catch(e){ perr = e; reqs = null; }
+    }
+    /* nothing has been written yet, so nothing is known to be true —
+       .every() on an empty list would otherwise tick by itself */
+    if(!text.trim() && reqs) reqs = reqs.map(function(r){ return {ok:false, text:r.text}; });
+
+    if(perr){
+      errBox.style.display = '';
+      errBox.innerHTML = '<b>YAML problem on line '+perr.line+'.</b><br>'+perr.msg;
+    } else {
+      errBox.style.display = 'none';
+    }
+    const list = reqBox.querySelector('.reqlist');
+    if(perr){
+      /* Do NOT leave the old ticks on screen — the file cannot be read, so nothing is known to be true. */
+      list.innerHTML = '<div class="req off"><span class="mk">—</span><span>Cannot check the requirements until the YAML above is fixed.</span></div>';
+    } else if(reqs){
+      list.innerHTML = reqs.map(r=>
+        '<div class="req '+(r.ok?'on':'off')+'"><span class="mk">'+(r.ok?'✓':'○')+'</span><span>'+r.text+'</span></div>').join('');
+    }
+    return {reqs, perr};
+  }
+
+  let t = null;
+  ta.addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(evaluate, 250); });
+
+  return {box, ta, reqBox, errBox, evaluate};
+}
+
+function render(ch){
+  const box = add('', 'chal');
+  const tag = ch.boss ? 'FINAL CHALLENGE' :
+              ch.type === 'mc' ? 'Decision' :
+              ch.type === 'cmd' ? 'Terminal' :
+              ch.type === 'write' ? 'Type it yourself' : 'Fill in the playbook';
+  let body = '<div class="tag">'+tag+' · '+ch.xp+' XP</div><div class="q">'+ch.q+'</div>';
+
+  /* ---- multiple choice ---- */
+  if(ch.type === 'mc'){
+    body += '<div class="opts">' + ch.options.map((o,i)=>
+      '<button class="opt" data-i="'+i+'">'+String.fromCharCode(65+i)+'. &nbsp;'+o+'</button>').join('') + '</div>';
+    box.innerHTML = body;
+    box.querySelectorAll('.opt').forEach(btn=>{
+      btn.onclick = ()=>{
+        const i = +btn.dataset.i;
+        box.querySelectorAll('.opt').forEach(b=> b.disabled = true);
+        if(i === ch.correct){ btn.classList.add('right'); good(box, ch); }
+        else {
+          btn.classList.add('wrong');
+          box.querySelectorAll('.opt')[ch.correct].classList.add('right');
+          bad(box, ch, null);
+        }
+      };
+    });
+  }
+
+  /* ---- terminal ---- */
+  else if(ch.type === 'cmd'){
+    body += (ch.shape ? '<div class="shape">Shape: '+ch.shape+'</div>' : '')
+         +  '<div class="term"><span>$</span><input type="text" spellcheck="false" autocomplete="off" placeholder="tap the chips below, or type it yourself…"></div>';
+    box.innerHTML = body;
+    const inp = box.querySelector('input');
+    if(ch.bank) box.appendChild(makeBank(ch.bank, (t,b)=>{
+      inp.value = (inp.value.trim() + ' ' + t).trim(); b.classList.add('used'); focusQuiet(inp);
+    }));
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = '<button class="btn" data-go>Execute</button><button class="btn ghost" data-hint>Hint</button><button class="btn ghost" data-clear>Clear</button>';
+    box.appendChild(r);
+    const go = ()=>{
+      const val = inp.value.trim(); if(!val) return;
+      if(ch.answers.some(a=> normCmd(a) === normCmd(val))){
+        inp.disabled = true; box.querySelectorAll('.btn, .tok').forEach(b=> b.disabled = true);
+        good(box, ch);
+      } else {
+        bad(box, ch, ()=>{
+          inp.value = ch.answers[0]; inp.disabled = true;
+          box.querySelectorAll('.btn, .tok').forEach(b=> b.disabled = true);
+        }, ch.answers[0]);
+      }
+    };
+    box.querySelector('[data-go]').onclick = go;
+    box.querySelector('[data-hint]').onclick = ()=> showHint(box, ch);
+    box.querySelector('[data-clear]').onclick = ()=>{
+      inp.value=''; box.querySelectorAll('.tok').forEach(t=> t.classList.remove('used')); focusQuiet(inp);
+    };
+    inp.addEventListener('keydown', e=>{ if(e.key === 'Enter') go(); });
+    setTimeout(()=> focusQuiet(inp), 120);
+  }
+
+  /* ---- type it yourself ---- */
+  else if(ch.type === 'write'){
+    box.innerHTML = body;
+    const ed = buildEditor(ch);
+    box.appendChild(ed.box);
+    box.appendChild(ed.errBox);
+    box.appendChild(ed.reqBox);
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = '<button class="btn" data-go>Check my file</button><button class="btn ghost" data-hint>Hint</button><button class="btn ghost" data-clear>Clear</button>';
+    box.appendChild(r);
+    ed.evaluate();
+    const go = ()=>{
+      const {reqs, perr} = ed.evaluate();
+      if(!perr && reqs && reqs.every(x=> x.ok)){
+        ed.ta.disabled = true;
+        box.querySelectorAll('.btn').forEach(b=> b.disabled = true);
+        good(box, ch);
+      } else {
+        const missing = perr ? null : reqs.filter(x=> !x.ok);
+        bad(box, ch, ()=>{
+          ed.ta.value = ch.solution; ed.evaluate(); ed.ta.disabled = true;
+          box.querySelectorAll('.btn').forEach(b=> b.disabled = true);
+        }, ch.solution,
+        perr ? ('YAML could not be read — see the message above line '+perr.line+'.')
+             : ('Still missing: <ul><li>'+missing.map(m=>m.text).join('</li><li>')+'</li></ul>'));
+      }
+    };
+    box.querySelector('[data-go]').onclick = go;
+    box.querySelector('[data-hint]').onclick = ()=> showHint(box, ch);
+    box.querySelector('[data-clear]').onclick = ()=>{ ed.ta.value=''; ed.evaluate(); focusQuiet(ed.ta); };
+    setTimeout(()=> focusQuiet(ed.ta), 120);
+  }
+
+  /* ---- fill in the blanks ---- */
+  else {
+    let code = esc(ch.code).replace(/\n/g,'<br>').replace(/ /g,'&nbsp;');
+    ch.blanks.forEach((b,i)=>{
+      code = code.replace('@'+(i+1)+'@',
+        '<input class="blank" data-i="'+i+'" size="'+(b.w||10)+'" spellcheck="false" autocomplete="off">');
+    });
+    body += '<pre>'+code+'</pre>';
+    box.innerHTML = body;
+    const inputs = [...box.querySelectorAll('.blank')];
+    let focused = 0;
+    inputs.forEach((inp,i)=> inp.addEventListener('focus', ()=> focused = i));
+    if(ch.bank) box.appendChild(makeBank(ch.bank, t=>{
+      let target = inputs[focused];
+      if(!target || target.value.trim()) target = inputs.find(i=> !i.value.trim()) || inputs[focused];
+      if(target){ target.value = t; target.classList.remove('no'); focusQuiet(target); }
+    }));
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = '<button class="btn" data-go>Apply</button><button class="btn ghost" data-hint>Hint</button><button class="btn ghost" data-clear>Clear</button>';
+    box.appendChild(r);
+    const go = ()=>{
+      let all = true, right = 0;
+      inputs.forEach((inp,i)=>{
+        const ok = ch.blanks[i].a.some(a=> normFill(a) === normFill(inp.value));
+        inp.classList.toggle('ok', ok); inp.classList.toggle('no', !ok);
+        if(ok) right++; else all = false;
+      });
+      if(all){
+        inputs.forEach(i=> i.disabled = true);
+        box.querySelectorAll('.btn, .tok').forEach(b=> b.disabled = true);
+        good(box, ch);
+      } else {
+        bad(box, ch, ()=>{
+          inputs.forEach((inp,i)=>{
+            inp.value = ch.blanks[i].a[0]; inp.disabled = true;
+            inp.classList.add('ok'); inp.classList.remove('no');
+          });
+          box.querySelectorAll('.btn, .tok').forEach(b=> b.disabled = true);
+        }, null,
+        inputs.length > 1 ? right+' of '+inputs.length+' correct — green ones are right, fix the red.' : 'Not that one. Try another chip.');
+      }
+    };
+    box.querySelector('[data-go]').onclick = go;
+    box.querySelector('[data-hint]').onclick = ()=> showHint(box, ch);
+    box.querySelector('[data-clear]').onclick = ()=>{
+      inputs.forEach(i=>{ i.value=''; i.classList.remove('ok','no'); }); focusQuiet(inputs[0]);
+    };
+    inputs.forEach(inp=> inp.addEventListener('keydown', e=>{ if(e.key === 'Enter') go(); }));
+    setTimeout(()=> focusQuiet(inputs[0]), 120);
+  }
+}
+
+function showHint(box, ch){
+  if(S.hinted) return;
+  S.hinted = true;
+  const hb = box.querySelector('[data-hint]'); if(hb) hb.disabled = true;
+  const d = document.createElement('div');
+  d.className = 'fb hint'; d.innerHTML = '<b>Hint.</b> ' + ch.hint;
+  box.appendChild(d); bringIntoView(d);
+}
+function good(box, ch){
+  const earned = Math.max(10, ch.xp - S.tries * 5);
+  award(earned);
+  const d = document.createElement('div');
+  d.className = 'fb good';
+  d.innerHTML = '<span class="lead"><b>Correct. +'+earned+' XP</b></span>' + ch.why;
+  box.appendChild(d);
+  cont(box);
+}
+function bad(box, ch, showAnswer, answer, extra){
+  S.tries++;
+  damage(TUNE.damage);
+  const d = document.createElement('div');
+  d.className = 'fb bad';
+  if(S.tries >= TUNE.triesBeforeReveal && ch.type !== 'mc'){
+    award(TUNE.revealXP);
+    d.innerHTML = '<span class="lead"><b>Here it is — +'+TUNE.revealXP+' XP for sticking with it.</b></span>' +
+                  (answer ? '<pre>'+esc(answer)+'</pre>' : '') + ch.why;
+    box.appendChild(d);
+    if(showAnswer) showAnswer();
+    cont(box);
+  } else if(ch.type === 'mc'){
+    d.innerHTML = '<span class="lead"><b>Not that one.</b></span>' + ch.why;
+    box.appendChild(d);
+    cont(box);
+  } else {
+    const left = TUNE.triesBeforeReveal - S.tries;
+    d.innerHTML = '<span class="lead"><b>Not yet.</b> ('+left+' more '+(left===1?'try':'tries')+', then I show you.)</span>' +
+                  (extra || 'Try again.');
+    box.appendChild(d);
+    setTimeout(()=>{ if(d.parentNode) d.remove(); }, 9000);
+    bringIntoView(d);
+  }
+}
+function cont(box){
+  const c = CHAPTERS[S.ch];
+  const last = S.q >= c.ch.length - 1;
+  const r = document.createElement('div'); r.className = 'row';
+  const b = document.createElement('button');
+  b.className = 'btn';
+  b.textContent = last ? 'Finish chapter '+c.id+' →' : 'Next challenge →';
+  b.onclick = ()=>{ S.q++; askNext(); };
+  r.appendChild(b); box.appendChild(r); bringIntoView(r);
+  setTimeout(()=> focusQuiet(b), 100);
+}
+
+/* The debrief closes the work. It says nothing about fragments —
+   recovery is its own screen, reached from here. */
+function endChapter(){
+  const c = CHAPTERS[S.ch];
+  const last = S.ch === CHAPTERS.length - 1;
+  if(!S.done.includes(S.ch)) S.done.push(S.ch);
+  hud(); screen(); toTop();
+  add(crumb('Debrief'));
+  c.outro.forEach(line);
+  add('<div class="tag">'+(last ? 'Chapters complete — one thing left' : 'Chapter '+c.id+' complete')+
+      '</div><div class="q">Rank: <b style="color:var(--purple)">'+
+      rankOf()+'</b> · '+S.xp+' XP</div>','chal');
+
+  if(c.relic) nextBtn('Search the code history →', showFragment);
+  else nextBtn('Continue →', afterFragment);
+  toTop();
+}
+
+/* ============================================================
+   FRAGMENT RECOVERY — a screen of its own.
+   Nothing about scores, tries or answers appears here. One
+   commit from Emma, the collection so far, and a way onward.
+   ============================================================ */
+function showFragment(){
+  const c = CHAPTERS[S.ch];
+  if(!S.frags.some(f=> f.sha === c.relic.sha)) S.frags.push(c.relic);
+  const n = QUEST.fragOffset + S.frags.length;
+  hud(); screen(); toTop();
+
+  add('<div class="crumb blk">Code history &nbsp;·&nbsp; <b>Fragment recovery</b> &nbsp;·&nbsp; chapter '+c.id+'</div>');
+  add(esc('$ git log --author=emma --reverse\nsearching 11 years of history…\n1 commit recovered.')
+        .replace(/\n/g,'<br>'), 'frag-scan');
+
+  add('<div class="fr-k">Fragment '+n+' of '+QUEST.fragTotal+' recovered</div>'+
+      '<div class="fr-sha">commit '+c.relic.sha+'</div>'+
+      '<div class="fr-meta">Author: Emma &nbsp;·&nbsp; Date: '+c.relic.date+'</div>'+
+      '<div class="fr-msg">'+c.relic.msg+'</div>'+
+      '<div class="fr-pips">'+Array.from({length:QUEST.fragTotal},(_,i)=>
+        '<i class="'+(i < n ? (i < QUEST.fragOffset ? 'on past' : 'on') : '')+'"></i>').join('')+'</div>'+
+      '<div class="fr-foot">'+(n === QUEST.fragTotal
+        ? 'Every fragment recovered.'
+        : (QUEST.fragTotal - n)+' still buried in the history.')+'</div>', 'fragcard');
+
+  nextBtn('Close the log →', afterFragment);
+  toTop();
+}
+
+/* Where the story picks back up after the fragment screen. */
+function afterFragment(){
+  const c = CHAPTERS[S.ch];
+  if(S.ch === CHAPTERS.length - 1) return startLab();
+  screen(); toTop();
+  add(crumb('Next'));
+  if(c.hook) add(c.hook, 'narr');
+  nextBtn('Chapter '+(c.id+1)+': '+CHAPTERS[S.ch+1].title+' →', ()=> startChapter(S.ch + 1));
+  toTop();
+}
+
+/* ============================================================
+   THE LAB
+   ============================================================ */
+function startLab(){
+  S.lab = true; hud(); screen(); toTop();
+  add('<div class="k">CAPSTONE</div><h2>'+LAB.title+'</h2><p>'+
+      (LAB.twice ? 'Write it from nothing, then run it twice.' : 'Write it from nothing, then run it.')+
+      '</p>','chaptercard');
+  LAB.story.forEach(line);
+  nextBtn('Open the editor →', labEditor);
+  toTop();
+}
+function labEditor(){
+  screen(); toTop();
+  add('<div class="crumb blk">Capstone &nbsp;·&nbsp; <b>'+LAB.title+'</b> &nbsp;·&nbsp; test environment, '+
+      simFleet().length+' machines</div>');
+  const det = document.createElement('details');
+  det.className = 'manual blk';
+  det.innerHTML = '<summary>Everything you have learned — quick reference</summary><div class="inner"><table class="cheat">'+
+    CHEATSHEET.map(([a,b])=>'<tr><td>'+esc(a)+'</td><td>'+b+'</td></tr>').join('')+'</table></div>';
+  log.appendChild(det);
+
+  const box = add('<div class="tag">Capstone · '+LAB.xp+' XP</div><div class="q">'+LAB.q+'</div>', 'chal');
+  const ed = buildEditor(LAB);
+  box.appendChild(ed.box);
+  box.appendChild(ed.errBox);
+  box.appendChild(ed.reqBox);
+  const r = document.createElement('div'); r.className = 'row';
+  r.innerHTML = '<button class="btn" data-run>▶ Run playbook</button>'+
+                '<button class="btn ghost" data-hint>Hint</button>'+
+                '<button class="btn ghost" data-sol>Show a working answer</button>';
+  box.appendChild(r);
+  ed.evaluate();
+
+  let ran = 0;
+  const outHost = document.createElement('div');
+  box.appendChild(outHost);
+
+  box.querySelector('[data-run]').onclick = ()=>{
+    const {reqs, perr} = ed.evaluate();
+    outHost.innerHTML = '';
+    if(perr){
+      const d = document.createElement('div'); d.className = 'runout';
+      d.innerHTML = '<span class="rr">ERROR! Syntax Error while loading YAML.\n  line '+perr.line+'\n\n'+
+                    esc(perr.msg.replace(/<[^>]+>/g,''))+'</span>';
+      outHost.appendChild(d); bringIntoView(d); return;
+    }
+    const missing = reqs.filter(x=> !x.ok);
+    if(missing.length){
+      const d = document.createElement('div'); d.className = 'fb bad';
+      d.innerHTML = '<span class="lead"><b>It parses, but it is not finished yet.</b></span>'+
+                    'Still missing: <ul><li>'+missing.map(m=>m.text).join('</li><li>')+'</li></ul>';
+      outHost.appendChild(d); bringIntoView(d);
+      return;
+    }
+    const doc = parseYAML(ed.ta.value);
+    ran++;
+    const first = simulate(doc, 1);
+    const d1 = document.createElement('div'); d1.className = 'runout';
+    d1.innerHTML = '<span class="rk">$ ansible-playbook -i inventory.ini '+LAB.file+'</span>\n\n' + first.join('\n');
+    outHost.appendChild(d1);
+
+    let second = null;
+    if(LAB.twice){
+      second = simulate(doc, 2);
+      const d2 = document.createElement('div'); d2.className = 'runout';
+      d2.innerHTML = '<span class="rk">$ ansible-playbook -i inventory.ini '+LAB.file+'   # second run</span>\n\n' + second.join('\n');
+      outHost.appendChild(d2);
+    }
+
+    const clean = !LAB.twice ||
+      (/changed=0/.test(second.join('\n')) && !/changed=[1-9]/.test(second.slice(-5).join('\n')));
+    const v = document.createElement('div');
+    if(clean){
+      v.className = 'fb good';
+      v.innerHTML = LAB.twice
+        ? '<span class="lead"><b>Second run: changed=0 on every machine.</b></span>'+
+          'That is the proof Dev asked for. Your playbook did the work once and then did nothing, which means it is safe to run '+
+          'every hour forever. Everything in it described a <i>result</i>, so once the result was true there was nothing left to do.'
+        : '<span class="lead"><b>It ran. Every play, every machine, no errors.</b></span>'+
+          'You went from an empty file to something Ansible could execute, and you did it without a single blank to fill in. '+
+          'Notice that each play only touched the machines in its own group — that is the inventory doing its job.';
+      const rr = document.createElement('div'); rr.className = 'row';
+      const bb = document.createElement('button'); bb.className = 'btn';
+      bb.textContent = LAB.runBtn || 'Deploy to all 400 machines →';
+      bb.onclick = ()=>{ award(LAB.xp); labDone(); };
+      rr.appendChild(bb); v.appendChild(rr);
+      box.querySelector('[data-run]').textContent = '▶ Run again';
+    } else {
+      v.className = 'fb hint';
+      v.innerHTML = '<span class="lead"><b>The second run still reports changes.</b></span>'+
+        'Something in the playbook does work it did not need to do. Look for <code>state: latest</code>, or a '+
+        '<code>command</code> task with no <code>creates:</code> — those are the two usual causes.';
+    }
+    outHost.appendChild(v);
+    bringIntoView(v);
+  };
+  box.querySelector('[data-hint]').onclick = ()=>{
+    const d = document.createElement('div');
+    d.className = 'fb hint'; d.innerHTML = '<b>Hint.</b> ' + LAB.hint;
+    box.appendChild(d); bringIntoView(d);
+  };
+  box.querySelector('[data-sol]').onclick = ()=>{
+    ed.ta.value = LAB.solution; ed.evaluate(); focusQuiet(ed.ta);
+    const d = document.createElement('div');
+    d.className = 'fb hint';
+    d.innerHTML = '<b>One working answer loaded.</b> Read it, change something, and run it — try setting '+
+                  '<code>state: latest</code> and watch what the second run does.';
+    box.appendChild(d); bringIntoView(d);
+  };
+  toTop();
+}
+/* The capstone is done. The rank is earned here, not at the last chapter. */
+function labDone(){
+  S.labDone = true;
+  hud(); screen(); toTop();
+  add('<div class="crumb blk">'+LAB.doneCrumb+'</div>');
+  LAB.done.forEach(line);
+  nextBtn(LAB.doneBtn, QUEST.isFinal ? finale : questComplete);
+  toTop();
+}
+
+/* ============================================================
+   END OF QUEST — the promotion, the completion code, and the
+   handoff to the next file.
+   ============================================================ */
+function questComplete(){
+  const code = completionCode();
+  const veil = document.createElement('div'); veil.className = 'veil';
+  veil.innerHTML =
+    '<div class="card">'+
+    '<h1>ANSIBLE QUEST '+QUEST.roman+'</h1><h2>'+QUEST.title+' · complete</h2>'+
+    '<div class="promo"><div class="promo-k">Qualified</div>'+
+    '<div class="promo-r">'+QUEST.rankStart+' &nbsp;→&nbsp; <b>'+QUEST.rankEnd+'</b></div></div>'+
+    '<p><b>'+S.xp+' XP</b> · server uptime <b>'+S.up+'%</b> · '+
+      (QUEST.fragOffset + S.frags.length)+' of '+QUEST.fragTotal+' fragments recovered</p>'+
+    '<div class="codebox"><div class="code-k">Completion code — hand this in</div>'+
+    '<div class="code-v" id="q-code">'+code+'</div>'+
+    '<button class="btn ghost" id="q-copy">Copy</button></div>'+
+    (NEXT_UP ? '<p>'+NEXT_UP+'</p>' : '')+
+        '<div class="row"><button class="btn ghost" id="q-frag">Read the fragments</button>'+
+    '<button class="btn ghost" id="q-note">Open the notebook</button>'+
+    '<button class="btn ghost" id="q-again">Play this quest again</button></div></div>';
+  document.body.appendChild(veil);
+  veil.querySelector('#q-again').onclick = ()=> location.reload();
+  veil.querySelector('#q-frag').onclick  = ()=>{ veil.remove(); openFrags(); };
+  veil.querySelector('#q-note').onclick  = ()=>{ veil.remove(); openNotebook(); };
+  veil.querySelector('#q-copy').onclick  = function(){
+    const b = this;
+    try{ navigator.clipboard.writeText(code); b.textContent = 'Copied'; }
+    catch(e){
+      const r = document.createRange(); r.selectNode(veil.querySelector('#q-code'));
+      window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+      b.textContent = 'Selected — press Ctrl+C';
+    }
+  };
+}
+
+/* ---------- overlays ---------- */
+function overlay(inner){
+  const veil = document.createElement('div'); veil.className = 'veil';
+  veil.innerHTML = '<div class="card">'+inner+'<div class="row"><button class="btn" id="x">Close</button></div></div>';
+  document.body.appendChild(veil);
+  veil.querySelector('#x').onclick = ()=> veil.remove();
+  veil.onclick = e=>{ if(e.target === veil) veil.remove(); };
+  return veil;
+}
+function openNotebook(){
+  overlay('<h1 style="font-size:20px">EMMA\'S NOTEBOOK</h1>'+
+    '<p class="dim">Everything the game has taught you, on one page.</p><table class="cheat">'+
+    CHEATSHEET.map(([a,b])=>'<tr><td>'+esc(a)+'</td><td>'+b+'</td></tr>').join('')+'</table>');
+}
+function openFrags(){
+  const body = S.frags.length
+    ? S.frags.map(f=>'<div class="relic"><div class="sha">commit '+f.sha+' · '+f.date+'</div><div class="msg">"'+f.msg+'"</div></div>').join('')
+    : '<p class="dim">No fragments yet. Finish a chapter, then search the code history.</p>';
+  overlay('<h1 style="font-size:20px">RECOVERED FRAGMENTS</h1>'+
+    '<p class="dim">'+(QUEST.fragOffset + S.frags.length)+' of '+QUEST.fragTotal+' saved notes recovered from the code history.</p>'+body);
+}
+function openMap(){
+  const reachedMax = Math.max.apply(null, S.done.concat([S.ch]));
+  const chips = CHAPTERS.map((c,i)=>{
+    const reached = i <= reachedMax;
+    const cls = S.done.includes(i) ? 'chip done' : reached ? 'chip' : 'chip locked';
+    return '<button class="'+cls+'" data-i="'+i+'"'+(reached?'':' disabled')+'>'+c.id+'. '+c.title+'</button>';
+  }).join('') + (S.done.length === CHAPTERS.length ? '<button class="chip done" data-i="lab">★ '+LAB.title+'</button>' : '');
+  const veil = overlay('<h1 style="font-size:20px">CHAPTERS</h1>'+
+    '<p class="dim">Jump to any chapter you have reached. Progress lives in this tab only — refreshing starts over.</p>'+
+    '<div class="chips">'+chips+'</div>');
+  veil.querySelectorAll('.chip:not(.locked)').forEach(b=>{
+    b.onclick = ()=>{
+      veil.remove();
+      if(b.dataset.i === 'lab') startLab(); else startChapter(+b.dataset.i);
+    };
+  });
+}
+
+document.getElementById('b-note').onclick = openNotebook;
+document.getElementById('b-map').onclick  = openMap;
+document.getElementById('b-frag').onclick = openFrags;
+
+/* ---------- title ---------- */
+(function title(){
+  const veil = document.createElement('div'); veil.className = 'veil';
+  veil.innerHTML =
+    '<div class="card">'+
+    '<h1>ANSIBLE QUEST '+QUEST.roman+'</h1><h2>'+QUEST.title+'</h2>'+
+    '<div class="promo"><div class="promo-k">'+
+      (QUEST.roman ? 'Part '+QUEST.n+' of '+QUEST.of+' &nbsp;·&nbsp; chapters '+QUEST.chFrom+'–'+QUEST.chTo+' of '+QUEST.chTotal
+                   : 'Complete edition &nbsp;·&nbsp; all '+QUEST.chTotal+' chapters')+'</div>'+
+    '<div class="promo-r">'+QUEST.rankStart+' &nbsp;→&nbsp; <b>'+QUEST.rankEnd+'</b></div></div>'+
+    '<p>'+STORY_SO_FAR+'</p>'+
+    '<div class="promo-k" style="margin-top:16px">By the end of this quest you can</div>'+
+    '<ul class="cando">'+QUEST_CAN+'</ul>'+
+    '<p>'+QUEST_GOAL+' Every chapter ends by making you <b>type the whole file yourself</b>, with a checklist that ticks as you go. '+
+    'The quest finishes in a lab: an empty editor and a simulator that really runs what you write.</p>'+
+    '<p class="dim">Hints are free. Three tries before the answer is shown. A wrong answer costs server uptime, never progress, so you cannot get stuck. '+
+    'Each chapter unlocks one piece of her story.</p>'+
+    '<div class="row"><button class="btn" id="go">'+START_LABEL+'</button>'+
+    '<button class="btn ghost" id="nb">Notebook</button></div></div>';
+  document.body.appendChild(veil);
+  veil.querySelector('#go').onclick = ()=>{ veil.remove(); hud(); startChapter(0); };
+  veil.querySelector('#nb').onclick = openNotebook;
+  setTimeout(()=> focusQuiet(veil.querySelector('#go')), 150);
+})();
+</script>
+
+<script>
+/* ============================================================
+   Simulator upgrade.
+   A rolling upgrade needs batches, pre/post sections, delegation
+   and error-handling blocks, so this replaces simulate().
+   ============================================================ */
+
+NOT_MODULE.push('until','retries','delay','run_once','block','rescue','always','listen',
+                'no_log','check_mode','environment','throttle','any_errors_fatal',
+                'delegate_facts','async','poll','serial','max_fail_percentage','retry_files');
+
+/* block / rescue / always -> a flat list. Nothing fails in the simulator,
+   so the rescue branch is reported as skipped and always still runs. */
+function flatTasks(list){
+  const out = [];
+  Y.list(list).forEach(t=>{
+    if(t && typeof t === 'object' && Array.isArray(t.block)){
+      flatTasks(t.block).forEach(x=> out.push(x));
+      if(Array.isArray(t.rescue)) flatTasks(t.rescue).forEach(x=> out.push({__skip:x}));
+      if(Array.isArray(t.always)) flatTasks(t.always).forEach(x=> out.push(x));
+    } else if(t){
+      out.push(t);
+    }
+  });
+  return out;
+}
+
+function batchSize(serial, total){
+  if(serial === undefined || serial === null || serial === '') return total;
+  const s = String(serial).trim();
+  if(s.slice(-1) === '%'){
+    const pct = parseFloat(s.slice(0,-1));
+    return Math.max(1, Math.ceil(total * pct / 100));
+  }
+  const n = parseInt(s,10);
+  return (isNaN(n) || n < 1) ? total : Math.min(n, total);
+}
+
+function simulate(doc, runNo){
+  const out   = [];
+  const plays = Y.plays(doc);
+  if(!plays.length) return ['ERROR! playbook must be a list of plays'];
+  const order = [], recap = {};
+  const touch = h =>{
+    if(!recap[h.name]){ recap[h.name] = {ok:0, changed:0, skipped:0}; order.push(h.name); }
+    return recap[h.name];
+  };
+  const first = runNo === 1;
+
+  plays.forEach((play, pi)=>{
+    if(pi) out.push('');
+    const all = simHosts(play.hosts);
+    if(!all.length){
+      out.push('<span class="rk">'+pad('PLAY ['+(play.name || 'play')+']', 60)+'</span>');
+      out.push('<span class="ry">skipping: no hosts matched \''+String(play.hosts)+'\'</span>');
+      return;
+    }
+    const size    = batchSize(play.serial, all.length);
+    const batches = [];
+    for(let i=0;i<all.length;i+=size) batches.push(all.slice(i,i+size));
+
+    batches.forEach((hosts, bi)=>{
+      if(bi) out.push('');
+      const label = 'PLAY ['+(play.name || 'play')+']'+
+                    (batches.length > 1 ? '  (batch '+(bi+1)+' of '+batches.length+')' : '');
+      out.push('<span class="rk">'+pad(label, 60)+'</span>');
+      out.push('');
+
+      if(play.gather_facts === undefined || play.gather_facts === null || Y.yes(play.gather_facts)){
+        out.push('<span class="rk">'+pad('TASK [Gathering Facts]', 60)+'</span>');
+        hosts.forEach(h=>{ out.push('<span class="rg">ok: ['+h.name+']</span>'); touch(h).ok++; });
+      }
+
+      let notified = [];
+
+      const runHandlers = ()=>{
+        Y.handlers(play).forEach(hd=>{
+          if(notified.indexOf(hd.name) === -1) return;
+          out.push('');
+          out.push('<span class="rk">'+pad('RUNNING HANDLER ['+hd.name+']', 60)+'</span>');
+          hosts.forEach(host=>{
+            out.push('<span class="rc">changed: ['+host.name+']</span>');
+            touch(host).ok++; touch(host).changed++;
+          });
+        });
+        notified = [];
+      };
+
+      const runTask = t=>{
+        if(t && t.__skip){
+          const s = Y.mod(t.__skip);
+          if(!s.short) return;
+          out.push('');
+          out.push('<span class="rk">'+pad('TASK ['+(t.__skip.name || s.short)+']', 60)+'</span>');
+          out.push('<span class="ry">skipping: rescue block — nothing failed</span>');
+          return;
+        }
+        const m = Y.mod(t);
+        if(!m.short) return;
+
+        /* meta: flush_handlers moves the queued handlers to right here */
+        if(m.short === 'meta'){
+          if(String(m.val).indexOf('flush_handlers') >= 0){
+            out.push('');
+            out.push('<span class="rk">'+pad('META [flush_handlers]', 60)+'</span>');
+            runHandlers();
+          }
+          return;
+        }
+
+        out.push('');
+        out.push('<span class="rk">'+pad('TASK ['+(t.name || m.short)+']', 60)+'</span>');
+
+        /* would this task change anything on a second run? */
+        let changes;
+        if(String(t.changed_when).trim() === 'false' || t.changed_when === false) changes = false;
+        else if(['debug','uri','wait_for','assert','stat','command_check'].indexOf(m.short) >= 0) changes = false;
+        else if(first) changes = true;
+        else if(['apt','dnf','yum','package'].indexOf(m.short) >= 0 && Y.eq(Y.arg(t,'state'),'latest')) changes = true;
+        else if((m.short === 'command' || m.short === 'shell') && !(t.args && t.args.creates)) changes = true;
+        else changes = false;
+
+        const items   = Y.list(t.loop);
+        const targets = t.run_once ? hosts.slice(0,1) : hosts;
+        const via     = t.delegate_to ? ' -> '+String(t.delegate_to).split('.')[0] : '';
+
+        targets.forEach(h=>{
+          if(!simWhen(t.when, h)){
+            out.push('<span class="ry">skipping: ['+h.name+']</span>');
+            touch(h).skipped++;
+            return;
+          }
+          (items.length ? items : [null]).forEach(it=>{
+            const suffix = (it === null ? '' : ' => (item='+it+')');
+            if(m.short === 'debug'){
+              const msg = (m.val && typeof m.val === 'object') ? (m.val.msg || '') : '';
+              out.push('<span class="rg">ok: ['+h.name+'] => {</span>');
+              out.push('<span class="rg">    "msg": "'+String(msg)
+                .replace(/\{\{\s*ansible_hostname\s*\}\}/g, h.name.split('.')[0])
+                .replace(/\{\{\s*inventory_hostname\s*\}\}/g, h.name)
+                .replace(/\{\{\s*ansible_facts\[.os_family.\]\s*\}\}/g, h.os_family)+'"</span>');
+              out.push('<span class="rg">}</span>');
+              touch(h).ok++;
+            } else if(t.until){
+              out.push('<span class="ry">FAILED - RETRYING: '+(t.name || m.short)+' ('+
+                       (parseInt(t.retries,10) || 3)+' retries left)</span>');
+              out.push('<span class="rg">ok: ['+h.name+via+']</span>');
+              touch(h).ok++;
+            } else if(changes){
+              out.push('<span class="rc">changed: ['+h.name+via+']'+suffix+'</span>');
+              touch(h).ok++; touch(h).changed++;
+              const nt = t.notify;
+              (Array.isArray(nt) ? nt : (nt ? [nt] : [])).forEach(n=>{
+                if(notified.indexOf(n) === -1) notified.push(n);
+              });
+            } else {
+              out.push('<span class="rg">ok: ['+h.name+via+']'+suffix+'</span>');
+              touch(h).ok++;
+            }
+          });
+        });
+      };
+
+      flatTasks(play.pre_tasks).forEach(runTask);
+
+      Y.list(play.roles).forEach(r=>{
+        const nm = (r && typeof r === 'object') ? (r.role || r.name) : r;
+        out.push('');
+        out.push('<span class="rk">'+pad('TASK ['+nm+' : main]', 60)+'</span>');
+        hosts.forEach(h=>{
+          out.push('<span class="'+(first?'rc':'rg')+'">'+(first?'changed':'ok')+': ['+h.name+']</span>');
+          touch(h).ok++; if(first) touch(h).changed++;
+        });
+      });
+
+      flatTasks(play.tasks).forEach(runTask);
+      flatTasks(play.post_tasks).forEach(runTask);
+      runHandlers();
+    });
+  });
+
+  out.push('');
+  out.push('<span class="rk">'+pad('PLAY RECAP', 60)+'</span>');
+  order.forEach(n=>{
+    const r = recap[n];
+    out.push('<span class="'+(r.changed?'rc':'rg')+'">'+n.padEnd(24)+
+             ': ok='+r.ok+'    changed='+r.changed+'    unreachable=0    failed=0    skipped='+r.skipped+'</span>');
+  });
+  return out;
+}
+
+
+/* ---------- UI ---------- */
+/* ============================================================
+   The capstone does not just run the playbook — it puts it
+   through the pipeline: lint, converge, idempotence, verify.
+   ============================================================ */
+
+function ciBlock(title, lines){
+  return '<div class="runout"><span class="rk">'+esc(title)+'</span>\n\n'+lines.join('\n')+'</div>';
+}
+
+function labEditor(){
+  screen(); toTop();
+  add('<div class="crumb blk">Final capstone &nbsp;·&nbsp; <b>'+LAB.title+'</b> &nbsp;·&nbsp; pipeline, '+
+      simFleet().length+' machines</div>');
+
+  const det = document.createElement('details');
+  det.className = 'manual blk';
+  det.innerHTML = '<summary>Everything you have learned — quick reference</summary><div class="inner"><table class="cheat">'+
+    CHEATSHEET.map(([a,b])=>'<tr><td>'+esc(a)+'</td><td>'+b+'</td></tr>').join('')+'</table></div>';
+  log.appendChild(det);
+
+  const box = add('<div class="tag">Final capstone · '+LAB.xp+' XP</div><div class="q">'+LAB.q+'</div>', 'chal');
+  const ed = buildEditor(LAB);
+  box.appendChild(ed.box);
+  box.appendChild(ed.errBox);
+  box.appendChild(ed.reqBox);
+
+  const r = document.createElement('div'); r.className = 'row';
+  r.innerHTML = '<button class="btn" data-run>▶ Run the pipeline</button>'+
+                '<button class="btn ghost" data-hint>Hint</button>'+
+                '<button class="btn ghost" data-sol>Show a working answer</button>';
+  box.appendChild(r);
+  ed.evaluate();
+
+  const outHost = document.createElement('div');
+  box.appendChild(outHost);
+
+  box.querySelector('[data-run]').onclick = ()=>{
+    const {reqs, perr} = ed.evaluate();
+    outHost.innerHTML = '';
+
+    if(perr){
+      outHost.innerHTML = ciBlock('$ yamllint site.yml',
+        ['<span class="rr">error  line '+perr.line+'  '+esc(perr.msg.replace(/<[^>]+>/g,''))+'</span>',
+         '<span class="rr">PIPELINE FAILED at stage 1 of 4</span>']);
+      bringIntoView(outHost); return;
+    }
+    const missing = reqs.filter(x=> !x.ok);
+    if(missing.length){
+      const d = document.createElement('div'); d.className = 'fb bad';
+      d.innerHTML = '<span class="lead"><b>It parses, but the file is not finished.</b></span>'+
+                    'Still missing: <ul><li>'+missing.map(m=> m.text).join('</li><li>')+'</li></ul>';
+      outHost.appendChild(d); bringIntoView(d); return;
+    }
+
+    const doc  = parseYAML(ed.ta.value);
+    const lint = LAB.lint(doc, ed.ta.value);
+    const bad  = lint.filter(x=> !x.ok);
+
+    outHost.innerHTML += ciBlock('$ ansible-lint --profile production site.yml',
+      lint.map(x=> '<span class="'+(x.ok?'rg':'rr')+'">'+(x.ok?'PASS  ':'FAIL  ')+x.text+'</span>')
+          .concat([bad.length
+            ? '<span class="rr">\n'+bad.length+' rule(s) failed — PIPELINE STOPPED at stage 2 of 4</span>'
+            : '<span class="rg">\n7 rules, 0 failures — stage 2 of 4 passed</span>']));
+
+    if(bad.length){
+      const d = document.createElement('div'); d.className = 'fb hint';
+      d.innerHTML = '<span class="lead"><b>The playbook runs. The pipeline still says no.</b></span>'+
+        'Nothing above is about whether the change works — every one of those rules is about whether the next person can trust it. '+
+        'Fix the failures and run it again.';
+      outHost.appendChild(d); bringIntoView(d); return;
+    }
+
+    const first  = simulate(doc, 1);
+    const second = simulate(doc, 2);
+    outHost.innerHTML += ciBlock('$ molecule converge', first);
+
+    const s = second.join('\n');
+    const clean = /changed=0/.test(s) && !/changed=[1-9]/.test(second.slice(-5).join('\n'));
+    outHost.innerHTML += ciBlock('$ molecule idempotence',
+      second.slice(-1 - simFleet().length).concat([clean
+        ? '<span class="rg">\nidempotence: PASSED — nothing changed on the second run</span>'
+        : '<span class="rr">\nidempotence: FAILED — the second run still reports changes</span>']));
+
+    if(!clean){
+      const d = document.createElement('div'); d.className = 'fb hint';
+      d.innerHTML = '<span class="lead"><b>Stage 3 of 4 failed: idempotence.</b></span>'+
+        'Something in the file does work it did not need to do. The usual causes are <code>state: latest</code> and a '+
+        '<code>command</code> task with no <code>creates:</code> or <code>changed_when:</code>.';
+      outHost.appendChild(d); bringIntoView(d); return;
+    }
+
+    outHost.innerHTML += ciBlock('$ molecule verify', [
+      '<span class="rg">assert  nginx is installed ......................... ok</span>',
+      '<span class="rg">assert  /etc/nginx/app.env is 0600 root:root ...... ok</span>',
+      '<span class="rg">assert  nginx enabled and running .................. ok</span>',
+      '<span class="rg">assert  no credential literal in site.yml ......... ok</span>',
+      '<span class="rg">\nPIPELINE PASSED — 4 of 4 stages</span>']);
+
+    const v = document.createElement('div');
+    v.className = 'fb good';
+    v.innerHTML = '<span class="lead"><b>Lint clean, converged, idempotent, verified.</b></span>'+
+      'This is the difference between a playbook that works and a playbook a company can rely on. It works — that was stage 2. '+
+      'It is safe to run again — stage 3. It does what it claims — stage 4. And every one of those answers is produced by a machine, '+
+      'on every commit, whether or not you are in the building.';
+    const rr2 = document.createElement('div'); rr2.className = 'row';
+    const bb = document.createElement('button'); bb.className = 'btn';
+    bb.textContent = LAB.runBtn || 'Finish →';
+    bb.onclick = ()=>{ award(LAB.xp); labDone(); };
+    rr2.appendChild(bb); v.appendChild(rr2);
+    outHost.appendChild(v);
+    bringIntoView(v);
+    box.querySelector('[data-run]').textContent = '▶ Run the pipeline again';
+  };
+
+  box.querySelector('[data-hint]').onclick = ()=>{
+    const d = document.createElement('div');
+    d.className = 'fb hint'; d.innerHTML = '<b>Hint.</b> ' + LAB.hint;
+    box.appendChild(d); bringIntoView(d);
+  };
+  box.querySelector('[data-sol]').onclick = ()=>{
+    ed.ta.value = LAB.solution; ed.evaluate(); focusQuiet(ed.ta);
+    const d = document.createElement('div');
+    d.className = 'fb hint';
+    d.innerHTML = '<b>One working answer loaded.</b> Read it, then break it on purpose — change <code>state: present</code> to '+
+                  '<code>latest</code>, or delete a <code>mode:</code>, and watch which stage of the pipeline catches you.';
+    box.appendChild(d); bringIntoView(d);
+  };
+  toTop();
+}
+
+
+/* ============================================================
+   This file is complete in itself, so the closing screen talks
+   about the qualification — nothing before it, nothing after.
+   ============================================================ */
+function finale(){
+  const code = completionCode();
+  const veil = document.createElement('div'); veil.className = 'veil';
+  veil.innerHTML =
+    '<div class="card">'+
+    '<h1>ANSIBLE QUEST</h1><h2>'+QUEST.title+' · complete</h2>'+
+    '<div class="promo"><div class="promo-k">'+QUEST.chTotal+' chapters · one capstone · qualified</div>'+
+    '<div class="promo-r">'+QUEST.rankStart+' &nbsp;→&nbsp; <b>'+QUEST.rankEnd+'</b></div></div>'+
+    '<p><b>'+S.xp+' XP</b> · server uptime <b>'+S.up+'%</b> · '+
+      S.frags.length+' of '+QUEST.fragTotal+' fragments recovered</p>'+
+    '<div class="promo-k" style="margin-top:16px">You can now</div>'+
+    '<ul class="cando">'+QUEST_CAN+'</ul>'+
+    '<p>You are no longer the person who runs the playbooks. Secrets are out of the repository, dependencies are pinned, and a pipeline proves the work on every commit — whether or not you are in the building.</p>'+
+    '<div class="codebox"><div class="code-k">Completion code — hand this in</div>'+
+    '<div class="code-v" id="q-code">'+code+'</div>'+
+    '<button class="btn ghost" id="q-copy">Copy</button></div>'+
+    '<div class="row"><button class="btn ghost" id="q-frag">Read the fragments</button>'+
+    '<button class="btn ghost" id="q-note">Open the notebook</button>'+
+    '<button class="btn ghost" id="q-again">Play again</button></div></div>';
+  document.body.appendChild(veil);
+  veil.querySelector('#q-again').onclick = ()=> location.reload();
+  veil.querySelector('#q-frag').onclick  = ()=>{ veil.remove(); openFrags(); };
+  veil.querySelector('#q-note').onclick  = ()=>{ veil.remove(); openNotebook(); };
+  veil.querySelector('#q-copy').onclick  = function(){
+    const b = this;
+    try{ navigator.clipboard.writeText(code); b.textContent = 'Copied'; }
+    catch(e){
+      const r = document.createRange(); r.selectNode(veil.querySelector('#q-code'));
+      window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+      b.textContent = 'Selected — press Ctrl+C';
+    }
+  };
+}
+</script>
+
+<script>
+/* ============================================================
+   NerdLab bridge. The quest is self-contained; this reports a
+   genuine finish (every chapter plus the capstone lab) to the
+   platform so points are awarded. Wrapping the two ending
+   screens means completion cannot be signalled any other way.
+   ============================================================ */
+(function () {
+  var TASK_ID = 10;
+  var reported = false;
+
+  function report() {
+    if (reported) return;
+    reported = true;
+    try {
+      window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+    } catch (e) { /* standalone: no parent to tell */ }
+  }
+
+  ['finale', 'questComplete'].forEach(function (name) {
+    var original = window[name];
+    if (typeof original !== 'function') return;
+    window[name] = function () {
+      var result = original.apply(this, arguments);
+      report();
+      return result;
+    };
+  });
+})();
+</script>
+</body>
+</html>

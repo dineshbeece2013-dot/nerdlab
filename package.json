@@ -1,0 +1,29 @@
+{
+  "name": "devops-learning-platform",
+  "version": "1.0.0",
+  "description": "NerdLab Learning Platform — hands-on DevOps labs with an HTML task renderer, PostgreSQL, Express, and React",
+  "main": "server/server.js",
+  "scripts": {
+    "server": "cd server && npm start",
+    "server:dev": "cd server && npm run dev",
+    "client": "cd client && npm run dev",
+    "client:build": "cd client && npm run build",
+    "db:migrate": "cd server && npm run db:migrate",
+    "db:upgrade": "cd server && npm run db:upgrade",
+    "db:seed": "cd server && npm run db:seed"
+  },
+  "keywords": [
+    "devops",
+    "learning-platform",
+    "react",
+    "node",
+    "express",
+    "postgresql",
+    "docker",
+    "kubernetes",
+    "terraform",
+    "git"
+  ],
+  "author": "Antigravity Engineering",
+  "license": "MIT"
+}

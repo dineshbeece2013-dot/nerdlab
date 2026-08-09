@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-950 text-slate-100 font-sans transition-colors duration-200;
+  }
+}
+
+/* A lab frame resizes to fit its content shortly after load. Scroll anchoring
+   would compensate for that growth by scrolling the page down — landing the
+   student at the bottom of the task instead of the top — so it is disabled on
+   the document scroller. */
+html {
+  overflow-anchor: none;
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(21, 28, 44, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.glass-panel-light {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Custom Scrollbar — slim and unobtrusive, transparent track so it doesn't
+   read as a hard grey column against the dark UI. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2b3a52;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Lab iframes size themselves to their content — never let one scroll internally */
+iframe.lab-frame {
+  display: block;
+  width: 100%;
+  border: none;
+}

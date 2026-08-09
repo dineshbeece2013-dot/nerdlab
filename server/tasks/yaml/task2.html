@@ -1,0 +1,1039 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YAML Part 2: 3:14 AM — The Callout</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            padding: 2rem 1.5rem 4rem;
+            margin: 0;
+            line-height: 1.6;
+        }
+        .container { max-width: 860px; margin: 0 auto; }
+        .panel {
+            background-color: #1e293b;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            border: 1px solid #334155;
+        }
+        h1 { color: #38bdf8; margin: 0.6rem 0 0.4rem; font-size: 1.75rem; }
+        h2 { color: #38bdf8; font-size: 1.1rem; }
+        .badge {
+            display: inline-block; background: #0284c7; color: #fff;
+            padding: 0.25rem 0.75rem; border-radius: 9999px;
+            font-size: 0.875rem; font-weight: 600;
+        }
+        .lede { color: #cbd5e1; }
+        code { background: #0b1220; padding: 0.1rem 0.35rem; border-radius: 4px; color: #a5f3fc; font-size: 0.92em; }
+        pre {
+            background-color: #090d16; color: #a5f3fc; padding: 1rem;
+            border-radius: 8px; overflow-x: auto; border: 1px solid #1e293b;
+            font-size: 0.85rem; margin: 0.75rem 0 0;
+        }
+
+        /* ---------- incident status bar ---------- */
+        #status {
+            position: sticky; top: 0; z-index: 20;
+            margin: 1.25rem 0; padding: 0.85rem 1.1rem;
+            background: #16213a; border: 1px solid #334155; border-radius: 12px;
+            display: flex; flex-wrap: wrap; gap: 0.75rem 1.5rem; align-items: center;
+            font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem;
+        }
+        #status .item { display: flex; align-items: center; gap: 0.45rem; color: #94a3b8; }
+        #status .val { color: #e2e8f0; font-weight: 700; }
+        #svc-state.down { color: #f87171; }
+        #svc-state.degraded { color: #fbbf24; }
+        #svc-state.healthy { color: #34d399; }
+        #bar { flex: 1 1 160px; min-width: 140px; height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; border: 1px solid #334155; }
+        #fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5e9, #10b981); transition: width 0.45s ease; }
+
+        /* ---------- terminal ---------- */
+        #term {
+            background: #060910; border: 1px solid #1e293b; border-radius: 10px;
+            padding: 0.9rem 1rem; font-family: ui-monospace, Consolas, monospace;
+            font-size: 0.8rem; line-height: 1.7; max-height: 190px; overflow-y: auto;
+            margin-bottom: 1.5rem;
+        }
+        #term div { white-space: pre-wrap; word-break: break-word; }
+        .t-time { color: #475569; }
+        .t-pager { color: #f87171; }
+        .t-pipe  { color: #38bdf8; }
+        .t-priya { color: #c084fc; }
+        .t-ok    { color: #34d399; }
+        .t-warn  { color: #fbbf24; }
+
+        /* ---------- scenes ---------- */
+        .scene {
+            border: 1px solid #334155; border-radius: 12px; background: #1a2437;
+            margin-bottom: 1.1rem; overflow: hidden;
+        }
+        .scene.locked { opacity: 0.55; }
+        .scene.active { border-color: #38bdf8; box-shadow: 0 0 0 1px rgba(56,189,248,0.25); }
+        .scene.solved { border-color: #10b981; background: #101f1c; }
+        .scene-head {
+            display: flex; align-items: center; gap: 0.75rem;
+            padding: 1rem 1.25rem; cursor: default;
+        }
+        .scene.solved .scene-head, .scene.collapsible .scene-head { cursor: pointer; }
+        .scene-num {
+            flex: none; width: 1.9rem; height: 1.9rem; border-radius: 8px;
+            background: #0b1220; border: 1px solid #334155; color: #94a3b8;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.85rem;
+        }
+        .scene.active .scene-num { background: #0284c7; border-color: #38bdf8; color: #fff; }
+        .scene.solved .scene-num { background: #065f46; border-color: #10b981; color: #d1fae5; }
+        .scene-title { font-weight: 700; color: #f1f5f9; flex: 1; }
+        .scene-state { font-size: 0.75rem; font-family: ui-monospace, Consolas, monospace; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; }
+        .scene.solved .scene-state { color: #34d399; }
+        .scene-body { padding: 0 1.25rem 1.35rem; display: none; }
+        .scene.open .scene-body { display: block; }
+        .scene-body p { color: #cbd5e1; }
+
+        .voice {
+            border-left: 3px solid #c084fc; background: #1b1630;
+            padding: 0.65rem 0.9rem; border-radius: 0 8px 8px 0; margin: 0.9rem 0;
+            color: #e9d5ff; font-size: 0.92rem;
+        }
+        .voice strong { color: #c084fc; }
+        .brief {
+            background: #16213a; border: 1px solid #334155; border-left: 4px solid #f59e0b;
+            border-radius: 0 8px 8px 0; padding: 0.8rem 1rem; margin: 0.9rem 0;
+            font-size: 0.92rem; color: #e2e8f0;
+        }
+        .brief h4 { margin: 0 0 0.35rem; color: #fbbf24; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+        .brief ul { margin: 0.4rem 0 0; padding-left: 1.1rem; }
+        .brief li { margin-bottom: 0.2rem; }
+
+        .recap {
+            background: #16213a; border: 1px solid #334155; border-left: 4px solid #38bdf8;
+            border-radius: 0 10px 10px 0; padding: 1rem 1.25rem; margin: 1.25rem 0;
+        }
+        .recap h4 { margin: 0 0 0.5rem; color: #38bdf8; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; }
+        .recap ul { margin: 0; padding-left: 1.1rem; }
+        .recap li { margin-bottom: 0.35rem; color: #e2e8f0; font-size: 0.92rem; }
+        .recap p { margin: 0.7rem 0 0; color: #94a3b8; font-size: 0.86rem; }
+
+        .editor-label {
+            display: flex; justify-content: space-between; align-items: baseline;
+            font-family: ui-monospace, Consolas, monospace; font-size: 0.75rem;
+            color: #64748b; margin-top: 1rem;
+        }
+        textarea.editor {
+            width: 100%; min-height: 150px; background: #060910; color: #a5f3fc;
+            border: 1px solid #334155; border-radius: 8px; padding: 0.85rem 1rem;
+            font-family: ui-monospace, Consolas, monospace; font-size: 0.85rem;
+            line-height: 1.65; resize: vertical; tab-size: 4; white-space: pre;
+            overflow-wrap: normal; overflow-x: auto;
+        }
+        textarea.editor:focus { outline: none; border-color: #38bdf8; box-shadow: 0 0 0 2px rgba(56,189,248,0.2); }
+        .btn-row { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-top: 0.85rem; align-items: center; }
+        button {
+            background: #0ea5e9; color: #fff; border: none; border-radius: 8px;
+            padding: 0.6rem 1.15rem; font-weight: 700; cursor: pointer; font-size: 0.88rem;
+            font-family: inherit; transition: background 0.15s ease;
+        }
+        button:hover { background: #38bdf8; }
+        button.ghost { background: #24324a; color: #cbd5e1; }
+        button.ghost:hover { background: #334155; }
+        .scene.solved button.run { background: #10b981; cursor: default; }
+
+        .out { margin-top: 0.9rem; display: none; }
+        .out.show { display: block; }
+        .out-head { font-family: ui-monospace, Consolas, monospace; font-size: 0.75rem; color: #64748b; margin-bottom: 0.35rem; }
+        .parsed { background: #060910; border: 1px solid #1e293b; border-radius: 8px; padding: 0.8rem 1rem; font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; white-space: pre-wrap; color: #cbd5e1; margin: 0; }
+        .parsed .ty { color: #64748b; }
+        .verdict { margin-top: 0.7rem; font-size: 0.9rem; padding: 0.7rem 0.9rem; border-radius: 8px; }
+        .verdict.bad { background: #2a1215; border: 1px solid #7f1d1d; color: #fca5a5; }
+        .verdict.good { background: #052e22; border: 1px solid #10b981; color: #6ee7b7; font-weight: 600; }
+        .verdict .lbl { font-weight: 700; }
+
+        .hints { margin-top: 0.8rem; }
+        .hint {
+            display: none; background: #0b1220; border: 1px dashed #475569;
+            border-radius: 8px; padding: 0.6rem 0.9rem; margin-bottom: 0.5rem;
+            font-size: 0.88rem; color: #cbd5e1;
+        }
+        .hint.show { display: block; }
+        .hint b { color: #94a3b8; }
+
+        .locked-note { padding: 0 1.25rem 1.1rem; color: #64748b; font-size: 0.88rem; }
+
+        .act {
+            margin: 1.75rem 0 1rem; padding: 0.9rem 1.15rem;
+            border-radius: 10px; background: #16213a; border: 1px solid #334155;
+            border-left: 4px solid #38bdf8;
+        }
+        .act.night { border-left-color: #f87171; }
+        .act .act-kicker {
+            font-family: ui-monospace, Consolas, monospace; font-size: 0.72rem;
+            letter-spacing: 0.09em; text-transform: uppercase; color: #38bdf8; font-weight: 700;
+        }
+        .act.night .act-kicker { color: #f87171; }
+        .act h2 { margin: 0.2rem 0 0.3rem; font-size: 1.15rem; color: #f1f5f9; }
+        .act p { margin: 0; color: #94a3b8; font-size: 0.9rem; }
+
+        #finale { display: none; margin-top: 1.5rem; }
+        #rollout { background: #060910; border: 1px solid #1e293b; border-radius: 10px; padding: 0.9rem 1rem; font-family: ui-monospace, Consolas, monospace; font-size: 0.8rem; line-height: 1.75; }
+        #done-banner {
+            display: none; margin-top: 1.25rem; background: #052e22;
+            border: 1px solid #10b981; color: #6ee7b7;
+            padding: 1.1rem 1.25rem; border-radius: 10px; font-weight: bold;
+        }
+        #done-banner p { color: #a7f3d0; font-weight: normal; margin: 0.6rem 0 0; font-size: 0.9rem; }
+        .debrief { margin-top: 1.5rem; }
+        .debrief li { margin-bottom: 0.35rem; color: #cbd5e1; }
+        .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="panel">
+        <span class="badge">YAML Level 2</span>
+        <h1>3:14 AM — The Callout</h1>
+
+        <p class="lede">
+            Your phone wakes you at 3:14 in the morning. The <strong>checkout service</strong> — the
+            part of the website that takes people's payments — has stopped working. Nobody broke the
+            code tonight. Somebody broke the settings file, and that file is written in YAML.
+        </p>
+        <p class="lede">
+            You spent yesterday evening learning that exact file. Now you are the person who has to
+            fix it. There are six faults. Traffic doubles at 6:00 AM.
+        </p>
+
+        <div class="recap">
+            <h4>Everything you need, from Part 1</h4>
+            <ul>
+                <li>A setting is a <strong>name, colon, space, value</strong> — <code>service: checkout</code></li>
+                <li>Space at the start of a line means <strong>"this belongs inside the line above"</strong>. Spaces only, never the Tab key.</li>
+                <li>A line starting with <code>-</code> is <strong>one item in a list</strong>.</li>
+                <li>YAML <strong>guesses</strong> what your value is: text, whole number, decimal, true/false, or nothing at all. Quote marks stop it guessing.</li>
+                <li><code>#</code> starts a note that the computer ignores.</li>
+            </ul>
+            <p>New here? Part 1 teaches all of this from scratch — but if the list above makes sense, you can start now.</p>
+        </div>
+
+        <p class="lede">
+            Each fault works the same way: read what went wrong, fix the file in the box, and press
+            the button. The page then reads your YAML for real, exactly the way a computer would, and
+            shows you what it understood. Nothing is marked fixed unless it genuinely works.
+        </p>
+
+        <div id="status" role="status" aria-live="polite">
+            <span class="item">TIME <span class="val" id="clock">03:14</span></span>
+            <span class="item">CHECKOUT <span class="val down" id="svc-state">DOWN</span></span>
+            <span class="item">FIXED <span class="val" id="repairs">0/6</span></span>
+            <div id="bar" role="img" aria-label="How much of the service is working again"><div id="fill"></div></div>
+        </div>
+
+        <div id="term" aria-live="polite" aria-label="Incident channel"></div>
+
+        <div id="scenes"></div>
+
+        <div id="finale">
+            <h2>Rollout</h2>
+            <div id="rollout" aria-live="polite"></div>
+            <div id="done-banner">
+                Checkout is working again — your points have been awarded.
+                <p>You finished before the 6:00 AM rush. Go back to sleep.</p>
+            </div>
+            <div class="debrief">
+                <h2>What you learned tonight</h2>
+                <ul>
+                    <li><strong>Never press Tab.</strong> Only real spaces are allowed at the start of a line. Your screen draws a Tab like spaces; the computer does not.</li>
+                    <li><strong>YAML guesses what you meant.</strong> <code>1.10</code> becomes the number 1.1, and <code>NO</code> becomes false. Put quote marks around version numbers, codes, and anything that only looks like a number.</li>
+                    <li><strong>Where a line starts is the meaning.</strong> The position of the <code>-</code> decides whether you have two items or one.</li>
+                    <li><strong>Two ways to write several lines.</strong> <code>|</code> keeps the lines apart (use it for scripts). <code>&gt;</code> joins them into one (use it for sentences).</li>
+                    <li><strong>Write shared settings once.</strong> <code>&amp;name</code> labels a block, <code>*name</code> points at it, <code>&lt;&lt;:</code> pulls it in. Copying is how settings quietly drift apart.</li>
+                    <li><strong><code>---</code> splits one file into separate parts</strong> — and a label cannot reach across that line.</li>
+                </ul>
+                <p class="lede">
+                    Those six rules are the whole game. The next YAML file you open — a Docker Compose file, a
+                    Kubernetes settings file, a GitHub Actions workflow — works exactly the same way.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+/* =========================================================================
+   A small YAML parser. It is deliberately real: every check in this lab
+   inspects the structure this parser produces, not the text you typed.
+   Supported: documents, maps, lists, scalars with type inference, quoting,
+   comments, block scalars (| and >), anchors, aliases, merge keys, and
+   simple flow collections.
+   ========================================================================= */
+function yamlError(line, msg) { return { line: line, msg: msg }; }
+
+function stripComment(s) {
+    var out = '', q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { out += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; out += c; continue; }
+        if (c === '#' && (i === 0 || /\s/.test(s.charAt(i - 1)))) break;
+        out += c;
+    }
+    return out;
+}
+
+function unquote(s) {
+    if (s.length > 1 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+        return s.slice(1, -1).replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
+    }
+    if (s.length > 1 && s.charAt(0) === "'" && s.charAt(s.length - 1) === "'") {
+        return s.slice(1, -1).replace(/''/g, "'");
+    }
+    return s;
+}
+
+function splitTop(s, sep) {
+    var parts = [], depth = 0, q = null, cur = '';
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { cur += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; cur += c; continue; }
+        if (c === '[' || c === '{') depth++;
+        if (c === ']' || c === '}') depth--;
+        if (c === sep && depth === 0) { parts.push(cur); cur = ''; continue; }
+        cur += c;
+    }
+    if (cur.trim() !== '' || parts.length) parts.push(cur);
+    return parts;
+}
+
+function parseScalar(s, line) {
+    s = s.trim();
+    if (s === '') return null;
+    if ((s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') ||
+        (s.charAt(0) === "'" && s.charAt(s.length - 1) === "'")) return unquote(s);
+    if (s.charAt(0) === '[' && s.charAt(s.length - 1) === ']') {
+        var inner = s.slice(1, -1).trim();
+        if (inner === '') return [];
+        return splitTop(inner, ',').map(function (p) { return parseScalar(p, line); });
+    }
+    if (s.charAt(0) === '{' && s.charAt(s.length - 1) === '}') {
+        var body = s.slice(1, -1).trim(), obj = {};
+        if (body === '') return obj;
+        splitTop(body, ',').forEach(function (pair) {
+            var kv = splitKey(pair.trim(), line);
+            obj[kv.key] = parseScalar(kv.rest, line);
+        });
+        return obj;
+    }
+    if (/^(null|~)$/i.test(s)) return null;
+    if (/^(true|yes|on)$/i.test(s)) return true;
+    if (/^(false|no|off)$/i.test(s)) return false;
+    if (/^[-+]?\d+$/.test(s)) return parseInt(s, 10);
+    if (/^[-+]?(\d+\.\d*|\.\d+|\d+)([eE][-+]?\d+)?$/.test(s) && /[.eE]/.test(s)) return parseFloat(s);
+    return s;
+}
+
+function splitKey(s, line) {
+    var q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; continue; }
+        if (c === ':' && (i + 1 >= s.length || s.charAt(i + 1) === ' ')) {
+            return { key: unquote(s.slice(0, i).trim()), rest: s.slice(i + 1).trim() };
+        }
+    }
+    throw yamlError(line, 'line ' + line + ' is not a "name: value" pair. YAML needs a colon and then a space between the name and its value.');
+}
+
+function isKeyValue(s) {
+    try { splitKey(s, 0); return true; } catch (e) { return false; }
+}
+
+function peekLine(ctx) {
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        var s = stripComment(raw).replace(/\s+$/, '');
+        if (s.trim() === '') { ctx.i++; continue; }
+        var indent = s.match(/^ */)[0].length;
+        return { indent: indent, content: s.slice(indent), line: ctx.offset + ctx.i + 1 };
+    }
+    return null;
+}
+
+function parseBlockScalar(ctx, indent, ind) {
+    var literal = ind.charAt(0) === '|';
+    var chomp = ind.length > 1 ? ind.charAt(1) : '';
+    var body = [], blockIndent = null;
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        if (raw.trim() === '') { body.push(''); ctx.i++; continue; }
+        var ind2 = raw.match(/^ */)[0].length;
+        if (ind2 <= indent) break;
+        if (blockIndent === null) blockIndent = ind2;
+        body.push(raw.slice(Math.min(blockIndent, ind2)));
+        ctx.i++;
+    }
+    while (body.length && body[body.length - 1] === '') body.pop();
+    var out;
+    if (literal) {
+        out = body.join('\n');
+    } else {
+        out = '';
+        for (var k = 0; k < body.length; k++) {
+            if (body[k] === '') { out += '\n'; continue; }
+            if (out !== '' && out.charAt(out.length - 1) !== '\n') out += ' ';
+            out += body[k];
+        }
+    }
+    if (chomp !== '-' && out !== '') out += '\n';
+    return out;
+}
+
+function parseValue(ctx, indent, rest, line) {
+    var anchor = null;
+    var m = /^&([A-Za-z0-9_\-]+)\s*/.exec(rest);
+    if (m) { anchor = m[1]; rest = rest.slice(m[0].length).trim(); }
+    var val;
+    if (rest === '') {
+        // A block sequence may sit at its parent key's own indentation.
+        var nxt = peekLine(ctx);
+        if (nxt && nxt.indent === indent && /^-(\s|$)/.test(nxt.content)) {
+            val = parseSeq(ctx, indent);
+        } else {
+            val = parseNode(ctx, indent + 1);
+        }
+    } else if (/^[|>][-+]?$/.test(rest)) {
+        val = parseBlockScalar(ctx, indent, rest);
+    } else if (/^\*[A-Za-z0-9_\-]+$/.test(rest)) {
+        var name = rest.slice(1);
+        if (!(name in ctx.anchors)) {
+            throw yamlError(line, 'line ' + line + ' points at *' + name +
+                ', but nothing above it in this part of the file was labelled &' + name + '.');
+        }
+        val = ctx.anchors[name];
+    } else {
+        val = parseScalar(rest, line);
+    }
+    if (anchor) ctx.anchors[anchor] = val;
+    return val;
+}
+
+function parseMap(ctx, indent) {
+    var map = {}, explicit = {}, merges = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' is pushed too far to the right. It does not line up with anything above it. Inside a list item, the keys line up with the first key after the dash.');
+        if (/^-(\s|$)/.test(p.content)) throw yamlError(p.line, 'line ' + p.line + ' starts with a dash, so YAML reads it as a list item. A "name: value" pair was expected here instead.');
+        var kv = splitKey(p.content, p.line);
+        ctx.i++;
+        var value = parseValue(ctx, p.indent, kv.rest, p.line);
+        if (kv.key === '<<') { merges.push(value); }
+        else { map[kv.key] = value; explicit[kv.key] = true; }
+    }
+    for (var a = 0; a < merges.length; a++) {
+        var src = merges[a];
+        var list = Array.isArray(src) ? src : [src];
+        for (var b = 0; b < list.length; b++) {
+            var o = list[b];
+            if (!o || typeof o !== 'object') continue;
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k) && !explicit[k]) map[k] = o[k];
+        }
+    }
+    return map;
+}
+
+function parseSeq(ctx, indent) {
+    var arr = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' starts further to the right than the list item above it.');
+        // A key at the sequence's own indentation ends the sequence; whoever
+        // called us decides whether that key is legal there.
+        if (!/^-(\s|$)/.test(p.content)) break;
+        var after = p.content.slice(1);
+        var lead = after.match(/^ */)[0].length;
+        var content = after.trim();
+        ctx.i++;
+        if (content === '') {
+            arr.push(parseNode(ctx, indent + 1));
+        } else if (isKeyValue(content)) {
+            var itemIndent = indent + 1 + lead;
+            var pad = new Array(itemIndent + 1).join(' ');
+            ctx.lines[ctx.i - 1] = pad + content;
+            ctx.i--;
+            arr.push(parseMap(ctx, itemIndent));
+        } else {
+            arr.push(parseScalar(content, p.line));
+        }
+    }
+    return arr;
+}
+
+function parseNode(ctx, indent) {
+    var p = peekLine(ctx);
+    if (!p || p.indent < indent) return null;
+    if (/^-(\s|$)/.test(p.content)) return parseSeq(ctx, p.indent);
+    return parseMap(ctx, p.indent);
+}
+
+function parseYaml(text) {
+    var all = text.replace(/\r\n?/g, '\n').split('\n');
+    for (var i = 0; i < all.length; i++) {
+        if (/^ *\t/.test(all[i])) {
+            return { ok: false, error: yamlError(i + 1, 'line ' + (i + 1) + ' starts with a TAB character. YAML only allows real spaces at the start of a line. A Tab there stops the file being read at all — it is not just untidy.') };
+        }
+    }
+    var chunks = [], cur = [], start = 0;
+    for (i = 0; i < all.length; i++) {
+        if (/^---\s*(#.*)?$/.test(all[i]) || /^\.\.\.\s*$/.test(all[i])) {
+            chunks.push({ lines: cur, offset: start });
+            cur = []; start = i + 1; continue;
+        }
+        cur.push(all[i]);
+    }
+    chunks.push({ lines: cur, offset: start });
+
+    var docs = [];
+    try {
+        for (var c = 0; c < chunks.length; c++) {
+            var blank = chunks[c].lines.every(function (l) { return stripComment(l).trim() === ''; });
+            if (blank) continue;
+            var ctx = { lines: chunks[c].lines.slice(), offset: chunks[c].offset, i: 0, anchors: {} };
+            var doc = parseNode(ctx, 0);
+            var leftover = peekLine(ctx);
+            if (leftover) throw yamlError(leftover.line, 'line ' + leftover.line + ' does not belong to anything above it. Check how far in it starts.');
+            docs.push(doc);
+        }
+    } catch (e) {
+        if (e && e.msg) return { ok: false, error: e };
+        return { ok: false, error: yamlError(0, 'something in this file could not be read: ' + e) };
+    }
+    if (!docs.length) return { ok: false, error: yamlError(1, 'there is nothing in the file yet — only blank lines and comments. Write your first line, then press the button again.') };
+    return { ok: true, docs: docs, data: docs[0] };
+}
+
+/* ---------- structure rendering: show learners what YAML actually produced ---------- */
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function typeName(v) {
+    if (v === null) return 'null';
+    if (Array.isArray(v)) return 'list';
+    if (typeof v === 'object') return 'map';
+    if (typeof v === 'number') return Number.isInteger(v) ? 'int' : 'float';
+    return typeof v;
+}
+function renderStructure(v, indent) {
+    indent = indent || '';
+    var out = '';
+    if (Array.isArray(v)) {
+        if (!v.length) return indent + '(empty list)\n';
+        v.forEach(function (item) {
+            if (item && typeof item === 'object') {
+                out += indent + '-\n' + renderStructure(item, indent + '    ');
+            } else {
+                out += indent + '- ' + scalarLine(item) + '\n';
+            }
+        });
+        return out;
+    }
+    if (v && typeof v === 'object') {
+        for (var k in v) {
+            if (!Object.prototype.hasOwnProperty.call(v, k)) continue;
+            var val = v[k];
+            if (val && typeof val === 'object') {
+                out += indent + k + ':  [' + typeName(val) + ']\n' + renderStructure(val, indent + '  ');
+            } else {
+                out += indent + k + ': ' + scalarLine(val) + '\n';
+            }
+        }
+        return out;
+    }
+    return indent + scalarLine(v) + '\n';
+}
+function scalarLine(v) {
+    var shown;
+    if (typeof v === 'string') shown = JSON.stringify(v);
+    else shown = String(v);
+    if (shown.length > 70) shown = shown.slice(0, 67) + '..."';
+    return shown + '   [' + typeName(v) + ']';
+}
+function deepEq(a, b) {
+    if (a === b) return true;
+    if (typeof a !== typeof b) return false;
+    if (a === null || b === null) return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (typeof a !== 'object') return false;
+    var ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (var i = 0; i < ka.length; i++) {
+        if (!Object.prototype.hasOwnProperty.call(b, ka[i])) return false;
+        if (!deepEq(a[ka[i]], b[ka[i]])) return false;
+    }
+    return true;
+}
+
+/* =========================================================================
+   The incident, scene by scene.
+   ========================================================================= */
+var TASK_ID = 6;
+
+var SCENES = [
+{
+    id: 1,
+    clock: '03:22',
+    title: 'The character you cannot see',
+    story: '<p>The error says the settings file could not be read, and points at the <code>resources</code> part. ' +
+           'You look at it. It looks completely normal. It is not.</p>' +
+           '<p>Someone copied these lines from a web page, and the copy brought a hidden <strong>Tab</strong> ' +
+           'character with it. On your screen, a Tab and a few spaces look exactly the same. To the computer ' +
+           'they are not the same at all.</p>' +
+           '<p>In YAML, the blank space at the start of a line is what shows which setting belongs inside which. ' +
+           'Only real spaces are allowed there. Press <strong>Read the file</strong> and it will tell you which ' +
+           'line to look at.</p>',
+    voice: { who: 'Priya (the other engineer awake right now)', line: '"It looks identical on screen. That is exactly why this one steals an hour. Delete the blank space in front of those lines and type it again yourself."' },
+    brief: ['<code>service</code> is still <code>checkout</code>',
+            'inside <code>resources</code>: <code>cpu</code> is <code>500m</code>',
+            'inside <code>resources</code>: <code>memory</code> is <code>256Mi</code>',
+            'no Tab characters left anywhere in the file'],
+    start: 'service: checkout\nresources:\n\tcpu: 500m\n\tmemory: 256Mi\n',
+    hints: ['The message below gives you the exact line number. Start there.',
+            'Do not just add spaces in front. Delete everything before the word, then type the spaces yourself.',
+            'Both indented lines should start with exactly two spaces, like this: <code>&nbsp;&nbsp;cpu: 500m</code>'],
+    validate: function (r, text) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        if (/\t/.test(text)) return { ok: false, msg: 'The file can be read now, but there is still a Tab character somewhere in it. Take it out before the next person trips over it.' };
+        if (!deepEq(r.data, { service: 'checkout', resources: { cpu: '500m', memory: '256Mi' } })) {
+            return { ok: false, msg: 'The file can be read, but the settings are not the ones we need. It should say <code>service: checkout</code>, and inside <code>resources</code>, <code>cpu: 500m</code> and <code>memory: 256Mi</code> — nothing more, nothing less.' };
+        }
+        return { ok: true, log: 'file readable again. cpu=500m, memory=256Mi' };
+    }
+},
+{
+    id: 2,
+    clock: '03:31',
+    title: 'Two values that changed on their own',
+    story: '<p>The file can be read now, so the job gets further — and then asks for version <code>1.1</code> of the ' +
+           'app, which has never existed. The version you meant was <code>1.10</code>. At the same time, the ' +
+           'country code for Norway has vanished from the settings.</p>' +
+           '<p>Here is why. YAML tries to <em>guess</em> what kind of value you wrote. Looks like a number? It ' +
+           'becomes a number. Looks like yes or no? It becomes true or false. Everything else stays text.</p>' +
+           '<p>Press the button and read the small labels in the result box. YAML guessed twice, and got it wrong both times.</p>',
+    voice: { who: 'Priya', line: '"NO means Norway to you. To YAML it just means no, so it turns into false. Put quote marks around it and it stays as text."' },
+    brief: ['<code>tag</code> must be the <em>text</em> <code>1.10</code>, not the number 1.1',
+            '<code>region</code> must be the <em>text</em> <code>NO</code>, not <code>false</code>',
+            '<code>replicas</code> must stay the <em>number</em> 3 — do not put quotes on this one',
+            '<code>service</code> is still <code>checkout</code>'],
+    start: 'service: checkout\ntag: 1.10\nregion: NO\nreplicas: 3\n',
+    hints: ['In the result box, look for the labels <code>[float]</code> (a decimal number) and <code>[boolean]</code> (a true/false value). Those two lines are the problem.',
+            'Quote marks tell YAML "keep this exactly as text, do not guess". But do not quote a value you really do want as a number.',
+            'Two lines change: <code>tag: "1.10"</code> and <code>region: "NO"</code>.'],
+    validate: function (r) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        var d = r.data || {};
+        if (typeof d.tag === 'number') return { ok: false, msg: 'tag came back as the number <code>' + d.tag + '</code>. YAML saw <code>1.10</code>, decided it was a decimal number, and dropped the last zero. So the app now asks for version <code>' + d.tag + '</code>, which does not exist. Make it stay text.' };
+        if (d.tag !== '1.10') return { ok: false, msg: 'tag is <code>' + esc(JSON.stringify(d.tag)) + '</code>. The version you are releasing tonight is <code>1.10</code>.' };
+        if (d.region === false) return { ok: false, msg: 'region came back as <code>false</code>. To YAML, <code>NO</code> without quotes just means "no". So the country code disappears, and traffic from that region gets dropped.' };
+        if (d.region !== 'NO') return { ok: false, msg: 'region is <code>' + esc(JSON.stringify(d.region)) + '</code>. It needs to be the two letters <code>NO</code>, kept as text.' };
+        if (typeof d.replicas !== 'number' || d.replicas !== 3) return { ok: false, msg: 'replicas must stay the number <code>3</code>. If you put quotes on it, it turns into the text "3", and the system that starts the app will refuse it. Quote only what needs quoting.' };
+        if (d.service !== 'checkout') return { ok: false, msg: 'service should still be <code>checkout</code>.' };
+        return { ok: true, log: 'tag is text "1.10", region is text "NO", replicas is the number 3' };
+    }
+},
+{
+    id: 3,
+    clock: '03:40',
+    title: 'One dash in the wrong place',
+    story: '<p>The file is supposed to list two programs that run side by side: the app itself, and a small helper ' +
+           'next to it that collects the logs. The computer cannot work out where the second one starts, because ' +
+           'one line has slipped to the left.</p>' +
+           '<p>In YAML, a line that starts with a dash and a space begins a <strong>new item in a list</strong>. ' +
+           'Everything that belongs to that item has to line up under the first word after the dash.</p>' +
+           '<p>Fix the line-up. Then add the two port numbers the service needs, so people can actually reach it. ' +
+           'In YAML, where a line starts is not decoration — it is the meaning.</p>',
+    voice: { who: 'Priya', line: '"The dash starts a new item. Everything belonging to that item lines up with the first word after the dash. That is the whole rule."' },
+    brief: ['<code>containers</code> is a list with exactly 2 items',
+            'item 1: <code>name: web</code> and <code>image: nginx:1.27</code>',
+            'item 2: <code>name: sidecar</code> and <code>image: busybox:1.36</code>',
+            'add a <code>ports</code> list holding the numbers <code>80</code> and <code>443</code>'],
+    start: 'containers:\n  - name: web\n    image: nginx:1.27\n  - name: sidecar\n  image: busybox:1.36\n',
+    hints: ['Compare the last line with the second line. One of them really is inside an item. The other one only looks like it is.',
+            'Lines inside an item start with four spaces here, not two.',
+            'At the bottom, on new lines with no indent: <code>ports:</code> then <code>&nbsp;&nbsp;- 80</code> then <code>&nbsp;&nbsp;- 443</code>. No quote marks on the numbers.'],
+    validate: function (r) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        var d = r.data || {};
+        var c = d.containers;
+        if (!Array.isArray(c)) return { ok: false, msg: 'containers came out as a <code>' + typeName(c) + '</code>, not a list. A list item is a dash, then a space, then the value.' };
+        if (c.length !== 2) return { ok: false, msg: 'containers has ' + c.length + ' item(s) in it. There should be 2 — the app and the helper. At the moment their settings have collapsed into each other.' };
+        if (!deepEq(c, [{ name: 'web', image: 'nginx:1.27' }, { name: 'sidecar', image: 'busybox:1.36' }])) {
+            return { ok: false, msg: 'Two items now, but the contents are off. Item 1 is <code>name: web</code> with <code>image: nginx:1.27</code>. Item 2 is <code>name: sidecar</code> with <code>image: busybox:1.36</code>.' };
+        }
+        if (!Array.isArray(d.ports)) return { ok: false, msg: 'The two programs are right. But there is still no <code>ports</code> list, so nothing outside can reach the service. Add one.' };
+        if (!deepEq(d.ports, [80, 443])) {
+            var quoted = d.ports.some(function (p) { return typeof p === 'string'; });
+            return { ok: false, msg: quoted ? 'The ports came out as text because of the quote marks. They need to be plain numbers: <code>80</code> and <code>443</code>.' : 'ports should hold exactly <code>80</code> and <code>443</code>, in that order.' };
+        }
+        return { ok: true, log: 'two programs listed (web, sidecar), ports 80 and 443 open' };
+    }
+},
+{
+    id: 4,
+    clock: '03:52',
+    title: 'The script that turned into one line',
+    story: '<p>The programs start, then die straight away. The log shows the start-up script running as one long line.</p>' +
+           '<p>That script is three lines, and the first one is <code>#!/bin/sh</code>. Anything after a <code>#</code> ' +
+           'on the same line is treated as a note and ignored. So when the three lines get squashed into one, the ' +
+           'whole script gets ignored.</p>' +
+           '<p>YAML has two ways to write text that runs over several lines. <code>&gt;</code> joins the lines ' +
+           'together with spaces. <code>|</code> keeps them as separate lines. Somebody picked the wrong one.</p>',
+    voice: { who: 'Priya', line: '"Use the folding one for sentences. Use the straight bar for anything where a new line actually matters. A script is the second kind."' },
+    brief: ['<code>startup</code> keeps all three lines separate',
+            'the same three lines, in the same order',
+            'change only the symbol — leave the script alone'],
+    start: 'startup: >\n  #!/bin/sh\n  echo "warming cache"\n  exec nginx -g \'daemon off;\'\n',
+    hints: ['Read the result box carefully and count how many lines came back.',
+            'One of the two symbols joins the lines together. The other one keeps them apart.',
+            'Change the <code>&gt;</code> to a <code>|</code>.'],
+    validate: function (r) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        var s = (r.data || {}).startup;
+        if (typeof s !== 'string') return { ok: false, msg: 'startup should be text spread over several lines. It came out as a <code>' + typeName(s) + '</code>.' };
+        var lines = s.split('\n').filter(function (l) { return l.trim() !== ''; });
+        var want = ['#!/bin/sh', 'echo "warming cache"', "exec nginx -g 'daemon off;'"];
+        if (lines.length < 3) {
+            return { ok: false, msg: 'The script came back as ' + lines.length + ' line: <code>' + s.trim().slice(0, 60) + '…</code>. Everything after the <code>#</code> is now treated as a note, so none of it ever runs.' };
+        }
+        for (var i = 0; i < 3; i++) {
+            if (lines[i] !== want[i]) return { ok: false, msg: 'Line ' + (i + 1) + ' of the script came back as <code>' + esc(lines[i]) + '</code>. It should be <code>' + esc(want[i]) + '</code>. Change the symbol, not the script.' };
+        }
+        if (lines.length > 3) return { ok: false, msg: 'The script has picked up extra lines. There should be exactly three.' };
+        return { ok: true, log: 'start-up script kept as 3 separate lines' };
+    }
+},
+{
+    id: 5,
+    clock: '04:05',
+    title: 'Copying settings is why tonight happened',
+    story: '<p>The checkout service is back up. Now look at the reason all of this happened in the first place. ' +
+           '<code>web</code> and <code>worker</code> have the same two settings, typed out twice by hand. Last ' +
+           'month somebody changed one copy and forgot the other. That is the real cause, and you have to write ' +
+           'it in the report in the morning.</p>' +
+           '<p>YAML can store a block of settings once and reuse it:</p>' +
+           '<pre>&amp;name   give this block a label\n*name   point back at that label\n&lt;&lt;:     pull the labelled block in here</pre>' +
+           '<p>Write the shared settings once, then use them in both places.</p>',
+    voice: { who: 'Priya', line: '"Label it once, point at it twice. Do it now, or it goes in the report as a to-do and nobody ever does it."' },
+    brief: ['<code>web</code> ends up with <code>restart: always</code>, <code>logging: json</code>, <code>image: nginx:1.27</code>',
+            '<code>worker</code> ends up with <code>restart: always</code>, <code>logging: json</code>, <code>image: busybox:1.36</code>',
+            'the words <code>restart: always</code> appear only <strong>once</strong> in the whole file',
+            'one label, used in both places'],
+    start: 'web:\n  restart: always\n  logging: json\n  image: nginx:1.27\n\nworker:\n  restart: always\n  logging: json\n  image: busybox:1.36\n',
+    hints: ['Add a new block at the top to hold the two shared settings, and give it a label.',
+            'The line that pulls a labelled block in looks like <code>&lt;&lt;: *yourlabel</code>, and it goes inside the block that needs those settings.',
+            'Try <code>defaults: &amp;defaults</code>, put <code>restart</code> and <code>logging</code> under it, then give web and worker a <code>&lt;&lt;: *defaults</code> line plus their own image.'],
+    validate: function (r, text) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        var d = r.data || {};
+        if (!d.web || !d.worker) return { ok: false, msg: 'Both <code>web</code> and <code>worker</code> still need to be there.' };
+        if (!deepEq(d.web, { restart: 'always', logging: 'json', image: 'nginx:1.27' })) {
+            return { ok: false, msg: 'Once everything is pulled in, web ends up as <code>' + esc(JSON.stringify(d.web)) + '</code>. It should have restart always, logging json, and image nginx:1.27.' };
+        }
+        if (!deepEq(d.worker, { restart: 'always', logging: 'json', image: 'busybox:1.36' })) {
+            return { ok: false, msg: 'Once everything is pulled in, worker ends up as <code>' + esc(JSON.stringify(d.worker)) + '</code>. It should have restart always, logging json, and image busybox:1.36.' };
+        }
+        var anchors = text.match(/&[A-Za-z0-9_\-]+/g) || [];
+        var aliases = text.match(/\*[A-Za-z0-9_\-]+/g) || [];
+        if (!anchors.length || !aliases.length) {
+            return { ok: false, msg: 'The settings come out right, but nothing is actually being reused. You need a label (<code>&amp;name</code>) written once, and a pointer to it (<code>*name</code>).' };
+        }
+        var dupes = (text.match(/restart:\s*always/g) || []).length;
+        if (dupes > 1) {
+            return { ok: false, msg: '<code>restart: always</code> is still written ' + dupes + ' times. That is still copying. The next person will change one and miss the other, exactly like last month. Write it once and point at it.' };
+        }
+        return { ok: true, log: 'shared settings written once and reused in both places' };
+    }
+},
+{
+    id: 6,
+    clock: '04:11',
+    title: 'Send it out: two blocks, one file',
+    story: '<p>Last step. The system reads one file, but that file has to carry two separate blocks of settings: one ' +
+           'that opens the door to the service, and one that runs the app. Right now they are stuck together as a ' +
+           'single block, so the second set of settings has written over the first and the port number is gone.</p>' +
+           '<p>Three dashes on a line of their own (<code>---</code>) split a file into separate parts. Each part is ' +
+           'read on its own.</p>' +
+           '<p>One more thing worth knowing: a label you made with <code>&amp;name</code> only works inside its own ' +
+           'part of the file. It cannot reach across the <code>---</code>.</p>',
+    voice: { who: 'Priya', line: '"Three dashes on their own line. That is how one file can hold a whole stack of settings blocks."' },
+    brief: ['exactly 2 parts in the file',
+            'part 1: <code>kind: Service</code>, <code>name: checkout</code>, <code>port: 80</code>',
+            'part 2: <code>kind: Deployment</code>, <code>name: checkout</code>, <code>replicas: 3</code>',
+            'port and replicas are both numbers'],
+    start: 'kind: Service\nname: checkout\nport: 80\nkind: Deployment\nname: checkout\nreplicas: 3\n',
+    hints: ['Look at the result box — the second <code>kind</code> has quietly replaced the first one.',
+            'The separator goes on a line of its own, between the two blocks.',
+            'Add a line with only <code>---</code> on it, just before <code>kind: Deployment</code>.'],
+    validate: function (r) {
+        if (!r.ok) return { ok: false, msg: r.error.msg };
+        if (r.docs.length < 2) {
+            return { ok: false, msg: 'Still one block. The second set of settings landed on top of the first, and the port number is gone. Split them apart.' };
+        }
+        if (r.docs.length > 2) return { ok: false, msg: 'There are ' + r.docs.length + ' parts in the file. There should be exactly 2.' };
+        var a = r.docs[0] || {}, b = r.docs[1] || {};
+        if (!deepEq(a, { kind: 'Service', name: 'checkout', port: 80 })) {
+            return { ok: false, msg: 'Part 1 should be <code>kind: Service</code>, <code>name: checkout</code>, <code>port: 80</code>. It came out as <code>' + esc(JSON.stringify(a)) + '</code>.' };
+        }
+        if (!deepEq(b, { kind: 'Deployment', name: 'checkout', replicas: 3 })) {
+            return { ok: false, msg: 'Part 2 should be <code>kind: Deployment</code>, <code>name: checkout</code>, <code>replicas: 3</code>. It came out as <code>' + esc(JSON.stringify(b)) + '</code>.' };
+        }
+        return { ok: true, log: '2 parts: the service on port 80, and the app with 3 copies' };
+    }
+}
+];
+
+/* ---------- incident channel ---------- */
+var CLOCK = '03:14';
+function log(kind, who, text) {
+    var term = document.getElementById('term');
+    var row = document.createElement('div');
+    var t = document.createElement('span');
+    t.className = 't-time';
+    t.textContent = '[' + CLOCK + '] ';
+    var w = document.createElement('span');
+    w.className = 't-' + kind;
+    w.textContent = who + ' ';
+    var m = document.createElement('span');
+    m.textContent = text;
+    row.appendChild(t); row.appendChild(w); row.appendChild(m);
+    term.appendChild(row);
+    term.scrollTop = term.scrollHeight;
+}
+
+/* ---------- scene rendering ---------- */
+var solved = {};
+var reported = false;
+
+function buildScenes() {
+    var host = document.getElementById('scenes');
+    SCENES.forEach(function (sc, idx) {
+        if (idx === 0) {
+            var act = document.createElement('div');
+            act.className = 'act night';
+            act.innerHTML = '<div class="act-kicker">3:14 AM — the callout</div>' +
+                '<h2>Six faults, one file</h2>' +
+                '<p>Fix them in order. Each one is read and checked for real, the way a computer would read it.</p>';
+            host.appendChild(act);
+        }
+        var card = document.createElement('section');
+        card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+        card.id = 'scene-' + sc.id;
+
+        var head = document.createElement('div');
+        head.className = 'scene-head';
+        head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+            '<h2 class="scene-title">' + sc.title + '</h2>' +
+            '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+        head.addEventListener('click', function () {
+            if (card.classList.contains('locked')) return;
+            card.classList.toggle('open');
+        });
+        card.appendChild(head);
+
+        var lockNote = document.createElement('p');
+        lockNote.className = 'locked-note';
+        lockNote.textContent = 'Locked — fix the problem above this one first.';
+        if (idx !== 0) card.appendChild(lockNote);
+
+        var body = document.createElement('div');
+        body.className = 'scene-body';
+        body.innerHTML =
+            sc.story +
+            '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+            '<div class="brief"><h4>Make all of this true</h4><ul>' +
+            sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') +
+            '</ul></div>' +
+            '<div class="editor-label"><span>the settings file — fault ' + sc.id + ' of 6</span>' +
+            '<span>spaces only, no Tab key</span></div>';
+
+        var ta = document.createElement('textarea');
+        ta.className = 'editor';
+        ta.value = sc.start;
+        ta.spellcheck = false;
+        ta.setAttribute('aria-label', 'YAML editor for scene ' + sc.id + ': ' + sc.title);
+        body.appendChild(ta);
+
+        var row = document.createElement('div');
+        row.className = 'btn-row';
+        var runBtn = document.createElement('button');
+        runBtn.className = 'run';
+        runBtn.type = 'button';
+        runBtn.textContent = 'Read the file';
+        var hintBtn = document.createElement('button');
+        hintBtn.className = 'ghost';
+        hintBtn.type = 'button';
+        hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+        var resetBtn = document.createElement('button');
+        resetBtn.className = 'ghost';
+        resetBtn.type = 'button';
+        resetBtn.textContent = 'Start over';
+        row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+        body.appendChild(row);
+
+        var hints = document.createElement('div');
+        hints.className = 'hints';
+        sc.hints.forEach(function (h, hi) {
+            var el = document.createElement('div');
+            el.className = 'hint';
+            el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+            hints.appendChild(el);
+        });
+        body.appendChild(hints);
+
+        var out = document.createElement('div');
+        out.className = 'out';
+        out.innerHTML = '<div class="out-head">what the computer actually understood</div><pre class="parsed"></pre><div class="verdict"></div>';
+        body.appendChild(out);
+
+        card.appendChild(body);
+        host.appendChild(card);
+
+        var shown = 0;
+        hintBtn.addEventListener('click', function () {
+            if (shown >= sc.hints.length) return;
+            hints.children[shown].classList.add('show');
+            shown++;
+            hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+        });
+        resetBtn.addEventListener('click', function () {
+            if (solved[sc.id]) return;
+            ta.value = sc.start;
+            out.classList.remove('show');
+            ta.focus();
+        });
+        runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
+        ta.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
+        });
+    });
+}
+
+function runScene(sc, ta, out, runBtn, card) {
+    if (solved[sc.id]) return;
+    var text = ta.value;
+    var res = parseYaml(text);
+    var pre = out.querySelector('.parsed');
+    var verdict = out.querySelector('.verdict');
+    out.classList.add('show');
+
+    if (res.ok) {
+        var body = '';
+        res.docs.forEach(function (d, i) {
+            if (res.docs.length > 1) body += '# part ' + (i + 1) + ' of the file\n';
+            body += renderStructure(d, '');
+        });
+        pre.textContent = body;
+    } else {
+        pre.textContent = 'Could not read the file. It stopped at line ' + res.error.line + '.';
+    }
+
+    var v = sc.validate(res, text);
+    if (!v.ok) {
+        verdict.className = 'verdict bad';
+        verdict.innerHTML = '<span class="lbl">✗ Not yet — </span>' + v.msg;
+        log('pipe', 'system  ', res.ok ? 'settings read, but they are still wrong' : 'settings file could not be read (line ' + res.error.line + ')');
+        return;
+    }
+
+    verdict.className = 'verdict good';
+    verdict.innerHTML = '<span class="lbl">✓ Fixed. </span>' + v.log;
+    solveScene(sc, card, runBtn, ta, v);
+}
+
+function solveScene(sc, card, runBtn, ta, v) {
+    solved[sc.id] = true;
+    CLOCK = sc.clock;
+    card.classList.remove('active');
+    card.classList.add('solved', 'collapsible');
+    card.querySelector('.scene-state').textContent = 'fixed';
+    runBtn.textContent = 'Fixed';
+    ta.readOnly = true;
+
+    var count = Object.keys(solved).length;
+    document.getElementById('repairs').textContent = count + '/' + SCENES.length;
+    document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+    document.getElementById('clock').textContent = CLOCK;
+
+    log('ok', 'system  ', 'fault ' + sc.id + ' of 6 fixed — ' + v.log);
+
+    var state = document.getElementById('svc-state');
+    if (count === SCENES.length) { state.textContent = 'HEALTHY'; state.className = 'val healthy'; }
+    else if (count >= 3) { state.textContent = 'DEGRADED'; state.className = 'val degraded'; }
+
+    if (count === SCENES.length) {
+        log('priya', 'priya   ', '"That is all six of them. Send it out."');
+        finish();
+        return;
+    }
+
+    // collapse the solved scene, open and unlock the next one
+    card.classList.remove('open');
+    var next = SCENES[SCENES.indexOf(sc) + 1];
+    var nextCard = document.getElementById('scene-' + next.id);
+    nextCard.classList.remove('locked');
+    nextCard.classList.add('active', 'open', 'collapsible');
+    nextCard.querySelector('.scene-state').textContent = 'active';
+    var note = nextCard.querySelector('.locked-note');
+    if (note) note.parentNode.removeChild(note);
+    nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+    // Single source of truth for completion: fired only after every scene's
+    // validator has passed against the real parsed structure.
+    if (!reported) {
+        reported = true;
+        window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+    }
+    var finale = document.getElementById('finale');
+    finale.style.display = 'block';
+    finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    var steps = [
+        ['t-pipe', 'system ', 'checking the settings file … 2 parts, no errors'],
+        ['t-pipe', 'system ', 'opening the service on port 80 … done'],
+        ['t-pipe', 'system ', 'starting the app … 3 copies requested'],
+        ['t-warn', 'startup', 'waiting … 1 of 3 copies running'],
+        ['t-warn', 'startup', 'waiting … 2 of 3 copies running'],
+        ['t-ok', 'startup', '3 of 3 running — checkout is taking payments again'],
+        ['t-priya', 'priya  ', '"Clean job. Put the copied settings in the report as the real cause, and go back to bed."']
+    ];
+    var host = document.getElementById('rollout');
+    steps.forEach(function (s, i) {
+        setTimeout(function () {
+            var row = document.createElement('div');
+            var w = document.createElement('span');
+            w.className = s[0];
+            w.textContent = s[1] + '  ';
+            var m = document.createElement('span');
+            m.textContent = s[2];
+            row.appendChild(w); row.appendChild(m);
+            host.appendChild(row);
+            if (i === steps.length - 1) document.getElementById('done-banner').style.display = 'block';
+        }, 450 * (i + 1));
+    });
+}
+
+buildScenes();
+log('pager', 'alert   ', 'checkout is DOWN — the settings file could not be read');
+log('priya', 'priya   ', '"You are up, I am up. Nobody broke the code tonight. Somebody broke the YAML."');
+log('pipe', 'system  ', 'six faults, one at a time. every fix is checked for real.');
+</script>
+</body>
+</html>

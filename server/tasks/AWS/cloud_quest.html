@@ -1,0 +1,1300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Alex's Cloud Story — A Networking Adventure</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  :root{
+    --bg1:#0f2027; --bg2:#203a43; --bg3:#2c5364;
+    --accent:#38bdf8; --accent2:#a78bfa; --good:#34d399; --bad:#f87171; --aws:#f59e0b;
+    --card:#101c2c; --cardBorder:#1e3a52; --text:#e6f1fb; --muted:#93a8c0;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; min-height:100vh; font-family:'Segoe UI',Roboto,Arial,sans-serif;
+    background:linear-gradient(135deg,var(--bg1),var(--bg2) 50%,var(--bg3));
+    color:var(--text); display:flex; justify-content:center; padding:10px 12px;
+  }
+  #app{ width:100%; max-width:1120px; }
+  .topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    background:rgba(16,28,44,0.85); border:1px solid var(--cardBorder);
+    border-radius:12px; padding:8px 16px; margin-bottom:8px; gap:12px; flex-wrap:wrap;
+  }
+  .brand{ font-weight:700; font-size:1.05rem; display:flex; align-items:center; gap:8px;}
+  .brand .tag{ background:var(--aws); color:#2a1a00; font-size:0.66rem; font-weight:800; padding:2px 7px; border-radius:5px; letter-spacing:.03em; }
+  .stats{ display:flex; align-items:center; gap:16px; font-size:0.9rem; color:var(--muted); }
+  .stats b{ color:var(--accent); }
+  .mute-btn{ background:transparent; border:1px solid var(--cardBorder); color:var(--text); border-radius:8px; padding:6px 10px; cursor:pointer; font-size:0.95rem;}
+  .progress-wrap{ height:6px; background:#0b1a29; border-radius:6px; overflow:hidden; margin-bottom:8px;}
+  .progress-bar{ height:100%; background:linear-gradient(90deg,var(--accent),var(--aws)); width:0%; transition:width .4s ease;}
+  .card{
+    background:var(--card); border:1px solid var(--cardBorder); border-radius:16px;
+    padding:16px 20px; box-shadow:0 10px 30px rgba(0,0,0,0.35); animation:fadeIn .35s ease;
+  }
+  @keyframes fadeIn{ from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:translateY(0);} }
+  h1{ font-size:1.3rem; margin:0 0 5px; }
+  h2{ font-size:1rem; margin:0 0 4px; }
+  p.lead{ color:var(--muted); line-height:1.5; font-size:0.92rem; }
+  .icon-badge{ font-size:2rem; }
+  .btn{
+    background:linear-gradient(135deg,var(--accent),#0ea5e9); color:#04202f; border:none;
+    padding:12px 22px; border-radius:10px; font-weight:700; font-size:0.95rem; cursor:pointer;
+    transition:transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover{ transform:translateY(-2px); box-shadow:0 6px 16px rgba(56,189,248,0.35); }
+  .btn:disabled{ opacity:0.4; cursor:not-allowed; transform:none; box-shadow:none;}
+  .btn.small{ padding:8px 14px; font-size:0.83rem; }
+  .btn.ghost{ background:transparent; border:1px solid var(--cardBorder); color:var(--text); box-shadow:none; }
+  .btn.ghost.on{ border-color:var(--accent2); color:var(--accent2); }
+  .btn.danger{ background:linear-gradient(135deg,#f87171,#ef4444); color:#2a0a0a; }
+  .btn.test-success{ background:linear-gradient(135deg,var(--good),#059669); color:#04200f; box-shadow:0 0 0 3px rgba(52,211,153,0.25); cursor:default; transform:none; }
+  .btn.test-success:hover{ transform:none; box-shadow:0 0 0 3px rgba(52,211,153,0.25); }
+  .btn.test-fail{ animation:testFlash .5s ease; }
+  @keyframes testFlash{ 0%,100%{ box-shadow:none; } 50%{ box-shadow:0 0 0 4px rgba(248,113,113,0.35); } }
+  .actions{ display:flex; justify-content:flex-end; margin-top:10px; gap:10px; }
+  .level-pill{ display:inline-block; background:rgba(167,139,250,0.15); color:var(--accent2); border:1px solid var(--accent2); padding:3px 10px; border-radius:999px; font-size:0.74rem; font-weight:700; letter-spacing:0.03em; margin-bottom:6px;}
+  .mission-brief{ background:rgba(56,189,248,0.08); border:1px solid var(--cardBorder); border-left:3px solid var(--accent);
+    border-radius:8px; padding:7px 12px; font-size:0.8rem; line-height:1.4; color:#cfe6f7; margin-bottom:6px; }
+  .goal-line{ font-weight:700; color:var(--text); margin-top:4px; }
+  .example-box{ background:rgba(245,158,11,0.08); border:1px solid rgba(245,158,11,.4); border-left:3px solid var(--aws);
+    border-radius:8px; padding:5px 12px; font-size:0.76rem; line-height:1.35; color:#ffe6b0; margin-bottom:6px; }
+  .guide-box{ background:#0b1626; border:1px solid var(--cardBorder); border-radius:8px; padding:8px 12px; margin-bottom:8px; max-height:118px; overflow-y:auto; }
+  .guide-title{ font-weight:700; font-size:0.74rem; color:var(--muted); margin-bottom:4px; }
+  .guide-step{ display:flex; gap:6px; align-items:flex-start; margin-bottom:2px; font-size:0.76rem; line-height:1.3; }
+  .term{ border-bottom:1px dotted var(--accent2); cursor:help; }
+  .toc{ text-align:left; max-width:480px; margin:16px auto; }
+  .toc div{ padding:5px 0; font-size:0.85rem; color:var(--muted); }
+  .toc b{ color:var(--text); }
+
+  /* Builder layout */
+  .builder-layout{ display:grid; grid-template-columns:130px 1fr 230px; gap:10px; }
+  @media (max-width:860px){ .builder-layout{ grid-template-columns:1fr; } }
+  .panel{ background:var(--card); border:1px solid var(--cardBorder); border-radius:12px; padding:10px; }
+  .palette-item{ display:flex; flex-direction:column; align-items:center; gap:3px; padding:7px 5px;
+    border:1px solid var(--cardBorder); border-radius:8px; cursor:pointer; margin-bottom:6px; font-size:0.68rem; text-align:center; background:#0b1c2c; }
+  .palette-item:hover{ border-color:var(--accent2); }
+  .palette-item.active{ border-color:var(--accent); box-shadow:0 0 0 2px rgba(56,189,248,.25); }
+  .palette-icon{ font-size:1.3rem; }
+  .toolbar{ display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+  .workspace-wrap{ position:relative; background:#0b1626; border:1px solid var(--cardBorder); border-radius:12px;
+    min-height:320px; overflow:auto; }
+  .workspace-inner{ position:relative; width:100%; height:320px; min-width:640px; }
+  .workspace-svg{ position:absolute; inset:0; width:100%; height:100%; }
+  .link-hit{ stroke:transparent; stroke-width:18px; cursor:pointer; }
+  .link-line{ stroke:#3a5a78; stroke-width:3px; pointer-events:none; }
+  .link-line.selected{ stroke:var(--accent); }
+  .device-node{ position:absolute; width:88px; transform:translate(-50%,-50%); display:flex; flex-direction:column;
+    align-items:center; gap:4px; cursor:grab; user-select:none; touch-action:none; z-index:2; }
+  .device-icon{ font-size:1.7rem; width:50px; height:50px; border-radius:12px; background:#0f2233;
+    border:2px solid var(--cardBorder); display:flex; align-items:center; justify-content:center; }
+  .device-node.selected .device-icon{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(56,189,248,.25); }
+  .device-node.armed .device-icon{ border-color:var(--accent2); box-shadow:0 0 0 3px rgba(167,139,250,.3); }
+  .device-label{ font-size:0.64rem; text-align:center; background:rgba(0,0,0,.45); padding:1px 6px; border-radius:6px; max-width:96px; }
+  .hint-text{ font-size:0.75rem; color:var(--muted); margin-top:6px; }
+  .inspector-title{ font-weight:700; font-size:0.85rem; margin-bottom:6px; display:flex; align-items:center; gap:6px;}
+  .field{ margin-bottom:8px; }
+  .field label{ display:block; font-size:0.72rem; color:var(--muted); margin-bottom:3px; }
+  .field input[type=text], .field select{ width:100%; background:#0b1c2c; border:1px solid var(--cardBorder);
+    color:var(--text); padding:5px 8px; border-radius:7px; font-size:0.82rem; }
+  .field.checkbox label{ display:flex; align-items:center; gap:7px; font-size:0.76rem; color:var(--text); margin-bottom:4px; }
+  .field-hint{ font-size:0.68rem; color:var(--muted); margin-top:-4px; margin-bottom:6px; line-height:1.3; }
+  .empty-inspector{ color:var(--muted); font-size:0.8rem; text-align:center; padding:12px 6px; }
+
+  .result-banner{ margin-top:8px; padding:8px 14px; border-radius:8px; font-size:0.82rem; line-height:1.4; }
+  .result-banner.good{ background:rgba(52,211,153,.12); border:1px solid var(--good); }
+  .result-banner.bad{ background:rgba(248,113,113,.12); border:1px solid var(--bad); }
+  .warning-line{ margin-top:8px; font-size:0.8rem; color:#fbbf24; }
+  .packet{ fill:#38bdf8; }
+  .packet.fail{ fill:#f87171; }
+  .shake{ animation:shake .35s ease; }
+  @keyframes shake{ 0%,100%{transform:translate(-50%,-50%);} 25%{transform:translate(calc(-50% - 6px),-50%);} 75%{transform:translate(calc(-50% + 6px),-50%);} }
+
+  .cert{ text-align:center; }
+  .cert .emoji{ font-size:4rem; }
+  .cert-reg{ display:inline-block; background:rgba(56,189,248,0.12); border:1px solid var(--accent); color:var(--accent);
+    font-weight:700; font-size:1rem; padding:6px 18px; border-radius:8px; margin:6px 0 10px; letter-spacing:0.02em; }
+  .cert-list{ text-align:left; max-width:440px; margin:16px auto; }
+  .cert-list div{ padding:6px 0; border-bottom:1px dashed var(--cardBorder); font-size:0.87rem; }
+  footer{ text-align:center; color:var(--muted); font-size:0.72rem; margin-top:8px; }
+
+  @media print{
+    body{ background:white !important; color:#111 !important; padding:0; }
+    .topbar, .progress-wrap, footer, .no-print{ display:none !important; }
+    #app{ max-width:100%; }
+    .card{ box-shadow:none; border:2px solid #333; background:white; color:#111; }
+    .card .lead{ color:#333; }
+    .toc div{ color:#111; border-bottom:1px dashed #999; }
+    .cert-reg{ color:#0b5fa5; border-color:#0b5fa5; background:transparent; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="topbar">
+    <div class="brand">☁️ Alex's Cloud Story <span class="tag">AWS STORY MODE</span></div>
+    <div class="stats">
+      <div>Chapters Done: <b id="scoreDisplay">0</b>/10</div>
+      <div id="levelLabel">Chapter 0 / 10</div>
+      <button class="mute-btn" id="muteBtn" title="Toggle sound">🔊</button>
+    </div>
+  </div>
+  <div class="progress-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div id="cardRoot"></div>
+  <footer>A story about building a real cloud network — no exams, no trick questions. Follow the guide, try things out, and see what happens.</footer>
+</div>
+
+<script>
+/* ============================================================
+   UTILITIES: IP / CIDR math, graph pathfinding
+   ============================================================ */
+function ipToInt(ip){
+  if(typeof ip !== 'string') return null;
+  const parts = ip.trim().split('.');
+  if(parts.length !== 4) return null;
+  let val = 0;
+  for(const p of parts){
+    if(!/^\d{1,3}$/.test(p)) return null;
+    const n = parseInt(p,10);
+    if(n<0||n>255) return null;
+    val = (val*256) + n;
+  }
+  return val >>> 0;
+}
+function parseCidr(cidr){
+  if(typeof cidr !== 'string') return null;
+  const m = cidr.trim().match(/^(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})$/);
+  if(!m) return null;
+  const prefix = parseInt(m[2],10);
+  if(prefix<0||prefix>32) return null;
+  const ipI = ipToInt(m[1]);
+  if(ipI===null) return null;
+  const maskI = prefix===0?0:(0xFFFFFFFF << (32-prefix))>>>0;
+  return { base:m[1], prefix, maskI, network:(ipI & maskI)>>>0 };
+}
+function ipInCidr(ip, cidr){
+  const c = parseCidr(cidr);
+  const ipI = ipToInt(ip);
+  if(!c || ipI===null) return false;
+  return ((ipI & c.maskI)>>>0) === c.network;
+}
+function cidrsOverlap(cidrA, cidrB){
+  const a = parseCidr(cidrA), b = parseCidr(cidrB);
+  if(!a || !b) return false;
+  const minPrefix = Math.min(a.prefix, b.prefix);
+  const maskI = minPrefix===0?0:(0xFFFFFFFF << (32-minPrefix))>>>0;
+  return ((a.network & maskI)>>>0) === ((b.network & maskI)>>>0);
+}
+function isPrivateIP(ip){
+  const ipI = ipToInt(ip);
+  if(ipI===null) return false;
+  const inRange = (base,bits) => {
+    const maskI = bits===0?0:(0xFFFFFFFF << (32-bits))>>>0;
+    return ((ipI & maskI)>>>0) === ((ipToInt(base) & maskI)>>>0);
+  };
+  return inRange('10.0.0.0',8) || inRange('172.16.0.0',12) || inRange('192.168.0.0',16);
+}
+function buildAdjacency(links){
+  const adj = {};
+  links.forEach(l => {
+    (adj[l.a] = adj[l.a]||[]).push(l.b);
+    (adj[l.b] = adj[l.b]||[]).push(l.a);
+  });
+  return adj;
+}
+function bfsPath(links, startId, endId){
+  if(startId === endId) return [startId];
+  const adj = buildAdjacency(links);
+  const visited = new Set([startId]);
+  const queue = [[startId]];
+  while(queue.length){
+    const path = queue.shift();
+    const node = path[path.length-1];
+    const neighbors = adj[node] || [];
+    for(const n of neighbors){
+      if(visited.has(n)) continue;
+      const newPath = path.concat([n]);
+      if(n === endId) return newPath;
+      visited.add(n);
+      queue.push(newPath);
+    }
+  }
+  return null;
+}
+function deviceById(devices, id){ return devices.find(d => d.id === id); }
+function typesInPath(devices, ids, type){ return ids.filter(id => { const d = deviceById(devices,id); return d && d.type === type; }); }
+function linkedNeighborsOfType(devices, links, id, type){
+  const out = [];
+  links.forEach(l => {
+    if(l.a===id){ const d=deviceById(devices,l.b); if(d && d.type===type) out.push(d); }
+    if(l.b===id){ const d=deviceById(devices,l.a); if(d && d.type===type) out.push(d); }
+  });
+  return out;
+}
+function fail(animPath, failedAtIndex, message){
+  return { success:false, animPath: animPath||[], failedAtIndex:(failedAtIndex===undefined?-1:failedAtIndex), message, warnings:[] };
+}
+function succeed(animPath, explain, warnings){
+  return { success:true, animPath: animPath||[], failedAtIndex:-1, explain, warnings: warnings||[] };
+}
+function term(label, tip){ return `<span class="term" title="${tip.replace(/"/g,'&quot;')}">${label}</span>`; }
+
+/* ============================================================
+   CHAPTER DATA — a 10-chapter story
+   ============================================================ */
+const LEVELS = [
+{
+  title:"Two Computers Say Hello", icon:"🧩",
+  story:`Alex just started a new job at Nerdlab, a small company moving its computers into "the cloud" — which just means powerful computers sitting in huge buildings far away, that you rent instead of buying. Alex's first task: get two rented computers (AWS calls them ${term('EC2 instances','EC2 = Elastic Compute Cloud. It just means a computer you rent from Amazon instead of buying and plugging in yourself.')}) talking to each other — like two coworkers who need to communicate with each other, and to do that, both of them need to be in the same workspace (a VPC).`,
+  goal:`Add a ${term('VPC','Think of a VPC as your own private neighborhood in the cloud — a workspace where your computers live, get addresses, and can find each other.')}, connect both computers to it, and give each one an address in that workspace.`,
+  example:"💡 Example: the workspace covers addresses 10.0.1.0/24 (which just means every address from 10.0.1.1 to 10.0.1.254). Computer-1 could live at 10.0.1.10, Computer-2 at 10.0.1.20.",
+  testLabel:"Say hello from Computer-1 to Computer-2",
+  palette:['subnet'],
+  initialDevices:[
+    {id:'ec2A', type:'ec2', name:'Computer-1', x:120, y:190, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}},
+    {id:'ec2B', type:'ec2', name:'Computer-2', x:480, y:190, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}}
+  ],
+  initialLinks:[],
+  steps:[
+    {text:"Drag a VPC onto the workspace — that's your workspace.", check:(d)=> d.some(x=>x.type==='subnet')},
+    {text:"Give the workspace an address range (e.g. 10.0.1.0/24) and mark it Public or Private.", check:(d)=>{ const s=d.find(x=>x.type==='subnet'); return !!(s && parseCidr(s.cidr) && isPrivateIP(s.cidr.split('/')[0]) && s.kind); }},
+    {text:"Connect Computer-1 and Computer-2 to the workspace.", check:(d,l)=>{ const s=d.find(x=>x.type==='subnet'); if(!s) return false; const p = bfsPath(l,'ec2A','ec2B'); return !!(p && p.includes(s.id)); }},
+    {text:"Give each computer its own address in that workspace.", check:(d)=>{ const s=d.find(x=>x.type==='subnet'); const a=d.find(x=>x.id==='ec2A'), b=d.find(x=>x.id==='ec2B'); return !!(s && parseCidr(s.cidr) && ipInCidr(a.ip,s.cidr) && ipInCidr(b.ip,s.cidr)); }},
+    {text:"Click Test Network and see what happens!", check:()=>false}
+  ],
+  validate(devices, links){
+    const ec2A = deviceById(devices,'ec2A'), ec2B = deviceById(devices,'ec2B');
+    const path = bfsPath(links, 'ec2A', 'ec2B');
+    if(!path) return fail([], -1, "Computer-1 and Computer-2 aren't connected yet. Add a VPC (a workspace) and connect both computers to it.");
+    const subnetIds = typesInPath(devices, path.slice(1,-1), 'subnet');
+    if(subnetIds.length !== 1){
+      return fail(path, path.length-1, subnetIds.length===0 ? "Connect both computers through a VPC." : "Just one VPC is needed between these two computers for this exercise.");
+    }
+    const subnet = deviceById(devices, subnetIds[0]);
+    if(!parseCidr(subnet.cidr)) return fail(path, path.indexOf(subnet.id), "Give the VPC an address range, like 10.0.1.0/24.");
+    if(!isPrivateIP(subnet.cidr.split('/')[0])) return fail(path, path.indexOf(subnet.id), "Workspaces inside your private neighborhood should use a private range (starting with 10.x, 172.16-31.x, or 192.168.x) — not a public one.");
+    if(!subnet.kind) return fail(path, path.indexOf(subnet.id), "Pick whether this workspace is Public or Private.");
+    if(!ipToInt(ec2A.ip)) return fail(path, path.indexOf('ec2A'), "Give Computer-1 an address.");
+    if(!ipToInt(ec2B.ip)) return fail(path, path.indexOf('ec2B'), "Give Computer-2 an address.");
+    if(!ipInCidr(ec2A.ip, subnet.cidr)) return fail(path, path.indexOf('ec2A'), `Computer-1's address (${ec2A.ip}) isn't in that workspace (${subnet.cidr}).`);
+    if(!ipInCidr(ec2B.ip, subnet.cidr)) return fail(path, path.indexOf('ec2B'), `Computer-2's address (${ec2B.ip}) isn't in that workspace (${subnet.cidr}).`);
+    return succeed(path, "Two computers in the same workspace can always find each other — AWS handles that automatically. Every cloud network is built up from workspaces just like this one.");
+  }
+},
+{
+  title:"Opening the Front Door", icon:"🌐",
+  story:`Marketing wants Nerdlab's new website live for the whole world to see. You'll put it on a computer that lives on a "Public" workspace — one with a front door to the internet, called an ${term('Internet Gateway','The front door between your private neighborhood and the public internet.')}. But an open front door needs a guard, so you'll also add a ${term('Security Group',"Think of it as a security guard standing at a computer's door, only letting in the visitors you approve.")} that only lets in website visitors — nobody else.`,
+  goal:"Wire it up: Internet → Front Door (Internet Gateway) → VPC (Workspace) → Guard (Security Group) → Computer. Give the computer a public address, turn its website on, and tell the guard to allow website visitors (port 443).",
+  example:"💡 Example: Workspace 10.0.1.0/24 marked Public, computer address 10.0.1.10 with a public address turned on, guard allowing port 443 (the secure website door).",
+  testLabel:"A visitor opens https://web-server",
+  palette:['subnet','igw','sg'],
+  initialDevices:[
+    {id:'internet', type:'internet', name:'Internet', x:70, y:190},
+    {id:'ec2', type:'ec2', name:'Web-Server', x:560, y:190, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}}
+  ],
+  initialLinks:[],
+  steps:[
+    {text:"Add a VPC, give it an address range, and mark it Public.", check:(d)=>{ const s=d.find(x=>x.type==='subnet'); return !!(s && parseCidr(s.cidr) && s.kind==='public'); }},
+    {text:"Add an Internet Gateway (front door) and a Security Group (guard).", check:(d)=> d.some(x=>x.type==='igw') && d.some(x=>x.type==='sg')},
+    {text:"Wire it up: Internet ↔ Front Door ↔ Workspace ↔ Guard ↔ Web-Server.", check:(d,l)=>{ const p=bfsPath(l,'internet','ec2'); if(!p) return false; return ['igw','subnet','sg'].every(t=>typesInPath(d,p.slice(1,-1),t).length===1); }},
+    {text:"Give Web-Server an address in the workspace, and turn on its public address.", check:(d)=>{ const s=d.find(x=>x.type==='subnet'); const e=d.find(x=>x.id==='ec2'); return !!(s && parseCidr(s.cidr) && ipInCidr(e.ip,s.cidr) && e.publicIp); }},
+    {text:"Tell the guard to allow port 443 (the secure website), and turn Web-Server's website on.", check:(d)=>{ const fw=d.find(x=>x.type==='sg'); const e=d.find(x=>x.id==='ec2'); return !!(fw && fw.allowedPorts.includes(443) && e.services[443]); }},
+    {text:"Click Test Network.", check:()=>false}
+  ],
+  validate(devices, links){
+    const ec2 = deviceById(devices,'ec2');
+    const path = bfsPath(links, 'internet', 'ec2');
+    if(!path) return fail([], -1, "There's no path from the Internet to Web-Server yet. Wire Internet → Internet Gateway → VPC → Security Group → Web-Server.");
+    const igwIds = typesInPath(devices, path.slice(1,-1), 'igw');
+    const subIds = typesInPath(devices, path.slice(1,-1), 'subnet');
+    const sgIds = typesInPath(devices, path.slice(1,-1), 'sg');
+    if(igwIds.length !== 1) return fail(path, path.length-1, "This path needs exactly one Internet Gateway — the front door.");
+    if(subIds.length !== 1) return fail(path, path.length-1, "This path needs exactly one VPC — the workspace.");
+    if(sgIds.length !== 1) return fail(path, path.length-1, "This path needs exactly one Security Group — the guard.");
+    const subnet = deviceById(devices, subIds[0]);
+    const sg = deviceById(devices, sgIds[0]);
+    if(subnet.kind !== 'public') return fail(path, path.indexOf(subnet.id), "This workspace must be marked Public so it has a route to the front door.");
+    if(!ipToInt(ec2.ip)) return fail(path, path.indexOf('ec2'), "Give Web-Server an address.");
+    if(!ipInCidr(ec2.ip, subnet.cidr)) return fail(path, path.indexOf('ec2'), `Web-Server's address (${ec2.ip}) isn't in that workspace (${subnet.cidr}).`);
+    if(!ec2.publicIp) return fail(path, path.indexOf('ec2'), "Turn on Web-Server's public address — visitors from the internet need a public address to find it.");
+    if(!ec2.services[443]) return fail(path, path.indexOf('ec2'), "Turn on Web-Server's website (HTTPS) — it isn't running yet.");
+    if(!sg.allowedPorts.includes(443)) return fail(path, path.indexOf(sg.id), "The guard is turning everyone away — allow port 443 (the secure website) through the Security Group.");
+    const warnings = [];
+    if(sg.allowedPorts.includes(22)) warnings.push("⚠️ You also left the remote-login door (port 22) open to the whole internet. In real life, only trusted people should be allowed through that one.");
+    return succeed(path, "The Internet Gateway is the front door for your workspace, and the Security Group is the guard standing right at the computer's door — only letting through the traffic you approved.", warnings);
+  }
+},
+{
+  title:"The One-Way Mirror", icon:"🔁",
+  story:`Nerdlab's new database computer should NEVER be visible from the internet — no stranger should ever be able to knock on its door. But it still needs to peek outside sometimes, to download security updates. That's exactly what a ${term('NAT Gateway','Like a one-way mirror: your computer can look out and grab what it needs, but nobody outside can look in or reach it.')} is for.`,
+  goal:"Put App-Server on a Private workspace, and let it look out at the internet through a NAT Gateway. It should NOT have a public address.",
+  example:"💡 Example: Private workspace 10.0.2.0/24, App-Server address 10.0.2.15, NAT Gateway with its own public address like 3.10.44.201.",
+  testLabel:"App-Server checks for security updates",
+  palette:['subnet','natgw'],
+  initialDevices:[
+    {id:'ec2', type:'ec2', name:'App-Server', x:130, y:190, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}},
+    {id:'internet', type:'internet', name:'Internet', x:560, y:190}
+  ],
+  initialLinks:[],
+  steps:[
+    {text:"Add a VPC, give it an address range, and mark it Private.", check:(d)=>{ const s=d.find(x=>x.type==='subnet'); return !!(s && parseCidr(s.cidr) && s.kind==='private'); }},
+    {text:"Add a NAT Gateway and give it a public address of its own.", check:(d)=>{ const n=d.find(x=>x.type==='natgw'); return !!(n && n.eip && n.eip.trim()); }},
+    {text:"Wire it up: App-Server ↔ Workspace ↔ NAT Gateway ↔ Internet.", check:(d,l)=>{ const p=bfsPath(l,'ec2','internet'); if(!p) return false; return ['subnet','natgw'].every(t=>typesInPath(d,p.slice(1,-1),t).length===1); }},
+    {text:"Give App-Server an address in the workspace, and make sure its public address is turned OFF.", check:(d)=>{ const s=d.find(x=>x.type==='subnet'); const e=d.find(x=>x.id==='ec2'); return !!(s && parseCidr(s.cidr) && ipInCidr(e.ip,s.cidr) && !e.publicIp); }},
+    {text:"Click Test Network.", check:()=>false}
+  ],
+  validate(devices, links){
+    const ec2 = deviceById(devices,'ec2');
+    const path = bfsPath(links, 'ec2', 'internet');
+    if(!path) return fail([], -1, "App-Server can't reach the Internet yet. Wire App-Server → VPC → NAT Gateway → Internet.");
+    const subIds = typesInPath(devices, path.slice(1,-1), 'subnet');
+    const natIds = typesInPath(devices, path.slice(1,-1), 'natgw');
+    if(subIds.length !== 1) return fail(path, path.length-1, "This path needs exactly one VPC.");
+    if(natIds.length !== 1) return fail(path, path.length-1, "This path needs exactly one NAT Gateway.");
+    const subnet = deviceById(devices, subIds[0]);
+    const nat = deviceById(devices, natIds[0]);
+    if(subnet.kind !== 'private') return fail(path, path.indexOf(subnet.id), "This workspace must be marked Private — that's exactly why a NAT Gateway is needed.");
+    if(!ipToInt(ec2.ip)) return fail(path, path.indexOf('ec2'), "Give App-Server an address.");
+    if(!ipInCidr(ec2.ip, subnet.cidr)) return fail(path, path.indexOf('ec2'), `App-Server's address (${ec2.ip}) isn't in that workspace (${subnet.cidr}).`);
+    if(ec2.publicIp) return fail(path, path.indexOf('ec2'), "This is a private workspace — App-Server shouldn't have a public address. Turn it off.");
+    if(!nat.eip || !nat.eip.trim()) return fail(path, path.indexOf(nat.id), "Give the NAT Gateway a public address of its own — it needs one to speak to the internet on behalf of your private computers.");
+    return succeed(path, "A NAT Gateway lets a private computer reach OUT to the internet for things like updates, but nothing from the internet can ever reach IN. It's a one-way mirror.");
+  }
+},
+{
+  title:"Two Offices, One Company", icon:"🔗",
+  story:`Nerdlab's Analytics team works in a completely separate private neighborhood (a second ${term('VPC',"VPC = Virtual Private Cloud. Your own private neighborhood inside AWS, completely separate from everyone else's.")}) from the main App team. You'll build a private tunnel between the two neighborhoods, called ${term('VPC Peering','A direct, private tunnel connecting two separate neighborhoods (VPCs) so computers in each can talk to each other.')}, so a computer in one can talk to a computer in the other.`,
+  goal:"Give each neighborhood's workspace a different address range (they can't overlap!), place a computer on each, and connect the two workspaces directly — that connection is your tunnel.",
+  example:"💡 Example: App team's workspace is 10.0.1.0/24, Analytics team's workspace is 10.1.1.0/24 — different ranges so they never collide.",
+  testLabel:"Send data from App-Server to Analytics-Server",
+  palette:['subnet'],
+  initialDevices:[
+    {id:'ec2A', type:'ec2', name:'App-Server (Team A)', x:100, y:190, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}},
+    {id:'ec2B', type:'ec2', name:'Analytics-Server (Team B)', x:580, y:190, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}}
+  ],
+  initialLinks:[],
+  steps:[
+    {text:"Add two VPCs — one for each team — with different address ranges (e.g. 10.0.1.0/24 and 10.1.1.0/24).", check:(d)=>{ const s=d.filter(x=>x.type==='subnet'); return s.length>=2 && s.every(x=>parseCidr(x.cidr)); }},
+    {text:"Connect App-Server to one workspace and Analytics-Server to the other.", check:(d,l)=>{ const subs=d.filter(x=>x.type==='subnet'); if(subs.length<2) return false; const pA=bfsPath(l,'ec2A',subs[0].id)||bfsPath(l,'ec2A',subs[1].id); const pB=bfsPath(l,'ec2B',subs[0].id)||bfsPath(l,'ec2B',subs[1].id); return !!(pA&&pB); }},
+    {text:"Connect the two workspaces directly — that's your private tunnel.", check:(d,l)=>{ const subs=d.filter(x=>x.type==='subnet'); if(subs.length<2) return false; return l.some(link => subs.some(s1=>s1.id===link.a) && subs.some(s2=>s2.id===link.b) && link.a!==link.b); }},
+    {text:"Give each computer its own address in its own workspace.", check:(d)=>{ const subs=d.filter(x=>x.type==='subnet'); const a=d.find(x=>x.id==='ec2A'), b=d.find(x=>x.id==='ec2B'); return subs.some(s=>ipInCidr(a.ip,s.cidr)) && subs.some(s=>ipInCidr(b.ip,s.cidr)); }},
+    {text:"Click Test Network.", check:()=>false}
+  ],
+  validate(devices, links){
+    const ec2A = deviceById(devices,'ec2A'), ec2B = deviceById(devices,'ec2B');
+    const path = bfsPath(links, 'ec2A', 'ec2B');
+    if(!path) return fail([], -1, "The two neighborhoods aren't connected. Add a workspace to each and connect the two workspaces together.");
+    const subIds = typesInPath(devices, path.slice(1,-1), 'subnet');
+    if(subIds.length !== 2){
+      return fail(path, path.length-1, `Found ${subIds.length} workspace(s) in the path — this needs exactly two, one for each team.`);
+    }
+    const subA = deviceById(devices, subIds[0]);
+    const subB = deviceById(devices, subIds[1]);
+    if(!parseCidr(subA.cidr) || !parseCidr(subB.cidr)) return fail(path, path.indexOf(subA.id), "Both workspaces need a valid address range.");
+    if(!ipInCidr(ec2A.ip, subA.cidr)) return fail(path, path.indexOf('ec2A'), `App-Server's address (${ec2A.ip}) isn't in its workspace (${subA.cidr}).`);
+    if(!ipInCidr(ec2B.ip, subB.cidr)) return fail(path, path.indexOf('ec2B'), `Analytics-Server's address (${ec2B.ip}) isn't in its workspace (${subB.cidr}).`);
+    if(cidrsOverlap(subA.cidr, subB.cidr)){
+      return fail(path, path.indexOf(subA.id), `These two workspaces overlap (${subA.cidr} and ${subB.cidr}) — a tunnel needs two DIFFERENT address ranges. Try something like 10.1.1.0/24 for the second team.`);
+    }
+    return succeed(path, "VPC Peering builds a private tunnel between two neighborhoods — but only if their address ranges don't collide. That's why planning your addresses ahead of time really matters.");
+  }
+},
+{
+  title:"The Busy Restaurant", icon:"🍽️",
+  story:`So many people are visiting Nerdlab's website that one computer can't keep up! Think of a busy restaurant: you don't want one waiter running the whole floor. You want a host at the door who looks around and sends each new guest to whichever table is free. In AWS, that host is called a ${term('Load Balancer','Sits in front of several computers and sends each visitor to whichever one is free — like a restaurant host seating guests at open tables.')}.`,
+  goal:"Connect the Internet to a Load Balancer, give both Web-1 and Web-2 an address inside your VPC's range, and make sure both computers actually have their website running.",
+  example:"💡 Example: Workspace 10.0.1.0/24 marked Public, Web-1 at 10.0.1.10, Web-2 at 10.0.1.20, wired as Internet → Front Door → Workspace → Guard → Host (Load Balancer) → both servers.",
+  testLabel:"A rush of visitors arrives at the website",
+  palette:['subnet','igw','sg','alb'],
+  initialDevices:[
+    {id:'internet', type:'internet', name:'Internet', x:60, y:190},
+    {id:'ec2A', type:'ec2', name:'Web-1', x:560, y:110, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}},
+    {id:'ec2B', type:'ec2', name:'Web-2', x:560, y:270, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}}
+  ],
+  initialLinks:[],
+  steps:[
+    {text:"Add a VPC (Public), a Front Door (Internet Gateway), a Guard (Security Group), and a Host (Load Balancer).", check:(d)=> d.some(x=>x.type==='subnet') && d.some(x=>x.type==='igw') && d.some(x=>x.type==='sg') && d.some(x=>x.type==='alb')},
+    {text:"Give the workspace an address range (mark it Public), and give Web-1 and Web-2 each their own address inside that range.", check:(d)=>{ const s=d.find(x=>x.type==='subnet'); const a=d.find(x=>x.id==='ec2A'), b=d.find(x=>x.id==='ec2B'); return !!(s && parseCidr(s.cidr) && s.kind==='public' && ipInCidr(a.ip,s.cidr) && ipInCidr(b.ip,s.cidr)); }},
+    {text:"Wire: Internet ↔ Front Door ↔ Workspace ↔ Guard ↔ Host.", check:(d,l)=>{ const alb=d.find(x=>x.type==='alb'); if(!alb) return false; const p=bfsPath(l,'internet',alb.id); if(!p) return false; return ['igw','subnet','sg'].every(t=>typesInPath(d,p.slice(1,-1),t).length===1); }},
+    {text:"Connect the Host to BOTH Web-1 and Web-2.", check:(d,l)=>{ const alb=d.find(x=>x.type==='alb'); if(!alb) return false; const p1=bfsPath(l,'internet','ec2A'), p2=bfsPath(l,'internet','ec2B'); return !!(p1 && p1.includes(alb.id) && p2 && p2.includes(alb.id)); }},
+    {text:"Turn on the website (HTTPS) on both Web-1 and Web-2, and allow port 443 on the Guard.", check:(d)=>{ const fw=d.find(x=>x.type==='sg'); const a=d.find(x=>x.id==='ec2A'), b=d.find(x=>x.id==='ec2B'); return !!(fw && fw.allowedPorts.includes(443) && a.services[443] && b.services[443]); }},
+    {text:"Click Test Network.", check:()=>false}
+  ],
+  validate(devices, links){
+    const ec2A = deviceById(devices,'ec2A'), ec2B = deviceById(devices,'ec2B');
+    const path1 = bfsPath(links, 'internet', 'ec2A');
+    const path2 = bfsPath(links, 'internet', 'ec2B');
+    if(!path1) return fail([], -1, "Nothing reaches Web-1 yet. Wire Internet → Internet Gateway → VPC → Security Group → Load Balancer → Web-1.");
+    if(!path2) return fail(path1, path1.length-1, "The Load Balancer isn't connected to Web-2 yet — a Load Balancer needs at least two computers to split traffic between.");
+    const albIds1 = typesInPath(devices, path1.slice(1,-1), 'alb');
+    if(albIds1.length !== 1) return fail(path1, path1.length-1, "Add a Load Balancer between the Security Group and your web computers.");
+    const alb = deviceById(devices, albIds1[0]);
+    if(!path2.includes(alb.id)) return fail(path2, path2.length-1, "Web-2 needs to connect to the SAME Load Balancer as Web-1.");
+    const igwIds = typesInPath(devices, path1.slice(1,-1), 'igw');
+    const subIds = typesInPath(devices, path1.slice(1,-1), 'subnet');
+    const sgIds = typesInPath(devices, path1.slice(1,-1), 'sg');
+    if(igwIds.length !== 1) return fail(path1, path1.length-1, "This path needs a Front Door (Internet Gateway) so visitors can get in at all.");
+    if(subIds.length !== 1) return fail(path1, path1.length-1, "This path needs a VPC (Workspace).");
+    if(sgIds.length !== 1) return fail(path1, path1.length-1, "This path needs a Guard (Security Group).");
+    const subnet = deviceById(devices, subIds[0]);
+    const sg = deviceById(devices, sgIds[0]);
+    if(!path2.includes(subnet.id)) return fail(path2, path2.length-1, "Web-2 needs to connect through the SAME VPC as Web-1.");
+    if(subnet.kind !== 'public') return fail(path1, path1.indexOf(subnet.id), "This workspace must be marked Public so it has a route to the Internet Gateway.");
+    if(!ipToInt(ec2A.ip)) return fail(path1, path1.indexOf('ec2A'), "Give Web-1 an address.");
+    if(!ipToInt(ec2B.ip)) return fail(path2, path2.indexOf('ec2B'), "Give Web-2 an address.");
+    if(!ipInCidr(ec2A.ip, subnet.cidr)) return fail(path1, path1.indexOf('ec2A'), `Web-1's address (${ec2A.ip}) isn't inside the workspace's range (${subnet.cidr}).`);
+    if(!ipInCidr(ec2B.ip, subnet.cidr)) return fail(path2, path2.indexOf('ec2B'), `Web-2's address (${ec2B.ip}) isn't inside the workspace's range (${subnet.cidr}).`);
+    if(!sg.allowedPorts.includes(443)) return fail(path1, path1.indexOf(sg.id), "The Guard is blocking port 443 (the website) — visitors can't get through.");
+    if(!ec2A.services[443]) return fail(path1, path1.indexOf('ec2A'), "Web-1 isn't running its website yet.");
+    if(!ec2B.services[443]) return fail(path2, path2.indexOf('ec2B'), "Web-2 isn't running its website yet.");
+    return succeed(path1, "A Load Balancer is like a restaurant host — it checks which servers are free and sends each new visitor to one that's ready, so no single computer gets overwhelmed during a rush.");
+  }
+},
+{
+  title:"The Phone Book", icon:"📖",
+  story:`Nobody wants to remember a string of numbers to visit a website. That's why we have ${term('DNS','Domain Name System — like a phone book that turns a friendly name (like nerdlab.co.in) into the real address of the computer that hosts it.')} — a giant phone book for the internet. In AWS, this phone book service is called Route 53. Let's give Nerdlab's website a friendly name.`,
+  goal:"Add a DNS entry between the Internet and your Front Door, and give it your website's name, like www.nerdlab.co.in.",
+  example:"💡 Example: someone types www.nerdlab.co.in. DNS looks it up like a phone book, finds the real address, and connects them.",
+  testLabel:"A visitor types www.nerdlab.co.in",
+  palette:['dns'],
+  initialDevices:[
+    {id:'internet', type:'internet', name:'Internet', x:60, y:190},
+    {id:'igw', type:'igw', name:'Front-Door', x:280, y:190},
+    {id:'subnet', type:'subnet', name:'Public-Workspace', x:420, y:190, cidr:'10.0.1.0/24', kind:'public'},
+    {id:'sg', type:'sg', name:'Guard', x:560, y:190, allowedPorts:[443]},
+    {id:'ec2', type:'ec2', name:'Web-Server', x:680, y:190, ip:'10.0.1.10', publicIp:true, services:{80:false,443:true,22:false,3306:false}}
+  ],
+  initialLinks:[
+    {id:'l1', a:'igw', b:'subnet', bandwidth:'100'},
+    {id:'l2', a:'subnet', b:'sg', bandwidth:'100'},
+    {id:'l3', a:'sg', b:'ec2', bandwidth:'100'}
+  ],
+  steps:[
+    {text:"Add a DNS entry (Route 53) to the workspace.", check:(d)=> d.some(x=>x.type==='dns')},
+    {text:"Connect it between the Internet and the Front Door.", check:(d,l)=>{ const dns=d.find(x=>x.type==='dns'); if(!dns) return false; const p=bfsPath(l,'internet','ec2'); return !!(p && p.includes(dns.id)); }},
+    {text:"Give it your website's name, like www.nerdlab.co.in.", check:(d)=>{ const dns=d.find(x=>x.type==='dns'); return !!(dns && dns.domain && dns.domain.includes('.')); }},
+    {text:"Click Test Network.", check:()=>false}
+  ],
+  validate(devices, links){
+    const path = bfsPath(links, 'internet', 'ec2');
+    if(!path) return fail([], -1, "The path from the Internet to Web-Server is broken. Add a DNS entry and connect it in between.");
+    const dnsIds = typesInPath(devices, path.slice(1,-1), 'dns');
+    if(dnsIds.length !== 1) return fail(path, path.length-1, "Add a DNS entry between the Internet and the Front Door — visitors need a friendly name to find your site.");
+    const dns = deviceById(devices, dnsIds[0]);
+    if(!dns.domain || !dns.domain.trim()) return fail(path, path.indexOf(dns.id), "Give the DNS entry a website name, like www.nerdlab.co.in.");
+    if(!dns.domain.includes('.')) return fail(path, path.indexOf(dns.id), `"${dns.domain}" doesn't look like a real website name — it should look like www.nerdlab.co.in.`);
+    return succeed(path, "In real life, DNS is looked up before your request even leaves your device — like checking a phone book before you dial. Once it turns your friendly name into the real address, the rest of the trip works just like before.");
+  }
+},
+{
+  title:"Don't Put All Your Eggs in One Basket", icon:"🧺",
+  story:`What if the building holding Web-1 loses power? AWS lets you spread computers across different physical buildings called ${term('Availability Zones',"Separate physical buildings (with their own power and internet), so a problem in one doesn't take down the other.")} — Zone A and Zone B. If Nerdlab puts one server in each zone, the website survives even if a whole building goes dark.`,
+  goal:"Put Web-1 on a workspace in Zone A and Web-2 on a workspace in Zone B, both behind the same Load Balancer.",
+  example:"💡 Example: Web-1's workspace is tagged Zone A, Web-2's workspace is tagged Zone B — two different buildings, one Load Balancer sending visitors to whichever is healthy.",
+  testLabel:"Zone A loses power — does the site survive?",
+  palette:['subnet','igw','sg','alb'],
+  initialDevices:[
+    {id:'internet', type:'internet', name:'Internet', x:60, y:190},
+    {id:'ec2A', type:'ec2', name:'Web-1', x:600, y:110, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}},
+    {id:'ec2B', type:'ec2', name:'Web-2', x:600, y:270, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}}
+  ],
+  initialLinks:[],
+  steps:[
+    {text:"Add two VPCs — one for each server — and set them to different Availability Zones (Zone A and Zone B).", check:(d)=>{ const s=d.filter(x=>x.type==='subnet'); return s.length>=2 && s.filter(x=>x.az).length>=2; }},
+    {text:"Connect Web-1 to one workspace and Web-2 to the other, each with its own address.", check:(d,l)=>{ const subs=d.filter(x=>x.type==='subnet'); if(subs.length<2) return false; const la = linkedNeighborsOfType(d,l,'ec2A','subnet')[0]; const lb = linkedNeighborsOfType(d,l,'ec2B','subnet')[0]; const a=d.find(x=>x.id==='ec2A'), b=d.find(x=>x.id==='ec2B'); return !!(la && lb && ipInCidr(a.ip,la.cidr) && ipInCidr(b.ip,lb.cidr)); }},
+    {text:"Add a Front Door, Guard, and Host, and wire: Internet ↔ Front Door ↔ Guard ↔ Host.", check:(d,l)=>{ const alb=d.find(x=>x.type==='alb'); if(!alb) return false; const p=bfsPath(l,'internet',alb.id); if(!p) return false; return ['igw','sg'].every(t=>typesInPath(d,p.slice(1,-1),t).length===1); }},
+    {text:"Connect the Host to both Web-1 and Web-2, allow port 443 on the Guard, and turn on both websites.", check:(d,l)=>{ const alb=d.find(x=>x.type==='alb'); const fw=d.find(x=>x.type==='sg'); const a=d.find(x=>x.id==='ec2A'), b=d.find(x=>x.id==='ec2B'); if(!alb||!fw) return false; const p1=bfsPath(l,'internet','ec2A'), p2=bfsPath(l,'internet','ec2B'); const connected = !!(p1 && p1.includes(alb.id) && p2 && p2.includes(alb.id)); return connected && fw.allowedPorts.includes(443) && a.services[443] && b.services[443]; }},
+    {text:"Click Test Network.", check:()=>false}
+  ],
+  validate(devices, links){
+    const ec2A = deviceById(devices,'ec2A'), ec2B = deviceById(devices,'ec2B');
+    const path1 = bfsPath(links, 'internet', 'ec2A');
+    const path2 = bfsPath(links, 'internet', 'ec2B');
+    if(!path1) return fail([], -1, "Nothing reaches Web-1 yet. Build the path: Internet → Front Door → Guard → Host → Web-1.");
+    if(!path2) return fail(path1, path1.length-1, "The Host isn't connected to Web-2 yet.");
+    const albIds1 = typesInPath(devices, path1.slice(1,-1), 'alb');
+    if(albIds1.length !== 1) return fail(path1, path1.length-1, "Add a Load Balancer (Host) between the Guard and your web computers.");
+    const alb = deviceById(devices, albIds1[0]);
+    if(!path2.includes(alb.id)) return fail(path2, path2.length-1, "Web-2 needs to connect to the SAME Host as Web-1.");
+    const igwIds = typesInPath(devices, path1.slice(1,-1), 'igw');
+    const sgIds = typesInPath(devices, path1.slice(1,-1), 'sg');
+    if(igwIds.length !== 1) return fail(path1, path1.length-1, "This path needs a Front Door (Internet Gateway).");
+    if(sgIds.length !== 1) return fail(path1, path1.length-1, "This path needs a Guard (Security Group).");
+    const sg = deviceById(devices, sgIds[0]);
+    if(!sg.allowedPorts.includes(443)) return fail(path1, path1.indexOf(sg.id), "The Guard is blocking port 443 — allow it through.");
+    if(!ec2A.services[443]) return fail(path1, path1.indexOf('ec2A'), "Web-1 isn't running its website yet.");
+    if(!ec2B.services[443]) return fail(path2, path2.indexOf('ec2B'), "Web-2 isn't running its website yet.");
+    const subnetA = linkedNeighborsOfType(devices, links, 'ec2A', 'subnet')[0];
+    const subnetB = linkedNeighborsOfType(devices, links, 'ec2B', 'subnet')[0];
+    if(!subnetA) return fail(path1, path1.indexOf('ec2A'), "Connect Web-1 to its own workspace and tell us which Availability Zone that workspace is in.");
+    if(!subnetB) return fail(path2, path2.indexOf('ec2B'), "Connect Web-2 to its own workspace and tell us which Availability Zone that workspace is in.");
+    if(!ipInCidr(ec2A.ip, subnetA.cidr)) return fail(path1, path1.indexOf('ec2A'), `Web-1's address (${ec2A.ip}) isn't in its own workspace (${subnetA.cidr}).`);
+    if(!ipInCidr(ec2B.ip, subnetB.cidr)) return fail(path2, path2.indexOf('ec2B'), `Web-2's address (${ec2B.ip}) isn't in its own workspace (${subnetB.cidr}).`);
+    if(!subnetA.az) return fail(path1, path1.indexOf('ec2A'), "Set Web-1's workspace to an Availability Zone (Zone A or Zone B).");
+    if(!subnetB.az) return fail(path2, path2.indexOf('ec2B'), "Set Web-2's workspace to an Availability Zone (Zone A or Zone B).");
+    if(subnetA.az === subnetB.az){
+      return fail(path2, path2.indexOf('ec2B'), `Both servers are in the same Availability Zone (${subnetA.az}) — if that building has a problem, you lose everything! Put Web-2 in the OTHER zone.`);
+    }
+    return succeed(path1, "Now if one building (Availability Zone) ever goes dark, the other one keeps the website running. This is exactly why real companies never put all their servers in one place.");
+  }
+},
+{
+  title:"Locking the Doors", icon:"🔒",
+  story:`App-Server is now running two things at once: the website, AND a database full of customer information. Both live on the same computer. It's tempting to just "open everything" so it all works — but that's exactly how databases get broken into. A good Security Group only opens the exact doors that are actually needed, and keeps the rest locked. This idea has a name: ${term('least privilege',"Only give the smallest amount of access needed — nothing more. If a door doesn't need to be open, keep it locked.")}.`,
+  goal:"Turn on both the website and the database on App-Server. Let visitors reach the website (port 443) — but make sure the database door (port 3306) stays locked to the internet.",
+  example:"💡 Example: Guard allows port 443 (website) only. Port 3306 (database) stays closed, even though the database is running on the very same computer.",
+  testLabel:"A stranger tries to reach the database directly",
+  palette:['subnet','igw','sg'],
+  initialDevices:[
+    {id:'internet', type:'internet', name:'Internet', x:70, y:190},
+    {id:'ec2', type:'ec2', name:'App-Server', x:560, y:190, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}}
+  ],
+  initialLinks:[],
+  steps:[
+    {text:"Add a VPC (Public), a Front Door, and a Guard, and wire: Internet ↔ Front Door ↔ Workspace ↔ Guard ↔ App-Server.", check:(d,l)=>{ const p=bfsPath(l,'internet','ec2'); if(!p) return false; return ['igw','subnet','sg'].every(t=>typesInPath(d,p.slice(1,-1),t).length===1); }},
+    {text:"Give App-Server an address in the workspace and a public address.", check:(d)=>{ const s=d.find(x=>x.type==='subnet'); const e=d.find(x=>x.id==='ec2'); return !!(s && parseCidr(s.cidr) && ipInCidr(e.ip,s.cidr) && e.publicIp); }},
+    {text:"Turn ON both the website (HTTPS) and the database on App-Server.", check:(d)=>{ const e=d.find(x=>x.id==='ec2'); return !!(e.services[443] && e.services[3306]); }},
+    {text:"Tell the Guard to allow port 443 — but make sure port 3306 stays OFF.", check:(d)=>{ const fw=d.find(x=>x.type==='sg'); return !!(fw && fw.allowedPorts.includes(443) && !fw.allowedPorts.includes(3306)); }},
+    {text:"Click Test Network.", check:()=>false}
+  ],
+  validate(devices, links){
+    const ec2 = deviceById(devices,'ec2');
+    const path = bfsPath(links, 'internet', 'ec2');
+    if(!path) return fail([], -1, "There's no path yet. Wire Internet → Front Door → Workspace → Guard → App-Server.");
+    const igwIds = typesInPath(devices, path.slice(1,-1), 'igw');
+    const subIds = typesInPath(devices, path.slice(1,-1), 'subnet');
+    const sgIds = typesInPath(devices, path.slice(1,-1), 'sg');
+    if(igwIds.length !== 1) return fail(path, path.length-1, "This path needs a Front Door (Internet Gateway).");
+    if(subIds.length !== 1) return fail(path, path.length-1, "This path needs a VPC (workspace).");
+    if(sgIds.length !== 1) return fail(path, path.length-1, "This path needs a Guard (Security Group).");
+    const subnet = deviceById(devices, subIds[0]);
+    const sg = deviceById(devices, sgIds[0]);
+    if(!ipToInt(ec2.ip)) return fail(path, path.indexOf('ec2'), "Give App-Server an address.");
+    if(!ipInCidr(ec2.ip, subnet.cidr)) return fail(path, path.indexOf('ec2'), `App-Server's address (${ec2.ip}) isn't in that workspace (${subnet.cidr}).`);
+    if(!ec2.publicIp) return fail(path, path.indexOf('ec2'), "Turn on App-Server's public address so visitors can reach the website.");
+    if(!ec2.services[443]) return fail(path, path.indexOf('ec2'), "Turn on App-Server's website (HTTPS).");
+    if(!ec2.services[3306]) return fail(path, path.indexOf('ec2'), "Turn on App-Server's database (MySQL) too — this exercise needs both running.");
+    if(!sg.allowedPorts.includes(443)) return fail(path, path.indexOf(sg.id), "Allow port 443 through the Guard so visitors can reach the website.");
+    if(sg.allowedPorts.includes(3306)){
+      return fail(path, path.indexOf(sg.id), "Whoa — port 3306 (the database) is open to the entire internet! Anyone could try to break in. Close that port and leave only 443 open.");
+    }
+    return succeed(path, "This is 'least privilege' in action: the website door (443) is open because visitors genuinely need it, but the database door (3306) stays shut — even though it's running on the exact same computer.");
+  }
+},
+{
+  title:"The Delivery Truck", icon:"🚚",
+  story:`Every night, Nerdlab backs up its records to cloud storage called ${term('S3','Simple Storage Service — a giant, super-reliable storage locker in the cloud, often used for backups.')}. Tonight's backup is 250 MB, and it has to finish inside a 30-second window before the store reopens. The size of the "delivery truck" — how much data it can carry per second — is called ${term('bandwidth','How much data can travel per second — like how wide a road is, or how big a delivery truck is.')}.`,
+  goal:"Set the connection's bandwidth (in Mbps) so the 250 MB delivery finishes within 30 seconds. Remember: 1 Byte = 8 bits, so 250 MB is really 2,000 megabits to move.",
+  example:"💡 Example: 250 MB × 8 = 2,000 megabits. At 100 Mbps, that trip takes 20 seconds — comfortably inside a 30-second window.",
+  testLabel:"Send the 250 MB backup to S3",
+  palette:[],
+  initialDevices:[
+    {id:'ec2', type:'ec2', name:'Backup-Computer', x:150, y:190, ip:'10.0.0.5', publicIp:false, services:{80:false,443:false,22:false,3306:false}},
+    {id:'s3', type:'s3', name:'S3 Storage Locker', x:490, y:190}
+  ],
+  initialLinks:[
+    {id:'linkL9', a:'ec2', b:'s3', bandwidth:'10'}
+  ],
+  steps:[
+    {text:"Click the cable between Backup-Computer and the S3 Storage Locker.", check:()=>false},
+    {text:"Raise its bandwidth (Mbps) until the delivery fits inside 30 seconds.", check:(d,l)=>{ const link=l.find(x=>(x.a==='ec2'&&x.b==='s3')||(x.a==='s3'&&x.b==='ec2')); if(!link) return false; const mbps=parseFloat(link.bandwidth); return !!(mbps && (2000/mbps)<=30); }},
+    {text:"Click Test Network.", check:()=>false}
+  ],
+  validate(devices, links){
+    const link = links.find(l => (l.a==='ec2'&&l.b==='s3') || (l.a==='s3'&&l.b==='ec2'));
+    if(!link) return fail([], -1, "Backup-Computer and the S3 Storage Locker aren't connected. Add a cable between them.");
+    const mbps = parseFloat(link.bandwidth);
+    if(!mbps || mbps<=0) return fail(['ec2','s3'], 0, "Set a bandwidth (in Mbps) on the cable.");
+    const megabits = 250*8;
+    const seconds = megabits/mbps;
+    if(seconds > 30){
+      return fail(['ec2','s3'], 0, `At ${mbps} Mbps, moving 250 MB (= 2,000 megabits) takes ${seconds.toFixed(1)} seconds — too slow for the 30-second window. Try a bigger truck (higher bandwidth).`);
+    }
+    return succeed(['ec2','s3'], `250 MB × 8 = 2,000 megabits. At ${mbps} Mbps that's ${seconds.toFixed(1)} seconds — comfortably inside your 30-second window.`);
+  }
+},
+{
+  title:"Grand Opening Day", icon:"🎉",
+  story:`Launch day has arrived! Visitors will type nerdlab.co.in into their browser. The phone book (DNS) will point them to the host (Load Balancer), and the host will send each one to whichever of two identical web computers is free. Let's put everything you've learned together, one more time.`,
+  goal:"Build the full path: Internet → DNS → Front Door → Guard → Host → both Web-1 and Web-2. Give the site a name, give both computers an address inside your VPC's range, and get both websites running.",
+  example:"💡 Example: DNS name www.nerdlab.co.in, Workspace 10.0.1.0/24 marked Public, Web-1 at 10.0.1.10, Web-2 at 10.0.1.20, Guard allowing port 443, Host connected to both Web-1 and Web-2.",
+  testLabel:"The whole internet visits nerdlab.co.in",
+  palette:['subnet','igw','sg','alb','dns'],
+  initialDevices:[
+    {id:'internet', type:'internet', name:'Internet', x:50, y:190},
+    {id:'ec2A', type:'ec2', name:'Web-1', x:600, y:110, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}},
+    {id:'ec2B', type:'ec2', name:'Web-2', x:600, y:270, ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false}}
+  ],
+  initialLinks:[],
+  steps:[
+    {text:"Add a DNS entry and give it your site's name, like www.nerdlab.co.in.", check:(d)=>{ const dns=d.find(x=>x.type==='dns'); return !!(dns && dns.domain && dns.domain.includes('.')); }},
+    {text:"Add a Front Door, Workspace, Guard, and Host.", check:(d)=> ['igw','subnet','sg','alb'].every(t=>d.some(x=>x.type===t))},
+    {text:"Give the workspace an address range (mark it Public), and give Web-1 and Web-2 each their own address inside that range.", check:(d)=>{ const s=d.find(x=>x.type==='subnet'); const a=d.find(x=>x.id==='ec2A'), b=d.find(x=>x.id==='ec2B'); return !!(s && parseCidr(s.cidr) && s.kind==='public' && ipInCidr(a.ip,s.cidr) && ipInCidr(b.ip,s.cidr)); }},
+    {text:"Wire: Internet ↔ DNS ↔ Front Door ↔ Workspace ↔ Guard ↔ Host.", check:(d,l)=>{ const alb=d.find(x=>x.type==='alb'); if(!alb) return false; const p=bfsPath(l,'internet',alb.id); if(!p) return false; return ['dns','igw','subnet','sg'].every(t=>typesInPath(d,p.slice(1,-1),t).length===1); }},
+    {text:"Connect the Host to both Web-1 and Web-2.", check:(d,l)=>{ const alb=d.find(x=>x.type==='alb'); if(!alb) return false; const p1=bfsPath(l,'internet','ec2A'), p2=bfsPath(l,'internet','ec2B'); return !!(p1 && p1.includes(alb.id) && p2 && p2.includes(alb.id)); }},
+    {text:"Allow port 443 on the Guard, and turn on both websites.", check:(d)=>{ const fw=d.find(x=>x.type==='sg'); const a=d.find(x=>x.id==='ec2A'), b=d.find(x=>x.id==='ec2B'); return !!(fw && fw.allowedPorts.includes(443) && a.services[443] && b.services[443]); }},
+    {text:"Click Test Network — good luck!", check:()=>false}
+  ],
+  validate(devices, links){
+    const ec2A = deviceById(devices,'ec2A'), ec2B = deviceById(devices,'ec2B');
+    const path1 = bfsPath(links, 'internet', 'ec2A');
+    const path2 = bfsPath(links, 'internet', 'ec2B');
+    if(!path1) return fail([], -1, "Nothing reaches Web-1 yet. Build: Internet → DNS → Front Door → Workspace → Guard → Host → Web-1.");
+    if(!path2) return fail(path1, path1.length-1, "The Host isn't connected to Web-2 yet.");
+    const dnsIds = typesInPath(devices, path1.slice(1,-1), 'dns');
+    if(dnsIds.length !== 1) return fail(path1, path1.length-1, "Add a DNS entry so visitors can find you by name.");
+    const dns = deviceById(devices, dnsIds[0]);
+    if(!dns.domain || !dns.domain.includes('.')) return fail(path1, path1.indexOf(dns.id), "Give the DNS entry a real-looking website name, like www.nerdlab.co.in.");
+    const albIds1 = typesInPath(devices, path1.slice(1,-1), 'alb');
+    if(albIds1.length !== 1) return fail(path1, path1.length-1, "Add a Load Balancer (Host) so both web computers can share the traffic.");
+    const alb = deviceById(devices, albIds1[0]);
+    if(!path2.includes(alb.id)) return fail(path2, path2.length-1, "Web-2 needs to connect to the SAME Host as Web-1.");
+    const igwIds = typesInPath(devices, path1.slice(1,-1), 'igw');
+    const subIds = typesInPath(devices, path1.slice(1,-1), 'subnet');
+    const sgIds = typesInPath(devices, path1.slice(1,-1), 'sg');
+    if(igwIds.length !== 1) return fail(path1, path1.length-1, "This path needs a Front Door (Internet Gateway).");
+    if(subIds.length !== 1) return fail(path1, path1.length-1, "This path needs a VPC (Workspace).");
+    if(sgIds.length !== 1) return fail(path1, path1.length-1, "This path needs a Guard (Security Group).");
+    const subnet = deviceById(devices, subIds[0]);
+    if(!path2.includes(subnet.id)) return fail(path2, path2.length-1, "Web-2 needs to connect through the SAME VPC as Web-1.");
+    if(subnet.kind !== 'public') return fail(path1, path1.indexOf(subnet.id), "This workspace must be marked Public so it has a route to the Internet Gateway.");
+    if(!ipToInt(ec2A.ip)) return fail(path1, path1.indexOf('ec2A'), "Give Web-1 an address.");
+    if(!ipToInt(ec2B.ip)) return fail(path2, path2.indexOf('ec2B'), "Give Web-2 an address.");
+    if(!ipInCidr(ec2A.ip, subnet.cidr)) return fail(path1, path1.indexOf('ec2A'), `Web-1's address (${ec2A.ip}) isn't inside the workspace's range (${subnet.cidr}).`);
+    if(!ipInCidr(ec2B.ip, subnet.cidr)) return fail(path2, path2.indexOf('ec2B'), `Web-2's address (${ec2B.ip}) isn't inside the workspace's range (${subnet.cidr}).`);
+    const sg = deviceById(devices, sgIds[0]);
+    if(!sg.allowedPorts.includes(443)) return fail(path1, path1.indexOf(sg.id), "Allow port 443 through the Guard.");
+    if(!ec2A.services[443]) return fail(path1, path1.indexOf('ec2A'), "Web-1's website isn't turned on yet.");
+    if(!ec2B.services[443]) return fail(path2, path2.indexOf('ec2B'), "Web-2's website isn't turned on yet.");
+    return succeed(path1, "You just launched a real, resilient piece of cloud architecture: a friendly name, spread across multiple servers, safely guarded by a Security Group. This is genuinely how many real websites are built. Congratulations!");
+  }
+}
+];
+
+/* ============================================================
+   DEVICE TEMPLATES / ICONS
+   ============================================================ */
+const DEVICE_META = {
+  ec2:      { icon:'🖥️', label:'EC2 Instance (Computer)' },
+  subnet:   { icon:'🧩', label:'VPC (Workspace)' },
+  igw:      { icon:'🌐', label:'Internet Gateway (Front Door)' },
+  natgw:    { icon:'🔁', label:'NAT Gateway (One-Way Mirror)' },
+  sg:       { icon:'🛡️', label:'Sec. Group (Guard)' },
+  alb:      { icon:'🙋', label:'Load Balancer (Host)' },
+  dns:      { icon:'📖', label:'DNS (Phone Book)' },
+  internet: { icon:'☁️', label:'Internet' },
+  s3:       { icon:'🪣', label:'S3 Bucket (Storage)' }
+};
+
+function newDeviceDefaults(type, id, name, x, y){
+  const base = { id, type, name, x, y };
+  if(type==='ec2') return Object.assign(base,{ ip:'', publicIp:false, services:{80:false,443:false,22:false,3306:false} });
+  if(type==='subnet') return Object.assign(base,{ cidr:'', kind:'', az:'' });
+  if(type==='natgw') return Object.assign(base,{ eip:'' });
+  if(type==='sg') return Object.assign(base,{ allowedPorts:[] });
+  if(type==='alb') return base;
+  if(type==='dns') return Object.assign(base,{ domain:'' });
+  if(type==='igw') return base;
+  if(type==='internet') return base;
+  if(type==='s3') return base;
+  return base;
+}
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let state = {};
+function freshState(){
+  return {
+    levelIdx:0, completed:0, muted:false, registerNumber:'',
+    devices:[], links:[], selected:null, mode:{kind:'idle'}, counters:{}, animating:false, solved:false,
+    stepInterval:null
+  };
+}
+state = freshState();
+
+const cardRoot = document.getElementById('cardRoot');
+const scoreDisplay = document.getElementById('scoreDisplay');
+const levelLabel = document.getElementById('levelLabel');
+const progressBar = document.getElementById('progressBar');
+const muteBtn = document.getElementById('muteBtn');
+muteBtn.onclick = () => { state.muted = !state.muted; muteBtn.textContent = state.muted ? '🔇' : '🔊'; };
+
+/* ---------- AUDIO ---------- */
+let audioCtx;
+function playTone(success){
+  if(state.muted) return;
+  try{
+    if(!audioCtx) audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+    o.connect(g); g.connect(audioCtx.destination);
+    if(success){
+      o.type='sine';
+      o.frequency.setValueAtTime(440, audioCtx.currentTime);
+      o.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime+0.18);
+      g.gain.setValueAtTime(0.09, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.32);
+      o.start(); o.stop(audioCtx.currentTime+0.34);
+    } else {
+      o.type='square';
+      o.frequency.setValueAtTime(140, audioCtx.currentTime);
+      g.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime+0.2);
+      o.start(); o.stop(audioCtx.currentTime+0.22);
+    }
+  }catch(e){ /* audio unavailable, ignore */ }
+}
+
+/* ---------- TOPBAR ---------- */
+function updateTopbar(){
+  scoreDisplay.textContent = state.completed;
+  levelLabel.textContent = `Chapter ${Math.min(state.levelIdx+1, LEVELS.length)} / ${LEVELS.length}`;
+  progressBar.style.width = Math.min(100, (state.levelIdx/LEVELS.length)*100) + '%';
+}
+
+/* ============================================================
+   SCREENS: start / chapter intro / final
+   ============================================================ */
+function renderStart(){
+  cardRoot.innerHTML = `
+    <div class="card">
+      <div class="icon-badge">☁️🧑‍💻</div>
+      <h1>Alex's Cloud Story</h1>
+      <p class="lead">Alex just started as Nerdlab's very first Cloud Engineer, and doesn't know much about networking yet — kind of like you, maybe! Over the next 10 chapters, Alex (that's you) will build a real company network in the cloud: connecting computers, opening doors to the internet, guarding them properly, and keeping a website running even when things go wrong. Every AWS term gets explained in plain English the moment it shows up. There's no test at the end — just try things, see what happens, and learn by doing.</p>
+      <div class="field" style="max-width:320px;">
+        <label>Enter your Register Number to begin</label>
+        <input type="text" id="regNumberInput" placeholder="e.g. 714024149000">
+      </div>
+      <div id="regError" style="color:var(--bad); font-size:0.8rem; margin:-6px 0 10px;"></div>
+      <div class="actions"><button class="btn" id="startBtn">Begin the Story →</button></div>
+    </div>
+  `;
+  const regInput = document.getElementById('regNumberInput');
+  document.getElementById('startBtn').onclick = () => {
+    const regNum = regInput.value.trim();
+    if(!regNum){
+      document.getElementById('regError').textContent = 'Please enter your register number to begin.';
+      regInput.focus();
+      return;
+    }
+    state = Object.assign(freshState(), {muted:state.muted, registerNumber:regNum});
+    renderLevelIntro();
+  };
+  regInput.addEventListener('keydown', e => { if(e.key === 'Enter') document.getElementById('startBtn').onclick(); });
+  updateTopbar();
+}
+
+function renderLevelIntro(){
+  const lvl = LEVELS[state.levelIdx];
+  cardRoot.innerHTML = `
+    <div class="card">
+      <div class="level-pill">CHAPTER ${state.levelIdx+1} OF ${LEVELS.length}</div>
+      <div class="icon-badge">${lvl.icon}</div>
+      <h1>${lvl.title}</h1>
+      <p class="lead">${lvl.story}</p>
+      <p class="lead goal-line">🎯 ${lvl.goal}</p>
+      <div class="example-box">${lvl.example}</div>
+      <div class="actions"><button class="btn" id="beginBtn">Open Workspace</button></div>
+    </div>
+  `;
+  document.getElementById('beginBtn').onclick = () => { enterBuilder(state.levelIdx); };
+  updateTopbar();
+}
+
+function renderFinal(){
+  const today = new Date();
+  const dateStr = today.toLocaleDateString(undefined, {year:'numeric', month:'long', day:'numeric'});
+  cardRoot.innerHTML = `
+    <div class="card cert" id="certificateCard">
+      <div class="emoji">🎓</div>
+      <h1>Certificate of Completion</h1>
+      <p class="lead">This certifies that</p>
+      <div class="cert-reg">Register Number: ${state.registerNumber || '—'}</div>
+      <p class="lead">has completed <b>Alex's Cloud Story</b> — a 10-chapter hands-on training in AWS cloud networking at www.nerdlab.co.in.</p>
+      <p class="lead" style="font-size:0.8rem;">Issued: ${dateStr}</p>
+      <div class="toc">
+        <div>1. 🧩 <b>Two Computers Say Hello</b> — workspaces &amp; addresses</div>
+        <div>2. 🌐 <b>Opening the Front Door</b> — public access &amp; guards</div>
+        <div>3. 🔁 <b>The One-Way Mirror</b> — private computers, safe outbound access</div>
+        <div>4. 🔗 <b>Two Offices, One Company</b> — connecting two networks</div>
+        <div>5. 🍽️ <b>The Busy Restaurant</b> — spreading out visitors</div>
+        <div>6. 📖 <b>The Phone Book</b> — friendly website names</div>
+        <div>7. 🧺 <b>Don't Put All Your Eggs in One Basket</b> — backup buildings</div>
+        <div>8. 🔒 <b>Locking the Doors</b> — only open what's needed</div>
+        <div>9. 🚚 <b>The Delivery Truck</b> — data size &amp; speed</div>
+        <div>10. 🎉 <b>Grand Opening Day</b> — it all comes together</div>
+      </div>
+      <div class="actions no-print" style="justify-content:center;">
+        <button class="btn ghost" id="printBtn">🖨️ Print / Save Certificate</button>
+        <button class="btn" id="restartBtn">Read It Again</button>
+      </div>
+    </div>
+  `;
+  document.getElementById('restartBtn').onclick = () => { state = Object.assign(freshState(), {muted:state.muted}); renderStart(); };
+  document.getElementById('printBtn').onclick = () => { window.print(); };
+  progressBar.style.width = '100%';
+}
+
+/* ============================================================
+   BUILDER SCREEN
+   ============================================================ */
+function enterBuilder(levelIdx){
+  if(state.stepInterval) clearInterval(state.stepInterval);
+  const lvl = LEVELS[levelIdx];
+  state.levelIdx = levelIdx;
+  state.devices = JSON.parse(JSON.stringify(lvl.initialDevices));
+  state.links = JSON.parse(JSON.stringify(lvl.initialLinks||[]));
+  state.selected = null;
+  state.mode = {kind:'idle'};
+  state.counters = {subnet:0, igw:0, natgw:0, sg:0, alb:0, dns:0};
+  state.animating = false;
+  state.solved = false;
+  updateTopbar();
+  renderBuilder();
+  renderSteps();
+  state.stepInterval = setInterval(renderSteps, 600);
+}
+
+function renderBuilder(){
+  const lvl = LEVELS[state.levelIdx];
+  cardRoot.innerHTML = `
+    <div class="card">
+      <div class="level-pill">${lvl.icon} CHAPTER ${state.levelIdx+1}: ${lvl.title}</div>
+      <div class="mission-brief">📖 ${lvl.story}<div class="goal-line">🎯 ${lvl.goal}</div></div>
+      <div class="example-box">${lvl.example}</div>
+      <div class="guide-box">
+        <div class="guide-title">📋 STEP-BY-STEP GUIDE</div>
+        <div id="stepGuide"></div>
+      </div>
+      <div class="builder-layout">
+        <div class="panel" id="palettePanel"></div>
+        <div>
+          <div class="toolbar">
+            <button class="btn ghost small" id="connectToolBtn">🔌 Connect Cable</button>
+            <button class="btn ghost small" id="deleteBtn">🗑 Delete Selected</button>
+            <button class="btn ghost small" id="resetBtn">↺ Reset Chapter</button>
+            <button class="btn small" id="testBtn" style="margin-left:auto;">▶ Test: ${lvl.testLabel}</button>
+          </div>
+          <div class="workspace-wrap" id="workspaceWrap">
+            <div class="workspace-inner" id="workspaceInner">
+              <svg class="workspace-svg" id="workspaceSvg"></svg>
+            </div>
+          </div>
+          <div id="resultZone"></div>
+        </div>
+        <div class="panel" id="inspectorPanel"></div>
+      </div>
+    </div>
+  `;
+  renderPalette();
+  renderDevices();
+  redrawLinks();
+  renderInspector();
+
+  document.getElementById('connectToolBtn').onclick = toggleConnectMode;
+  document.getElementById('deleteBtn').onclick = deleteSelected;
+  document.getElementById('resetBtn').onclick = () => enterBuilder(state.levelIdx);
+  document.getElementById('testBtn').onclick = runTest;
+  document.getElementById('workspaceInner').addEventListener('click', (e) => {
+    if(e.target.id === 'workspaceInner' || e.target.id === 'workspaceSvg'){
+      if(state.mode.kind === 'placing'){
+        const rect = document.getElementById('workspaceInner').getBoundingClientRect();
+        placeDevice(state.mode.deviceType, e.clientX - rect.left, e.clientY - rect.top);
+      } else {
+        if(state.mode.kind === 'connect') state.mode.from = null;
+        state.selected = null;
+        renderInspector();
+        renderDevices();
+      }
+    }
+  });
+}
+
+function renderSteps(){
+  const el = document.getElementById('stepGuide');
+  if(!el) return;
+  const lvl = LEVELS[state.levelIdx];
+  el.innerHTML = lvl.steps.map(s => {
+    const done = state.solved || s.check(state.devices, state.links);
+    return `<div class="guide-step" style="color:${done?'var(--good)':'var(--text)'}"><span>${done?'✅':'⬜'}</span><span>${s.text}</span></div>`;
+  }).join('');
+}
+
+function renderPalette(){
+  const lvl = LEVELS[state.levelIdx];
+  const panel = document.getElementById('palettePanel');
+  if(lvl.palette.length === 0){
+    panel.innerHTML = `<div class="hint-text">Nothing new to add — just configure what's already here.</div>`;
+    return;
+  }
+  panel.innerHTML = `<div class="hint-text" style="margin-bottom:8px;">Click, then click the workspace to place:</div>`;
+  lvl.palette.forEach(type => {
+    const meta = DEVICE_META[type];
+    const item = document.createElement('div');
+    item.className = 'palette-item' + (state.mode.kind==='placing' && state.mode.deviceType===type ? ' active':'');
+    item.innerHTML = `<span class="palette-icon">${meta.icon}</span><span>${meta.label}</span>`;
+    item.onclick = () => {
+      state.mode = (state.mode.kind==='placing' && state.mode.deviceType===type) ? {kind:'idle'} : {kind:'placing', deviceType:type};
+      renderPalette();
+    };
+    panel.appendChild(item);
+  });
+}
+
+function toggleConnectMode(){
+  state.mode = state.mode.kind==='connect' ? {kind:'idle'} : {kind:'connect', from:null};
+  document.getElementById('connectToolBtn').classList.toggle('on', state.mode.kind==='connect');
+  renderDevices();
+}
+
+function nextId(type){
+  state.counters[type] = (state.counters[type]||0)+1;
+  return type + '_' + state.counters[type];
+}
+function nextName(type){
+  const meta = DEVICE_META[type];
+  return `${meta.label}-${state.counters[type]}`;
+}
+
+function placeDevice(type, x, y){
+  const id = nextId(type);
+  const name = nextName(type);
+  const dev = newDeviceDefaults(type, id, name, Math.max(40,Math.min(x,860)), Math.max(40,Math.min(y,340)));
+  state.devices.push(dev);
+  state.mode = {kind:'idle'};
+  renderPalette();
+  renderDevices();
+  selectItem({kind:'device', id});
+}
+
+function renderDevices(){
+  const inner = document.getElementById('workspaceInner');
+  Array.from(inner.querySelectorAll('.device-node')).forEach(n => n.remove());
+  state.devices.forEach(dev => {
+    const meta = DEVICE_META[dev.type];
+    const node = document.createElement('div');
+    node.className = 'device-node';
+    if(state.selected && state.selected.kind==='device' && state.selected.id===dev.id) node.classList.add('selected');
+    if(state.mode.kind==='connect' && state.mode.from===dev.id) node.classList.add('armed');
+    node.style.left = dev.x+'px';
+    node.style.top = dev.y+'px';
+    node.dataset.id = dev.id;
+    node.innerHTML = `<div class="device-icon">${meta.icon}</div><div class="device-label">${dev.name}</div>`;
+    node.addEventListener('pointerdown', (e) => startDrag(e, dev, node));
+    inner.appendChild(node);
+  });
+}
+
+function startDrag(e, dev, node){
+  e.stopPropagation();
+  if(state.mode.kind === 'placing') return;
+  const startClientX = e.clientX, startClientY = e.clientY;
+  const startX = dev.x, startY = dev.y;
+  let moved = false;
+  function onMove(ev){
+    const dx = ev.clientX - startClientX, dy = ev.clientY - startClientY;
+    if(Math.abs(dx) > 4 || Math.abs(dy) > 4) moved = true;
+    if(moved && state.mode.kind !== 'connect'){
+      dev.x = startX + dx; dev.y = startY + dy;
+      node.style.left = dev.x+'px'; node.style.top = dev.y+'px';
+      redrawLinks();
+    }
+  }
+  function onUp(){
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    if(!moved) handleDeviceClick(dev);
+  }
+  window.addEventListener('pointermove', onMove);
+  window.addEventListener('pointerup', onUp);
+}
+
+function handleDeviceClick(dev){
+  if(state.mode.kind === 'connect'){
+    if(!state.mode.from){
+      state.mode.from = dev.id;
+    } else if(state.mode.from !== dev.id){
+      addLink(state.mode.from, dev.id);
+      state.mode.from = null;
+    }
+    renderDevices();
+    return;
+  }
+  selectItem({kind:'device', id:dev.id});
+}
+
+function addLink(aId, bId){
+  const exists = state.links.some(l => (l.a===aId&&l.b===bId)||(l.a===bId&&l.b===aId));
+  if(exists) return;
+  state.links.push({ id:'link_'+aId+'_'+bId+'_'+Date.now(), a:aId, b:bId, bandwidth:'100' });
+  redrawLinks();
+}
+
+function redrawLinks(){
+  const svg = document.getElementById('workspaceSvg');
+  if(!svg) return;
+  svg.innerHTML = '';
+  const ns = 'http://www.w3.org/2000/svg';
+  state.links.forEach(link => {
+    const a = deviceById(state.devices, link.a), b = deviceById(state.devices, link.b);
+    if(!a || !b) return;
+    const hit = document.createElementNS(ns,'line');
+    hit.setAttribute('x1',a.x); hit.setAttribute('y1',a.y); hit.setAttribute('x2',b.x); hit.setAttribute('y2',b.y);
+    hit.setAttribute('class','link-hit');
+    hit.style.pointerEvents = 'stroke';
+    hit.addEventListener('click',(e)=>{ e.stopPropagation(); selectItem({kind:'link', id:link.id}); });
+    svg.appendChild(hit);
+    const line = document.createElementNS(ns,'line');
+    line.setAttribute('x1',a.x); line.setAttribute('y1',a.y); line.setAttribute('x2',b.x); line.setAttribute('y2',b.y);
+    line.setAttribute('class','link-line' + (state.selected && state.selected.kind==='link' && state.selected.id===link.id ? ' selected':''));
+    svg.appendChild(line);
+  });
+}
+
+function selectItem(sel){
+  state.selected = sel;
+  renderDevices();
+  redrawLinks();
+  renderInspector();
+}
+
+function deleteSelected(){
+  if(!state.selected) return;
+  if(state.selected.kind==='device'){
+    const id = state.selected.id;
+    state.devices = state.devices.filter(d => d.id !== id);
+    state.links = state.links.filter(l => l.a!==id && l.b!==id);
+  } else {
+    state.links = state.links.filter(l => l.id !== state.selected.id);
+  }
+  state.selected = null;
+  renderDevices();
+  redrawLinks();
+  renderInspector();
+}
+
+/* ---------- INSPECTOR ---------- */
+function renderInspector(){
+  const panel = document.getElementById('inspectorPanel');
+  if(!state.selected){
+    panel.innerHTML = `<div class="inspector-title">🔧 Inspector</div><div class="empty-inspector">Click a device or cable to set it up.</div>`;
+    return;
+  }
+  if(state.selected.kind === 'link'){
+    const link = state.links.find(l => l.id === state.selected.id);
+    if(!link){ state.selected = null; return renderInspector(); }
+    const a = deviceById(state.devices, link.a), b = deviceById(state.devices, link.b);
+    panel.innerHTML = `
+      <div class="inspector-title">🔌 Cable: ${a?a.name:'?'} ↔ ${b?b.name:'?'}</div>
+      <div class="field">
+        <label>Bandwidth (Mbps) — how much data per second</label>
+        <input type="text" id="f_bandwidth" value="${link.bandwidth||''}" placeholder="e.g. 100">
+      </div>
+      <button class="btn danger small" id="deleteLinkBtn">🗑 Remove Cable</button>
+    `;
+    document.getElementById('f_bandwidth').oninput = (e) => { link.bandwidth = e.target.value; };
+    document.getElementById('deleteLinkBtn').onclick = deleteSelected;
+    return;
+  }
+
+  const dev = deviceById(state.devices, state.selected.id);
+  if(!dev){ state.selected = null; return renderInspector(); }
+  const meta = DEVICE_META[dev.type];
+  let html = `<div class="inspector-title">${meta.icon} ${dev.name}</div>`;
+
+  if(dev.type === 'ec2'){
+    html += `
+      <div class="field"><label>Address (Private IP)</label><input type="text" id="f_ip" value="${dev.ip||''}" placeholder="e.g. 10.0.1.10"></div>
+      <div class="field checkbox"><label><input type="checkbox" id="f_pubip" ${dev.publicIp?'checked':''}> Give it a public address (visible from the internet)</label></div>
+      <div class="field checkbox"><label style="font-weight:600;color:var(--muted);margin-bottom:2px;">What's running on this computer?</label>
+        <label><input type="checkbox" id="svc_80" ${dev.services[80]?'checked':''}> 🌐 Website, not secure (HTTP)</label>
+        <label><input type="checkbox" id="svc_443" ${dev.services[443]?'checked':''}> 🔒 Website, secure (HTTPS)</label>
+        <label><input type="checkbox" id="svc_22" ${dev.services[22]?'checked':''}> 💻 Remote login (SSH)</label>
+        <label><input type="checkbox" id="svc_3306" ${dev.services[3306]?'checked':''}> 🗄️ Database (MySQL)</label>
+      </div>
+    `;
+  } else if(dev.type === 'subnet'){
+    html += `
+      <div class="field"><label>Subnet (CIDR)</label><input type="text" id="f_cidr" value="${dev.cidr||''}" placeholder="e.g. 10.0.1.0/24"></div>
+      <div class="field"><label>Public or Private?</label>
+        <select id="f_kind">
+          <option value="" ${dev.kind===''?'selected':''}>-- choose one --</option>
+          <option value="public" ${dev.kind==='public'?'selected':''}>Public (has a front door to the internet)</option>
+          <option value="private" ${dev.kind==='private'?'selected':''}>Private (hidden from the internet)</option>
+        </select>
+      </div>
+      <div class="field"><label>Availability Zone (which building)</label>
+        <select id="f_az">
+          <option value="" ${dev.az===''?'selected':''}>-- not set --</option>
+          <option value="Zone A" ${dev.az==='Zone A'?'selected':''}>Zone A</option>
+          <option value="Zone B" ${dev.az==='Zone B'?'selected':''}>Zone B</option>
+        </select>
+      </div>
+      <div class="field-hint">Two different buildings, so a problem in one doesn't take down the other.</div>
+    `;
+  } else if(dev.type === 'natgw'){
+    html += `<div class="field"><label>Its own public address</label><input type="text" id="f_eip" value="${dev.eip||''}" placeholder="e.g. 3.10.44.201"></div>`;
+  } else if(dev.type === 'sg'){
+    html += `<div class="field checkbox"><label style="font-weight:600;color:var(--muted);margin-bottom:2px;">Which doors should be allowed in?</label>
+      <label><input type="checkbox" id="sg_80" ${dev.allowedPorts.includes(80)?'checked':''}> 🌐 Website, not secure — port 80</label>
+      <label><input type="checkbox" id="sg_443" ${dev.allowedPorts.includes(443)?'checked':''}> 🔒 Website, secure — port 443</label>
+      <label><input type="checkbox" id="sg_22" ${dev.allowedPorts.includes(22)?'checked':''}> 💻 Remote login — port 22</label>
+      <label><input type="checkbox" id="sg_3389" ${dev.allowedPorts.includes(3389)?'checked':''}> 🖥️ Remote desktop — port 3389</label>
+      <label><input type="checkbox" id="sg_3306" ${dev.allowedPorts.includes(3306)?'checked':''}> 🗄️ Database — port 3306</label>
+    </div>`;
+  } else if(dev.type === 'dns'){
+    html += `<div class="field"><label>Website name</label><input type="text" id="f_domain" value="${dev.domain||''}" placeholder="e.g. www.nerdlab.co.in"></div>`;
+  } else if(dev.type === 'alb'){
+    html += `<div class="hint-text">This Host just needs to be wired between the internet-facing path and each web computer — no extra settings needed.</div>`;
+  } else if(dev.type === 'igw'){
+    html += `<div class="hint-text">This front door just needs to be wired into the path — no extra settings needed.</div>`;
+  } else if(dev.type === 'internet'){
+    html += `<div class="hint-text">This is the public internet — nothing to set up here.</div>`;
+  } else if(dev.type === 's3'){
+    html += `<div class="hint-text">A storage locker for files — nothing to set up here for this chapter.</div>`;
+  }
+
+  html += `<button class="btn danger small" id="deleteDeviceBtn" style="margin-top:6px;">🗑 Delete</button>`;
+  panel.innerHTML = html;
+
+  if(dev.type==='ec2'){
+    document.getElementById('f_ip').oninput = e => dev.ip = e.target.value.trim();
+    document.getElementById('f_pubip').onchange = e => dev.publicIp = e.target.checked;
+    document.getElementById('svc_80').onchange = e => dev.services[80] = e.target.checked;
+    document.getElementById('svc_443').onchange = e => dev.services[443] = e.target.checked;
+    document.getElementById('svc_22').onchange = e => dev.services[22] = e.target.checked;
+    document.getElementById('svc_3306').onchange = e => dev.services[3306] = e.target.checked;
+  } else if(dev.type==='subnet'){
+    document.getElementById('f_cidr').oninput = e => dev.cidr = e.target.value.trim();
+    document.getElementById('f_kind').onchange = e => dev.kind = e.target.value;
+    document.getElementById('f_az').onchange = e => dev.az = e.target.value;
+  } else if(dev.type==='natgw'){
+    document.getElementById('f_eip').oninput = e => dev.eip = e.target.value.trim();
+  } else if(dev.type==='sg'){
+    const map = {sg_80:80, sg_443:443, sg_22:22, sg_3389:3389, sg_3306:3306};
+    Object.keys(map).forEach(elId => {
+      document.getElementById(elId).onchange = e => {
+        const port = map[elId];
+        if(e.target.checked){ if(!dev.allowedPorts.includes(port)) dev.allowedPorts.push(port); }
+        else { dev.allowedPorts = dev.allowedPorts.filter(p=>p!==port); }
+      };
+    });
+  } else if(dev.type==='dns'){
+    document.getElementById('f_domain').oninput = e => dev.domain = e.target.value.trim();
+  }
+  document.getElementById('deleteDeviceBtn').onclick = deleteSelected;
+}
+
+/* ============================================================
+   TEST / ANIMATION
+   ============================================================ */
+function runTest(){
+  if(state.animating || state.solved) return;
+  const lvl = LEVELS[state.levelIdx];
+  const result = lvl.validate(state.devices, state.links);
+  animateResult(result);
+}
+
+function animateResult(result){
+  const svg = document.getElementById('workspaceSvg');
+  if(!result.animPath || result.animPath.length === 0){
+    return showResult(result);
+  }
+  state.animating = true;
+  const coords = result.animPath.map(id => {
+    const d = deviceById(state.devices, id);
+    return d ? {x:d.x, y:d.y} : {x:0,y:0};
+  });
+  const stopIndex = result.success ? coords.length-1 : Math.max(0, result.failedAtIndex);
+  const ns = 'http://www.w3.org/2000/svg';
+  const packet = document.createElementNS(ns,'circle');
+  packet.setAttribute('r',7);
+  packet.setAttribute('cx', coords[0].x); packet.setAttribute('cy', coords[0].y);
+  packet.setAttribute('class','packet');
+  svg.appendChild(packet);
+
+  function shakeNodeAt(idx){
+    const id = result.animPath[idx];
+    const node = document.querySelector('.device-node[data-id="'+id+'"]');
+    if(node){ node.classList.add('shake'); setTimeout(()=>node.classList.remove('shake'), 380); }
+  }
+
+  function finish(){
+    packet.remove();
+    state.animating = false;
+    showResult(result);
+  }
+
+  if(stopIndex === 0){
+    playTone(false);
+    shakeNodeAt(0);
+    setTimeout(finish, 300);
+    return;
+  }
+
+  let seg = 0;
+  function playSegment(){
+    if(seg >= stopIndex){
+      if(result.success) playTone(true); else { playTone(false); shakeNodeAt(stopIndex); }
+      setTimeout(finish, 150);
+      return;
+    }
+    const from = coords[seg], to = coords[seg+1];
+    const isFinalFailSeg = (!result.success && seg+1 === stopIndex);
+    const duration = 420;
+    const start = performance.now();
+    function step(now){
+      const t = Math.min(1, (now-start)/duration);
+      const ease = t<0.5 ? 2*t*t : -1+(4-2*t)*t;
+      packet.setAttribute('cx', from.x + (to.x-from.x)*ease);
+      packet.setAttribute('cy', from.y + (to.y-from.y)*ease);
+      if(isFinalFailSeg) packet.setAttribute('class', t>0.5 ? 'packet fail' : 'packet');
+      if(t < 1) requestAnimationFrame(step);
+      else { seg++; playSegment(); }
+    }
+    requestAnimationFrame(step);
+  }
+  playSegment();
+}
+
+function showResult(result){
+  const zone = document.getElementById('resultZone');
+  const testBtn = document.getElementById('testBtn');
+  if(result.success){
+    if(testBtn){
+      testBtn.classList.remove('test-fail');
+      testBtn.classList.add('test-success');
+      testBtn.textContent = '✅ It works!';
+    }
+    if(!state.solved){
+      state.solved = true;
+      state.completed += 1;
+      updateTopbar();
+      renderSteps();
+      const isLast = state.levelIdx === LEVELS.length-1;
+      zone.innerHTML = `
+        <div class="result-banner good">✅ It works! ${result.explain}
+          ${(result.warnings||[]).map(w=>`<div class="warning-line">${w}</div>`).join('')}
+        </div>
+        <div class="actions"><button class="btn" id="nextLevelBtn">${isLast?'Finish the Story →':'Next Chapter →'}</button></div>
+      `;
+      document.getElementById('nextLevelBtn').onclick = () => {
+        if(isLast){ renderFinal(); }
+        else { state.levelIdx += 1; renderLevelIntro(); }
+      };
+    }
+  } else {
+    if(testBtn){
+      testBtn.classList.remove('test-fail');
+      void testBtn.offsetWidth;
+      testBtn.classList.add('test-fail');
+    }
+    zone.innerHTML = `<div class="result-banner bad">🔧 Not yet — ${result.message}</div>`;
+  }
+}
+
+renderStart();
+</script>
+</body>
+</html>

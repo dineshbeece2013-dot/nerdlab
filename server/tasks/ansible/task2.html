@@ -1,0 +1,1701 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ANSIBLE QUEST — Safe to Run Twice</title>
+<style>
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --line:#334155;
+    --green:#34d399; --green-dim:#10b981; --amber:#fbbf24;
+    --cyan:#38bdf8; --red:#f87171; --purple:#c084fc;
+    --text:#e2e8f0; --muted:#94a3b8;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    background:radial-gradient(1100px 600px at 50% -10%, #1e293b 0%, transparent 60%), var(--bg);
+    color:var(--text);
+    font-family:"SF Mono",ui-monospace,"JetBrains Mono",Menlo,Consolas,monospace;
+    font-size:15px; line-height:1.6; display:flex; flex-direction:column;
+  }
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:99;
+    background:repeating-linear-gradient(to bottom, rgba(255,255,255,.018) 0 1px, transparent 1px 3px);
+  }
+
+  header{
+    position:sticky; top:0; z-index:20; background:rgba(15,23,42,.93); backdrop-filter:blur(8px);
+    border-bottom:1px solid var(--line); padding:9px 18px;
+    display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+  }
+  .brand{font-weight:700; color:var(--green); letter-spacing:2px; font-size:13px}
+  .brand small{color:var(--muted); letter-spacing:0; font-weight:400; display:block; font-size:10px}
+  .stats{display:flex; gap:14px; margin-left:auto; flex-wrap:wrap; align-items:center}
+  .stat{font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px}
+  .stat b{display:block; font-size:14px; letter-spacing:0; text-transform:none}
+  .stat.xp b{color:var(--amber)} .stat.rank b{color:var(--purple)}
+  .stat.up b{color:var(--green)} .stat.ch b{color:var(--cyan)} .stat.fr b{color:var(--amber)}
+  .bar{width:92px; height:5px; background:#0b1220; border-radius:3px; overflow:hidden; margin-top:5px}
+  .bar i{display:block; height:100%; background:var(--green); transition:width .5s ease, background .4s}
+  .hbtn{
+    background:transparent; border:1px solid var(--line); color:var(--muted); font-family:inherit;
+    font-size:10px; padding:6px 10px; border-radius:5px; cursor:pointer; letter-spacing:1px; text-transform:uppercase;
+  }
+  .hbtn:hover{border-color:var(--green-dim); color:var(--green)}
+
+  main{flex:1; overflow-y:auto; padding:24px 18px 56px}
+  .wrap{max-width:840px; margin:0 auto}
+  .blk{animation:fade .35s ease both; margin:0 0 14px}
+  @keyframes fade{from{opacity:0; transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .crumb{font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin:0 0 14px}
+  .crumb b{color:var(--green); font-weight:400}
+
+  .chaptercard{
+    border:1px solid var(--green-dim); border-left-width:4px;
+    background:linear-gradient(90deg,rgba(74,222,128,.07),transparent);
+    padding:15px 18px; border-radius:6px; margin:0 0 18px;
+  }
+  .chaptercard .k{color:var(--green); font-size:11px; letter-spacing:3px}
+  .chaptercard h2{margin:6px 0 4px; font-size:21px; color:#f1f5f9; letter-spacing:.5px}
+  .chaptercard p{margin:0; color:var(--muted); font-size:13px}
+
+  .dateline{font-size:11px; letter-spacing:2px; text-transform:uppercase; color:var(--amber);
+            border-left:2px solid var(--amber); padding-left:10px; opacity:.85}
+  .narr{color:var(--text)}
+  .sys{color:var(--amber)}
+  .sys::before{content:"[SYS] "; color:#a16207}
+  .out{color:var(--green-dim); white-space:pre-wrap}
+  .npc{border-left:2px solid var(--cyan); padding-left:12px; color:#bae6fd}
+  .npc b{color:var(--cyan)}
+  code{background:#0b1220; color:var(--amber); padding:1px 6px; border-radius:4px; font-size:.92em}
+
+  .brief{border:1px solid var(--line); background:var(--panel); border-radius:6px; padding:14px 18px; margin:0 0 16px}
+  .brief h3{margin:0 0 10px; font-size:12px; letter-spacing:2px; color:var(--cyan); text-transform:uppercase}
+  .brief ul{margin:0; padding-left:18px}
+  .brief li{margin:6px 0}
+  pre{background:#090d16; border:1px solid var(--line); border-radius:6px; padding:12px 14px;
+      overflow-x:auto; margin:10px 0; color:#a5f3fc; font-size:13.5px; line-height:1.65}
+
+  /* annotated code walk-through */
+  .walk{margin:12px 0 4px; border:1px solid var(--line); border-radius:6px; overflow:hidden}
+  .walk .wh{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--cyan);
+            padding:8px 12px; background:#090d16; border-bottom:1px solid var(--line)}
+  .walk table{width:100%; border-collapse:collapse; font-size:13px; margin:0}
+  .walk td{padding:7px 12px; border-bottom:1px solid #16213a; vertical-align:top}
+  .walk td:first-child{color:#a5f3fc; white-space:pre; width:47%; background:#090d16; font-size:12.5px}
+  .walk td:last-child{color:var(--text); font-size:13px}
+  .walk tr:last-child td{border-bottom:0}
+
+  details.manual{border:1px solid var(--line); background:var(--panel); border-radius:6px; margin:0 0 16px}
+  details.manual summary{cursor:pointer; padding:9px 14px; font-size:11px; letter-spacing:2px;
+    text-transform:uppercase; color:var(--cyan); list-style:none; user-select:none}
+  details.manual summary::-webkit-details-marker{display:none}
+  details.manual summary::before{content:"\25B8  "}
+  details.manual[open] summary::before{content:"\25BE  "}
+  details.manual .inner{padding:0 16px 14px}
+  details.manual ul{margin:0; padding-left:18px}
+  details.manual li{margin:5px 0}
+
+  .relic{border:1px dashed var(--amber); border-radius:6px; background:rgba(251,191,36,.05); padding:12px 16px; margin:0 0 14px}
+  .relic .lab{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--amber)}
+  .relic .sha{color:var(--muted); font-size:12px; margin-top:6px}
+  .relic .msg{color:#fde68a; margin-top:4px; font-style:italic}
+
+  /* ---- fragment recovery screen (its own look, not task feedback) ---- */
+  .frag-scan{
+    color:var(--green-dim); font-size:12.5px; line-height:1.8;
+    border-left:2px solid var(--green-dim); padding-left:12px; margin:0 0 20px;
+  }
+  .fragcard{
+    position:relative; overflow:hidden;
+    border:1px solid rgba(251,191,36,.35); border-radius:10px;
+    background:
+      radial-gradient(420px 180px at 12% -30%, rgba(251,191,36,.13) 0%, transparent 70%),
+      rgba(251,191,36,.035);
+    padding:24px 26px 20px; margin:0 0 20px;
+  }
+  .fragcard::before{
+    content:""; position:absolute; left:0; top:0; bottom:0; width:2px; background:var(--amber); opacity:.55;
+  }
+  .fr-k{
+    font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--amber); margin-bottom:16px;
+  }
+  .fr-sha{color:#fde68a; font-size:17px; letter-spacing:1px}
+  .fr-meta{color:var(--muted); font-size:12px; margin-top:3px}
+  .fr-msg{
+    color:#fde68a; font-style:italic; font-size:15.5px; line-height:1.75;
+    margin:18px 0 0; padding:14px 0 0; border-top:1px dashed rgba(251,191,36,.25);
+  }
+  .fr-msg::before{content:"\201C"} .fr-msg::after{content:"\201D"}
+  .fr-pips{display:flex; gap:6px; margin:22px 0 0}
+  .fr-pips i{
+    width:22px; height:4px; border-radius:2px; background:#334155; transition:background .4s ease;
+  }
+  .fr-pips i.on{background:var(--amber)}
+  .fr-foot{color:var(--muted); font-size:11.5px; letter-spacing:.5px; margin-top:9px}
+
+  /* ---- promotion + completion code (quest screens) ---- */
+  .promo{border:1px solid rgba(192,132,252,.35); border-radius:8px; background:rgba(192,132,252,.06);
+         padding:12px 16px; margin:14px 0}
+  .promo-k{font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--purple)}
+  .promo-r{margin-top:5px; color:var(--muted); font-size:15px}
+  .promo-r b{color:var(--purple)}
+  .fr-pips i.past{opacity:.4}
+  .cando{margin:6px 0 14px; padding-left:20px; color:var(--text); font-size:13.5px}
+  .cando li{margin:4px 0}
+  .codebox{border:1px dashed var(--green-dim); border-radius:8px; background:#0b1220;
+           padding:12px 16px; margin:14px 0; display:flex; align-items:center; gap:14px; flex-wrap:wrap}
+  .code-k{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); width:100%}
+  .code-v{color:var(--green); font-size:17px; letter-spacing:1.5px; user-select:all}
+  .codebox .btn{margin-left:auto}
+
+  .chal{border:1px solid #334155; background:var(--panel); border-radius:8px; padding:16px 18px; margin:0 0 16px}
+  .chal .tag{font-size:10px; letter-spacing:2px; color:var(--purple); text-transform:uppercase}
+  .chal .q{margin:8px 0 12px; color:#f8fafc}
+  .opts{display:flex; flex-direction:column; gap:8px}
+  .opt{text-align:left; background:#090d16; border:1px solid var(--line); color:var(--text);
+       font-family:inherit; font-size:14px; padding:10px 13px; border-radius:6px; cursor:pointer; transition:.15s}
+  .opt:hover:not(:disabled){border-color:var(--green-dim); background:#0e1a22; transform:translateX(3px)}
+  .opt:disabled{cursor:default; opacity:.55}
+  .opt.right{border-color:var(--green); color:var(--green); opacity:1; background:rgba(74,222,128,.08)}
+  .opt.wrong{border-color:var(--red); color:var(--red); opacity:1}
+
+  .shape{color:var(--muted); font-size:12.5px; margin:2px 0 8px}
+  .shape em{color:var(--cyan); font-style:normal}
+  .term{display:flex; align-items:center; gap:8px; background:#090d16; border:1px solid var(--line);
+        border-radius:6px; padding:9px 12px}
+  .term span{color:var(--green); font-weight:700}
+  .term input{flex:1; background:transparent; border:0; outline:0; color:var(--green);
+              font-family:inherit; font-size:14.5px; min-width:0}
+
+  .bank{display:flex; flex-wrap:wrap; gap:7px; margin-top:11px; align-items:center}
+  .bank .lab{font-size:10px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted); width:100%}
+  .tok{background:#0b1220; border:1px solid #334155; color:var(--amber); font-family:inherit;
+       font-size:13px; padding:5px 11px; border-radius:14px; cursor:pointer; transition:.12s}
+  .tok:hover:not(:disabled){border-color:var(--green); color:var(--green); transform:translateY(-1px)}
+  .tok:disabled{opacity:.3; cursor:default}
+  .tok.used{opacity:.35}
+
+  .blank{background:#0b1220; border:1px solid #334155; border-bottom:2px solid var(--amber);
+         color:var(--amber); font-family:inherit; font-size:13.5px; padding:1px 6px; border-radius:4px; outline:0}
+  .blank:focus{border-color:var(--green); box-shadow:0 0 0 2px rgba(74,222,128,.15)}
+  .blank.ok{border-color:var(--green); color:var(--green); border-bottom-color:var(--green)}
+  .blank.no{border-color:var(--red); color:var(--red); border-bottom-color:var(--red)}
+
+  /* ---- code editor for "type it yourself" ---- */
+  .edwrap{border:1px solid #334155; border-radius:6px; overflow:hidden; margin-top:6px; background:#090d16}
+  .edbar{display:flex; align-items:center; gap:10px; padding:6px 12px; background:#16213a;
+         border-bottom:1px solid var(--line); font-size:11px; color:var(--muted); letter-spacing:1px}
+  .edbar b{color:var(--amber); font-weight:400}
+  textarea.editor{
+    display:block; width:100%; min-height:230px; background:transparent; border:0; outline:0; resize:vertical;
+    color:#a5f3fc; font-family:inherit; font-size:13.5px; line-height:1.7; padding:12px 14px; tab-size:2;
+  }
+  textarea.editor::placeholder{color:#334155}
+
+  .reqs{margin-top:12px; border:1px solid var(--line); border-radius:6px; background:#090d16; padding:10px 14px}
+  .reqs .lab{font-size:10px; letter-spacing:2px; text-transform:uppercase; color:var(--muted); margin-bottom:7px}
+  .req{display:flex; gap:9px; align-items:flex-start; padding:3px 0; font-size:13px; color:var(--muted)}
+  .req .mk{width:14px; flex:none; text-align:center}
+  .req.on{color:#6ee7b7} .req.on .mk{color:var(--green)}
+  .req.off .mk{color:#334155}
+  .parseerr{border:1px solid #7f1d1d; background:rgba(248,113,113,.09); color:#fca5a5;
+            border-radius:6px; padding:10px 13px; margin-top:11px; font-size:13px}
+
+  .runout{background:#0b1220; border:1px solid var(--green-dim); border-radius:6px; padding:12px 14px;
+          margin-top:12px; color:#a5f3fc; font-size:12.5px; line-height:1.6; white-space:pre-wrap; overflow-x:auto}
+  .runout .rk{color:var(--cyan)} .runout .rc{color:var(--amber)} .runout .rg{color:var(--green)}
+  .runout .rr{color:var(--red)} .runout .ry{color:var(--muted)}
+
+  .row{display:flex; gap:9px; margin-top:12px; flex-wrap:wrap}
+  .btn{background:var(--green); color:#04150b; border:0; font-family:inherit; font-weight:700;
+       font-size:13px; padding:9px 18px; border-radius:6px; cursor:pointer; letter-spacing:.5px}
+  .btn:hover{filter:brightness(1.12)}
+  .btn.ghost{background:transparent; color:var(--muted); border:1px solid var(--line); font-weight:400}
+  .btn.ghost:hover{color:var(--amber); border-color:var(--amber)}
+  .btn:disabled{opacity:.4; cursor:default; filter:none}
+
+  .fb{border-radius:6px; padding:11px 14px; margin:10px 0 0; font-size:13.5px; animation:fade .3s ease both}
+  .fb.good{background:rgba(74,222,128,.09); border:1px solid var(--green-dim); color:#6ee7b7}
+  .fb.bad{background:rgba(248,113,113,.09); border:1px solid #7f1d1d; color:#fca5a5}
+  .fb.hint{background:rgba(251,191,36,.08); border:1px solid #a16207; color:#fde68a}
+  .fb b{color:inherit}
+  .fb .lead{display:block; margin-bottom:5px}
+  .fb ul{margin:6px 0 0; padding-left:18px}
+  .fb li{margin:3px 0}
+
+  .veil{position:fixed; inset:0; z-index:60; background:rgba(2,6,23,.92); backdrop-filter:blur(4px);
+        display:flex; align-items:center; justify-content:center; padding:22px; overflow-y:auto}
+  .card{background:var(--panel); border:1px solid var(--green-dim); border-radius:10px;
+        padding:26px 30px; max-width:700px; width:100%; max-height:88vh; overflow-y:auto}
+  .card h1{margin:0 0 4px; font-size:28px; color:var(--green); letter-spacing:3px}
+  .card h2{margin:0 0 14px; font-size:15px; color:var(--amber); letter-spacing:1px; font-weight:400}
+  .card p{color:var(--text); font-size:14px}
+  .card .dim{color:var(--muted); font-size:13px}
+  .letter{border-left:2px solid var(--amber); padding:2px 0 2px 16px; margin:14px 0;
+          color:#fde68a; font-size:14px; white-space:pre-wrap; line-height:1.75}
+  .chips{display:flex; flex-wrap:wrap; gap:8px; margin-top:12px}
+  .chip{background:#090d16; border:1px solid var(--line); color:var(--muted); border-radius:6px;
+        padding:7px 11px; font-size:12px; cursor:pointer; font-family:inherit}
+  .chip:hover{border-color:var(--green-dim); color:var(--green)}
+  .chip.done{color:var(--green); border-color:var(--green-dim)}
+  .chip.locked{opacity:.35; cursor:not-allowed}
+  table.cheat{width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px}
+  table.cheat td{padding:6px 8px; border-bottom:1px solid var(--line); vertical-align:top}
+  table.cheat td:first-child{color:var(--amber); white-space:nowrap; width:36%}
+  @media(max-width:640px){
+    body{font-size:14px}
+    .stats{gap:10px} .stat b{font-size:13px} .bar{width:70px}
+    main{padding:16px 12px 40px}
+    .card{padding:20px 18px}
+    .walk td:first-child{width:auto; display:block; border-bottom:0}
+    .walk td:last-child{display:block; padding-top:0}
+  }
+
+  /* --- NerdLab embed ---------------------------------------------------
+     The platform viewer forces html/body to height:auto, so the lab owns its
+     own viewport through this shell. That keeps `main` scrolling internally
+     and keeps position:fixed overlays inside the visible frame. */
+  .questshell{ height:100vh; min-height:520px; display:flex; flex-direction:column; overflow:hidden; }
+  body{ background:var(--bg); }
+  body::after{ display:none; }   /* scanline overlay reads as noise on the platform */
+</style>
+</head>
+<body>
+
+<div class="questshell">
+<header>
+  <div class="brand">ANSIBLE&nbsp;QUEST<small>sre</small></div>
+  <div class="stats">
+    <div class="stat ch">CH<b id="s-ch">—</b></div>
+    <div class="stat fr">FRAGMENTS<b id="s-fr">0/3</b></div>
+    <div class="stat rank">RANK<b id="s-rank">Junior SRE</b></div>
+    <div class="stat up">SERVERS UP<b id="s-up">100%</b><div class="bar"><i id="s-bar" style="width:100%"></i></div></div>
+    <button class="hbtn" id="b-frag">Fragments</button>
+    <button class="hbtn" id="b-note">Notebook</button>
+    <button class="hbtn" id="b-map">Chapters</button>
+  </div>
+</header>
+
+<main id="main"><div class="wrap" id="log"></div></main>
+</div>
+
+<script>
+/* ============================================================
+   ANSIBLE QUEST — "The Handover"
+   Blank marker in fill-in code is @1@ … @9@  (avoids Jinja {{ }})
+   ============================================================ */
+
+const TUNE = { triesBeforeReveal:3, damage:4, revealXP:8 };
+
+/* ===== QUEST CONFIG ===== */
+const QUEST = { n:1, of:1, roman:'', title:'Safe to Run Twice',
+  rankStart:'Junior SRE', rankEnd:'SRE',
+  chFrom:1, chTo:3, chTotal:3, fragOffset:0, fragTotal:3,
+  isFinal:true, next:'' };
+const STORY_SO_FAR = 'You can already write a playbook that runs. web02 has been answering Meridian customers with error 502 for six days, the on-call engineer will not accept anything that only works the first time, and a customer inspection is eight days out.';
+const QUEST_GOAL   = 'Fix web02 properly, then prove the fix is safe to run again. Three chapters, then a lab where your playbook has to run twice and change nothing the second time.';
+const QUEST_CAN    = '<li>pick modules that describe a <i>result</i> instead of running commands</li><li>use variables, facts and templates so one file fits every machine</li><li>restart a service only when something actually changed</li><li>write a playbook that is safe to run every hour, forever</li>';
+const NEXT_UP      = '';
+const START_LABEL  = 'Open the incident →';
+/* ===== end quest config ===== */
+
+/* ============================================================
+   CONTENT
+   ============================================================ */
+const CHAPTERS = [
+{
+  id:1, title:"The 502", sub:"Modules describe a result",
+  story:[
+    "date:Day 3 · 09:40 · Meridian audit in 8 days",
+    "sys:web02 — HTTP 502 — 1,410 failed requests in the last hour",
+    "npc:PRIYA (CTO)|Six days. Meridian's own support desk told us, which is not how I wanted to find out.",
+    "You look at web02. It was rebuilt at 3am last week by someone tired and working from memory.",
+    "out:$ ansible webservers -m command -a \"nginx -v\"\nweb01.nerdlab.co.in | CHANGED | rc=0 >>\nnginx version: nginx/1.24.0\n\nweb02.nerdlab.co.in | FAILED | rc=127 >>\nbash: nginx: command not found",
+    "nginx is not installed on web02. Something else is answering port 80 badly, and has been for six days.",
+    "npc:DEV (on-call)|Before you fix it — I carry the pager. Whatever you write, I end up running at 3am while half awake. Do not give me a script that only works the first time.",
+    "That is the real lesson of this chapter. A command runs. A module makes something *true*."
+  ],
+  brief:{
+    h:"Field Manual — State, not steps",
+    lines:[
+      "A good module is <b>declarative</b>: you write the result you want, and it works out whether anything needs doing.",
+      "<code>package</code> installs software. <code>state: present</code> means <i>make sure it is installed</i> — not <i>install it</i>.",
+      "<code>service</code> controls a running service. <code>state: started</code> means <i>running now</i>; <code>enabled: true</code> means <i>starts after a reboot</i>. Two different promises.",
+      "Run it twice and the second run reports <b>changed=0</b>. That property has a name: <b>idempotent</b>.",
+      "<code>command</code> and <code>shell</code> are the exceptions. They cannot know whether the work was needed, so they report <b>changed</b> every single time.",
+      "<code>become: true</code> gives the play sudo. Installing packages needs it."
+    ],
+    code:"- name: Install nginx\n  ansible.builtin.package:\n    name: nginx\n    state: present\n\n- name: Start nginx now and after reboot\n  ansible.builtin.service:\n    name: nginx\n    state: started\n    enabled: true",
+    annot:[
+      ["ansible.builtin.package:","Works on any distro — it picks apt, dnf or zypper from the facts it gathered."],
+      ["    name: nginx","Which package. Can also be a list, which installs them in one transaction."],
+      ["    state: present","<i>Make sure it is installed.</i> Already there? Nothing happens, reported as <code>ok</code>."],
+      ["ansible.builtin.service:","Talks to systemd, or whatever init the machine uses."],
+      ["    state: started","Running <b>right now</b>. Does nothing if it is already running."],
+      ["    enabled: true","Comes back <b>after a reboot</b>. This is the line the 3am rebuild forgot."]
+    ]
+  },
+  ch:[
+    {type:"mc", xp:20,
+      q:"nginx is missing on web02. Which task do you write?",
+      options:["<code>ansible.builtin.command: dnf install -y nginx</code>",
+               "<code>ansible.builtin.package:</code> with <code>name: nginx</code> and <code>state: present</code>",
+               "<code>ansible.builtin.shell: 'if ! which nginx; then dnf install nginx; fi'</code>",
+               "<code>ansible.builtin.command: systemctl start nginx</code>"],
+      correct:1,
+      why:"<code>package</code> asks a question first — is nginx installed? — and only acts if the answer is no.<br><br>"+
+          "The two <code>command</code> answers do the work blindly every run and report <code>changed</code> forever, so you can never "+
+          "tell a real change from noise. The <code>shell</code> one is a hand-written version of the check the module already does, "+
+          "and it will be subtly wrong on the day someone changes the distro."
+    },
+    {type:"fill", xp:25,
+      q:"Make nginx run now <b>and</b> survive the next reboot. Two keys.",
+      code:"- name: Nginx is running and enabled\n  ansible.builtin.service:\n    name: nginx\n    state: @1@\n    @2@: true",
+      blanks:[{a:["started"],w:10},{a:["enabled"],w:10}],
+      bank:["started","enabled","running","restarted","present"],
+      hint:"One word describes the service right now. The other describes it after a power cut.",
+      why:"<code>state: started</code> and <code>state: running</code> look interchangeable but only one is real — the service module "+
+          "takes <code>started</code>, <code>stopped</code>, <code>restarted</code> and <code>reloaded</code>.<br><br>"+
+          "<code>enabled: true</code> is the line the 3am rebuild missed. web02 was serving traffic when they went home, and stopped "+
+          "the next time it rebooted. Six days of 502s came out of one missing line."
+    },
+    {type:"cmd", xp:25,
+      q:"Before touching production, preview the change: run <code>site.yml</code> without changing anything, and show the file differences.",
+      shape:"ansible-playbook <em>&lt;file&gt;</em> <em>&lt;flag&gt;</em> <em>&lt;flag&gt;</em>",
+      bank:["ansible-playbook","site.yml","--check","--diff","--force"],
+      answers:["ansible-playbook site.yml --check --diff","ansible-playbook site.yml --diff --check",
+               "ansible-playbook -i inventory.ini site.yml --check --diff","ansible-playbook site.yml --check"],
+      hint:"<code>--check</code> is the dry run. <code>--diff</code> shows what would change inside files.",
+      why:"<code>--check</code> asks every module what it <i>would</i> do and changes nothing. <code>--diff</code> prints the before and "+
+          "after of any file the run would touch.<br><br>"+
+          "Together they are the closest thing Ansible has to a seatbelt, and they only work properly because your tasks are declarative — "+
+          "a <code>command</code> task cannot say what it would have done, so check mode simply skips it."
+    },
+    {type:"write", xp:40,
+      q:"Write the fix. A play on <code>webservers</code> with <code>become: true</code>, one task that ensures <code>nginx</code> is <b>present</b>, and one that ensures the service is <b>started and enabled</b>.",
+      file:"site.yml",
+      placeholder:"---\n- name: \n  hosts: \n  become: true\n\n  tasks:\n    - name: \n      ansible.builtin.package:\n        name: \n        state: \n",
+      hint:"Two tasks, each with a <code>name:</code>. The first uses <code>ansible.builtin.package</code> with <code>state: present</code>; the second uses <code>ansible.builtin.service</code> with <code>state: started</code> and <code>enabled: true</code>.",
+      solution:'---\n- name: Repair the web tier\n  hosts: webservers\n  become: true\n\n  tasks:\n    - name: Nginx is installed\n      ansible.builtin.package:\n        name: nginx\n        state: present\n\n    - name: Nginx is running and enabled\n      ansible.builtin.service:\n        name: nginx\n        state: started\n        enabled: true',
+      check(doc){
+        const p = Y.play(doc);
+        const pk = Y.anyMod(p,['package','apt','dnf','yum'])[0];
+        const sv = Y.anyMod(p,['service','systemd'])[0];
+        return [
+          req(p && Y.eq(p.hosts,'webservers'), 'The play targets <code>hosts: webservers</code>'),
+          req(p && Y.yes(p.become), '<code>become: true</code> on the play'),
+          req(!!pk, 'A task using <code>ansible.builtin.package</code>'),
+          req(pk && Y.eq(Y.arg(pk,'name'),'nginx'), 'It installs <code>nginx</code>'),
+          req(pk && Y.eq(Y.arg(pk,'state'),'present'), 'With <code>state: present</code> (not <code>latest</code>)'),
+          req(!!sv, 'A task using <code>ansible.builtin.service</code>'),
+          req(sv && Y.eq(Y.arg(sv,'state'),'started'), '<code>state: started</code>'),
+          req(sv && Y.yes(Y.arg(sv,'enabled')), '<code>enabled: true</code>'),
+          req(Y.tasks(p).length >= 2 && Y.tasks(p).every(t=> t && t.name), 'Every task has a <code>name:</code>')
+        ];
+      },
+      why:"Why <code>present</code> and not <code>latest</code>? <code>latest</code> means <i>upgrade if a newer version exists</i>, so the "+
+          "task changes on the day the mirror updates — an unplanned nginx upgrade during an unrelated deploy, and a second run that is "+
+          "never clean.<br><br>"+
+          "<code>present</code> means <i>be installed</i>. Upgrades then become a decision someone makes on purpose, in a commit, with a "+
+          "version number in it."
+    }
+  ],
+  outro:[
+    "out:TASK [Nginx is installed] *********************\nchanged: [web02.nerdlab.co.in]\nok: [web01.nerdlab.co.in]\n\nTASK [Nginx is running and enabled] ***********\nchanged: [web02.nerdlab.co.in]\nok: [web01.nerdlab.co.in]\n\nPLAY RECAP ************************************\nweb01.nerdlab.co.in  : ok=3  changed=0  failed=0\nweb02.nerdlab.co.in  : ok=3  changed=2  failed=0",
+    "web01 said <b>ok</b> twice — it was already correct, so nothing happened to it. web02 said <b>changed</b> twice, and the 502s stop.",
+    "One file, two machines, only the broken one touched. That difference is the whole reason this job scales."
+  ],
+  relic:{ sha:"3b9d740", date:"2018-04-22", msg:"replaced every `command: yum install` with the package module today. ran it twice, second run did nothing. i can finally put the deploy on a cron and sleep." },
+  hook:"Priya reads your playbook and finds the word <code>nginx</code> hard-coded four times. \"What happens when the database team wants this?\""
+},
+
+{
+  id:2, title:"One File, Every Machine", sub:"Variables, facts and templates",
+  story:[
+    "date:Day 4 · 11:20 · audit in 7 days",
+    "npc:PRIYA (CTO)|Emma had one file for four hundred machines. You have one file for two, with the values typed inside it. Show me how she did it.",
+    "Two ideas do all the work. <b>Variables</b> are values you choose. <b>Facts</b> are values Ansible discovers about each machine before it starts.",
+    "out:$ ansible web01 -m setup -a \"filter=ansible_distribution*\"\nweb01.nerdlab.co.in | SUCCESS => {\n  \"ansible_distribution\": \"Ubuntu\",\n  \"ansible_distribution_version\": \"22.04\"\n}",
+    "Ansible learned that by itself, before running a single task of yours. Every play begins with a task called *Gathering Facts* doing exactly this.",
+    "npc:DEV (on-call)|And please template the nginx config. The one on web02 was edited by hand at 3am. Nobody knows what is in it any more."
+  ],
+  brief:{
+    h:"Field Manual — Variables, facts and templates",
+    lines:[
+      "<code>vars:</code> on the play defines your own values. You read one back with <code>{{ curly braces }}</code>.",
+      "<b>Facts</b> are gathered automatically: <code>ansible_facts['os_family']</code>, <code>ansible_hostname</code>, addresses, memory, disks.",
+      "A <b>template</b> is a config file with <code>{{ }}</code> holes in it. It lives in <code>templates/</code> and ends in <code>.j2</code>.",
+      "The <code>template</code> module renders it <i>per machine</i> and copies the result. Same file in, different file out on every host.",
+      "<code>copy</code> is the sibling for files with nothing to fill in.",
+      "Quote any value that starts with a brace: <code>msg: \"{{ app_port }}\"</code> — otherwise YAML thinks you are opening a map."
+    ],
+    code:"- name: Configure the web tier\n  hosts: webservers\n  become: true\n\n  vars:\n    app_port: 8080\n    worker_processes: 4\n\n  tasks:\n    - name: Render the nginx config\n      ansible.builtin.template:\n        src: nginx.conf.j2\n        dest: /etc/nginx/nginx.conf\n        mode: \"0644\"",
+    annot:[
+      ["  vars:","Values for this play. Anything below is available to every task in it."],
+      ["    app_port: 8080","Your own variable. Read it back anywhere as <code>{{ app_port }}</code>."],
+      ["ansible.builtin.template:","Render a <code>.j2</code> file, then copy the result to the machine."],
+      ["    src: nginx.conf.j2","Found in the <code>templates/</code> folder next to your playbook."],
+      ["    dest: /etc/nginx/nginx.conf","Where the rendered file lands on the server."],
+      ["    mode: \"0644\"","Permissions. Quoted, so YAML keeps the leading zero."]
+    ]
+  },
+  ch:[
+    {type:"mc", xp:20,
+      q:"You set <code>gather_facts: false</code> to make a play start faster. What stops working?",
+      options:["Nothing — facts are only used for reporting",
+               "Anything reading <code>ansible_facts</code>, and modules like <code>package</code> that use them to pick apt or dnf",
+               "Handlers stop firing",
+               "<code>become</code> stops escalating to root"],
+      correct:1,
+      why:"Facts come from the implicit <i>Gathering Facts</i> task. Turn it off and <code>ansible_facts</code> is empty, so every "+
+          "<code>when:</code> that tests the OS silently goes false and <code>package</code> has nothing to dispatch on.<br><br>"+
+          "It is still a real optimisation on a huge fleet — you just pair it with a fact cache, or <code>gather_subset: min</code>, "+
+          "rather than flying blind."
+    },
+    {type:"fill", xp:30,
+      q:"Give the play a variable and use it. Two blanks: the key that opens your own values, and the way you read one back.",
+      code:"- name: Show the port\n  hosts: webservers\n\n  @1@:\n    app_port: 8080\n\n  tasks:\n    - name: Print it\n      ansible.builtin.debug:\n        msg: \"listening on @2@\"",
+      blanks:[{a:["vars"],w:8},{a:["{{ app_port }}","{{app_port}}"],w:18}],
+      bank:["vars","{{ app_port }}","facts","$app_port","tasks"],
+      hint:"The key is plural and sits at the same indent as <code>tasks:</code>. The value is the variable name inside double curly braces.",
+      why:"<code>{{ }}</code> is Jinja2 — the same templating language the <code>template</code> module uses on config files. Once you see "+
+          "that <code>msg:</code> and <code>nginx.conf.j2</code> share one syntax, the whole variable system collapses into a single idea.<br><br>"+
+          "Note the quotes around <code>\"listening on {{ app_port }}\"</code>. A value that <i>begins</i> with <code>{{</code> must be quoted, "+
+          "or YAML reads the brace as the start of a map and refuses the file."
+    },
+    {type:"cmd", xp:25,
+      q:"Show every fact Ansible can discover about <code>web01</code>, straight from the command line.",
+      shape:"ansible <em>&lt;host&gt;</em> -m <em>&lt;module&gt;</em>",
+      bank:["ansible","web01","-m","setup","--facts"],
+      answers:["ansible web01 -m setup","ansible web01 -m ansible.builtin.setup","ansible web01 -m setup -a \"filter=*\""],
+      hint:"The module that gathers facts is named after what every play does first: <code>setup</code>.",
+      why:"<code>setup</code> is the module behind <i>Gathering Facts</i>. Running it by hand dumps a few hundred keys, every one of them "+
+          "usable in a playbook.<br><br>"+
+          "This is the command to reach for when a <code>when:</code> is not firing. Do not guess a fact name — print it, read the exact "+
+          "spelling, then use it. <code>-a \"filter=ansible_distribution*\"</code> narrows the dump when you know what you are after."
+    },
+    {type:"write", xp:40,
+      q:"Write a play on <code>webservers</code> with a <code>vars:</code> block defining <code>app_port</code>, and one <code>debug</code> task whose <code>msg</code> uses <code>{{ app_port }}</code>.",
+      file:"site.yml",
+      placeholder:"---\n- name: \n  hosts: \n\n  vars:\n    app_port: \n\n  tasks:\n    - name: \n      ansible.builtin.debug:\n        msg: \"\"\n",
+      hint:"<code>vars:</code> sits at the same indent as <code>tasks:</code> — two spaces. The message must be quoted because it contains braces.",
+      solution:'---\n- name: Show the configured port\n  hosts: webservers\n\n  vars:\n    app_port: 8080\n\n  tasks:\n    - name: Print the port\n      ansible.builtin.debug:\n        msg: "nginx will listen on {{ app_port }}"',
+      check(doc){
+        const p = Y.play(doc), d = Y.byMod(p,'debug')[0];
+        return [
+          req(p && Y.eq(p.hosts,'webservers'), 'The play targets <code>hosts: webservers</code>'),
+          req(p && p.vars && typeof p.vars === 'object', 'A <code>vars:</code> block on the play'),
+          req(p && p.vars && p.vars.app_port !== undefined, 'It defines <code>app_port</code>'),
+          req(!!d, 'A task using <code>ansible.builtin.debug</code>'),
+          req(d && d.name, 'That task has a <code>name:</code>'),
+          req(d && Y.jinja(Y.arg(d,'msg'),'app_port'), 'The <code>msg:</code> reads <code>{{ app_port }}</code>')
+        ];
+      },
+      why:"You have separated <i>what the machine should be</i> from <i>the numbers that decide it</i>. That separation is what lets one "+
+          "file serve four hundred machines: the tasks stay identical while the values arrive from the play, a group, a host, or the "+
+          "command line.<br><br>"+
+          "The same <code>{{ app_port }}</code> works inside <code>nginx.conf.j2</code>. A template is this exact trick applied to config "+
+          "files instead of messages."
+    }
+  ],
+  outro:[
+    "out:TASK [Render the nginx config] ****************\nchanged: [web01.nerdlab.co.in]\nchanged: [web02.nerdlab.co.in]\n\n--- before: /etc/nginx/nginx.conf\n+++ after: rendered from nginx.conf.j2\n-worker_processes 1;\n+worker_processes 4;",
+    "Both machines now have a config generated from one template. The hand-edited file from 3am is gone, and nobody has to remember what was in it.",
+    "npc:PRIYA (CTO)|Good. The config changed — but nginx is still serving the old one. Who restarts it?"
+  ],
+  relic:{ sha:"5c17e93", date:"2019-02-08", msg:"stopped editing configs on servers today. the template is the truth now. if it is not in the repo it does not exist." },
+  hook:"You could restart nginx on every run. On four hundred machines, during business hours, that is an outage you scheduled yourself."
+},
+
+{
+  id:3, title:"Only When It Changes", sub:"Handlers, conditions and loops",
+  story:[
+    "date:Day 5 · 15:05 · audit in 6 days",
+    "npc:DEV (on-call)|If your playbook restarts nginx every hour whether or not anything changed, Meridian will hear it before I do. Restart only when the config actually moves.",
+    "That is what a <b>handler</b> is. A task that sits and waits. A normal task <i>notifies</i> it — but only if that task really changed something.",
+    "npc:PRIYA (CTO)|And two of the four hundred still run an older distro. Emma's file coped with that without a second copy of anything."
+  ],
+  brief:{
+    h:"Field Manual — Handlers, when and loop",
+    lines:[
+      "<code>notify: Some Name</code> queues the handler with that exact <code>name:</code>. Exact match, capital letters included.",
+      "Handlers only fire if the task reported <b>changed</b>. Nothing changed, nothing restarts.",
+      "They run <b>once, at the end of the play</b>, however many tasks notified them — ten config files, one restart.",
+      "<code>when:</code> runs a task only if an expression is true. It is already a Jinja context, so you write it <b>without</b> <code>{{ }}</code>.",
+      "<code>loop:</code> repeats a task over a list, exposing each entry as <code>{{ item }}</code>.",
+      "<code>--limit web02</code> runs against a subset. Your blast radius is one flag away."
+    ],
+    code:"  tasks:\n    - name: Render the nginx config\n      ansible.builtin.template:\n        src: nginx.conf.j2\n        dest: /etc/nginx/nginx.conf\n      notify: Restart nginx\n\n    - name: Install build tools\n      ansible.builtin.package:\n        name: \"{{ item }}\"\n        state: present\n      loop:\n        - git\n        - curl\n      when: ansible_facts['os_family'] == 'Debian'\n\n  handlers:\n    - name: Restart nginx\n      ansible.builtin.service:\n        name: nginx\n        state: restarted",
+    annot:[
+      ["      notify: Restart nginx","Queues the handler called exactly <code>Restart nginx</code> — only if this task changed something."],
+      ["      loop:","Repeat this task once per entry below."],
+      ["        - git","One iteration. Inside the task it is <code>{{ item }}</code>."],
+      ["      when: ansible_facts['os_family'] == 'Debian'","Skip the task unless the fact matches. No <code>{{ }}</code> here."],
+      ["  handlers:","A second list, sibling of <code>tasks:</code>, holding the waiting work."],
+      ["    - name: Restart nginx","The name <code>notify</code> must match, character for character."]
+    ]
+  },
+  ch:[
+    {type:"fill", xp:30,
+      q:"Wire the config change to the restart. One key queues the handler; one key opens the list the handler lives in.",
+      code:"  tasks:\n    - name: Render the nginx config\n      ansible.builtin.template:\n        src: nginx.conf.j2\n        dest: /etc/nginx/nginx.conf\n      @1@: Restart nginx\n\n  @2@:\n    - name: Restart nginx\n      ansible.builtin.service:\n        name: nginx\n        state: restarted",
+      blanks:[{a:["notify"],w:10},{a:["handlers"],w:10}],
+      bank:["notify","handlers","when","listen","tasks"],
+      hint:"One is a verb, on the task. The other is a plural noun, a sibling of <code>tasks:</code>.",
+      why:"The link between them is the <b>name string</b> and nothing else. <code>notify: restart-nginx</code> against a handler called "+
+          "<code>Restart nginx</code> matches nothing — and Ansible says nothing about it. Your config changes, the service keeps serving "+
+          "the old one, and the run is green.<br><br>"+
+          "It is one of the few genuinely silent failures in Ansible. When a restart mysteriously does not happen, compare those two "+
+          "strings first."
+    },
+    {type:"mc", xp:25,
+      q:"Six tasks in the play notify <code>Restart nginx</code>. Three of them report <code>changed</code>. How many restarts?",
+      options:["Six — one per notify",
+               "Three — one per changed task",
+               "One, at the end of the play",
+               "None, unless you also pass <code>--force-handlers</code>"],
+      correct:2,
+      why:"Handlers are collected during the play, de-duplicated, and run once at the end. Three changed tasks, one restart.<br><br>"+
+          "The consequence people miss is <i>timing</i>: the handler runs after <b>all</b> the tasks, not next to the one that notified it. "+
+          "If the restart has to happen mid-play — before a health check, say — you force it with an "+
+          "<code>ansible.builtin.meta: flush_handlers</code> task at the point you want them to run."
+    },
+    {type:"cmd", xp:25,
+      q:"Shrink the blast radius: run <code>site.yml</code> against <b>only</b> web02.",
+      shape:"ansible-playbook <em>&lt;file&gt;</em> <em>&lt;flag&gt;</em> <em>&lt;host&gt;</em>",
+      bank:["ansible-playbook","site.yml","--limit","web02","--only"],
+      answers:["ansible-playbook site.yml --limit web02","ansible-playbook site.yml -l web02",
+               "ansible-playbook -i inventory.ini site.yml --limit web02","ansible-playbook site.yml --limit web02.nerdlab.co.in"],
+      hint:"The flag is the word for restricting something, and it takes a host or group name after it.",
+      why:"<code>--limit</code> is the cheapest safety control you have. Playbook unchanged, inventory unchanged, one machine touched.<br><br>"+
+          "The habit worth building: run on one host, read the output properly, then widen. A mistake on one machine is a story you tell "+
+          "at lunch. The same mistake on four hundred is a story Priya tells Meridian."
+    },
+    {type:"write", xp:45,
+      q:"Write a play on <code>webservers</code> with one task that installs a <b>list</b> of packages using <code>loop:</code> and <code>{{ item }}</code>, skipped unless the machine is Debian family — plus a <code>debug</code> task with no condition on it.",
+      file:"site.yml",
+      placeholder:"---\n- name: \n  hosts: webservers\n  become: true\n\n  tasks:\n    - name: \n      ansible.builtin.package:\n        name: \"{{ item }}\"\n        state: present\n      loop:\n        - \n      when: \n",
+      hint:"<code>loop:</code> takes a list, each entry indented under it with <code>- </code>. The condition is <code>when: ansible_facts['os_family'] == 'Debian'</code> — no curly braces on that line.",
+      solution:'---\n- name: Base packages\n  hosts: webservers\n  become: true\n\n  tasks:\n    - name: Install the toolkit\n      ansible.builtin.package:\n        name: "{{ item }}"\n        state: present\n      loop:\n        - git\n        - curl\n        - jq\n      when: ansible_facts[\'os_family\'] == \'Debian\'\n\n    - name: Report what we did\n      ansible.builtin.debug:\n        msg: "toolkit checked on {{ ansible_hostname }}"',
+      check(doc){
+        const p = Y.play(doc);
+        const pk = Y.anyMod(p,['package','apt','dnf','yum'])[0];
+        const d  = Y.byMod(p,'debug')[0];
+        return [
+          req(p && Y.eq(p.hosts,'webservers'), 'The play targets <code>hosts: webservers</code>'),
+          req(!!pk, 'A <code>package</code> task'),
+          req(pk && Array.isArray(pk.loop) && pk.loop.length >= 2, 'It has a <code>loop:</code> with at least two entries'),
+          req(pk && Y.jinja(Y.arg(pk,'name'),'item'), 'Its <code>name:</code> uses <code>{{ item }}</code>'),
+          req(!!(pk && pk.when), 'It carries a <code>when:</code> condition'),
+          req(!!(pk && /os_family|distribution/.test(String(pk.when))), 'The condition tests an OS fact'),
+          req(!!(pk && !/\{\{/.test(String(pk.when))), 'The <code>when:</code> has no <code>{{ }}</code> around it'),
+          req(!!d && !d.when, 'A <code>debug</code> task with no condition on it')
+        ];
+      },
+      why:"Two ways of making one file fit every machine, side by side. <code>loop</code> removes repetition <i>inside</i> a run; "+
+          "<code>when</code> removes machines from a task.<br><br>"+
+          "The no-braces rule for <code>when:</code> catches everyone once. Ansible already evaluates that string as a Jinja expression, "+
+          "so wrapping it again is like writing <code>if (if x)</code> — it usually works, warns, then breaks confusingly the day you add "+
+          "<code>is defined</code> to it."
+    }
+  ],
+  outro:[
+    "out:TASK [Render the nginx config] ****************\nok: [web01.nerdlab.co.in]\nok: [web02.nerdlab.co.in]\n\nPLAY RECAP ************************************\nweb01.nerdlab.co.in  : ok=5  changed=0  failed=0\nweb02.nerdlab.co.in  : ok=5  changed=0  failed=0",
+    "Nothing changed, so nothing restarted, so nobody noticed. Dev's pager stayed quiet.",
+    "npc:DEV (on-call)|That is the first deploy tool here I would let run on a cron. Do not make me regret saying it."
+  ],
+  relic:{ sha:"9ae2c05", date:"2019-11-30", msg:"notify + handler. we used to restart every service on every deploy 'to be safe'. four years of self-inflicted outages, fixed by one word." },
+  hook:"Priya books the test box for the evening. \"Write the whole repair from an empty file — then run it twice while I watch the second one.\""
+}
+];
+
+/* ---------- LAB 2 · after chapters 4-6 · SRE ---------- */
+const LAB2 = {
+  title:"Rebuild web02",
+  xp:120, twice:true,
+  runBtn:"Ship it to the fleet →",
+  story:[
+    "date:Day 5 · 19:15 · audit in 6 days",
+    "npc:PRIYA (CTO)|Empty file. Write the repair properly this time — package, config, service, and a restart that only fires when the config moves.",
+    "npc:DEV (on-call)|I am going to run it a second time in front of you. If anything says <b>changed</b> on that second run, it is not finished.",
+    "The requirements tick as you type. The simulator runs what you write against three machines — twice."
+  ],
+  q:"Write a playbook on <code>webservers</code> with <code>become: true</code> that: installs <code>nginx</code> (<b>present</b>), renders <code>nginx.conf.j2</code> to <code>/etc/nginx/nginx.conf</code> and <b>notifies</b> a handler, and ensures the service is <b>started and enabled</b>. Add the matching <code>handlers:</code> entry that restarts nginx.",
+  file:"site.yml",
+  placeholder:"---\n- name: \n  hosts: \n  become: true\n\n  tasks:\n    - name: \n      ansible.builtin.package:\n\n  handlers:\n    - name: \n",
+  hint:"Four moving parts: <code>package</code> with <code>state: present</code>; <code>template</code> with <code>src:</code>, <code>dest:</code> and <code>notify:</code>; <code>service</code> with <code>state: started</code> and <code>enabled: true</code>; and a <code>handlers:</code> list whose <code>name:</code> is identical to the string you notified. Avoid <code>state: latest</code> and avoid <code>command</code> — both break the second run.",
+  solution:'---\n- name: Repair and configure the web tier\n  hosts: webservers\n  become: true\n\n  vars:\n    worker_processes: 4\n\n  tasks:\n    - name: Nginx is installed\n      ansible.builtin.package:\n        name: nginx\n        state: present\n\n    - name: Nginx config is rendered from the template\n      ansible.builtin.template:\n        src: nginx.conf.j2\n        dest: /etc/nginx/nginx.conf\n        mode: "0644"\n      notify: Restart nginx\n\n    - name: Nginx is running and enabled\n      ansible.builtin.service:\n        name: nginx\n        state: started\n        enabled: true\n\n  handlers:\n    - name: Restart nginx\n      ansible.builtin.service:\n        name: nginx\n        state: restarted',
+  check(doc){
+    const p  = Y.play(doc);
+    const pk = Y.anyMod(p,['package','apt','dnf','yum'])[0];
+    const tp = Y.byMod(p,'template')[0];
+    const sv = Y.anyMod(p,['service','systemd']).filter(t=> !Y.eq(Y.arg(t,'state'),'restarted'))[0];
+    const hs = Y.handlers(p);
+    const notified = tp && tp.notify;
+    return [
+      req(p && Y.eq(p.hosts,'webservers'), 'The play targets <code>hosts: webservers</code>'),
+      req(p && Y.yes(p.become), '<code>become: true</code>'),
+      req(!!pk && Y.eq(Y.arg(pk,'name'),'nginx'), 'A <code>package</code> task installing <code>nginx</code>'),
+      req(!!pk && Y.eq(Y.arg(pk,'state'),'present'), 'With <code>state: present</code>, not <code>latest</code>'),
+      req(!!tp, 'A <code>template</code> task'),
+      req(!!tp && !!Y.arg(tp,'src') && !!Y.arg(tp,'dest'), 'It has both <code>src:</code> and <code>dest:</code>'),
+      req(!!notified, 'The template task has a <code>notify:</code>'),
+      req(!!sv && Y.eq(Y.arg(sv,'state'),'started') && Y.yes(Y.arg(sv,'enabled')), 'A <code>service</code> task with <code>state: started</code> and <code>enabled: true</code>'),
+      req(hs.length >= 1, 'A <code>handlers:</code> list'),
+      req(!!notified && hs.some(h=> Y.eq(h.name, notified)), 'A handler whose <code>name:</code> matches the <code>notify:</code> exactly'),
+      req(hs.some(h=> Y.eq(Y.arg(h,'state'),'restarted')), 'The handler restarts the service'),
+      req(Y.tasks(p).length >= 3 && Y.tasks(p).every(t=> t && t.name), 'Every task has a <code>name:</code>'),
+      req(Y.tasks(p).length >= 3 && Y.tasks(p).every(t=> ['command','shell'].indexOf(Y.mod(t).short) === -1), 'No <code>command</code> or <code>shell</code> tasks')
+    ];
+  },
+  doneCrumb:"Capstone &nbsp;·&nbsp; <b>Signed off</b>",
+  done:[
+    "out:PLAY RECAP  (second run) **********************\nweb01.nerdlab.co.in     : ok=4  changed=0  failed=0\nweb02.nerdlab.co.in     : ok=4  changed=0  failed=0",
+    "changed=0. The playbook did all the work the first time and then, correctly, did nothing.",
+    "npc:DEV (on-call)|Right. That goes on a cron, and I stop being the only thing between this company and a 502.",
+    "npc:PRIYA (CTO)|Six days of errors, fixed by a file anyone here can read. That is the first thing I am showing Meridian.",
+    "npc:PRIYA (CTO)|And it is yours. Every line of it, written by someone who was not here a fortnight ago."
+  ],
+  doneBtn:"Take the promotion →"
+};
+
+let LAB = LAB2;
+
+const CHEATSHEET = [
+  ["ansible all -m ping","Check every machine answers over SSH"],
+  ["ansible all --list-hosts","Show the inventory without connecting"],
+  ["ansible host -m setup","Show every fact about a machine"],
+  ["ansible-playbook site.yml","Run a playbook"],
+  ["ansible-playbook site.yml --check --diff","Dry run, and show file differences"],
+  ["ansible-playbook site.yml --limit web02","Run against one machine only"],
+  ["hosts: / become: true","Which machines / run with sudo"],
+  ["vars: / {{ name }}","Define a value / read it back"],
+  ["ansible_facts['os_family']","A discovered fact about the machine"],
+  ["package: name= state=present","Make sure software is installed"],
+  ["state: present | absent | latest","Installed / removed / upgraded every run"],
+  ["service: state=started enabled=true","Running now + after a reboot"],
+  ["template: src=x.j2 dest=/etc/x","Render a file per machine and copy it"],
+  ["copy: src= dest=","Copy a file with nothing to fill in"],
+  ["notify: Name","Queue a handler — only if this task changed"],
+  ["handlers:","Work that runs once, at the end of the play"],
+  ["meta: flush_handlers","Run queued handlers right now"],
+  ["when: expr","Run only if true — no {{ }} on this line"],
+  ["loop: + {{ item }}","Repeat a task over a list"],
+  ["gather_facts: false","Skip fact collection to start faster"]
+];
+
+
+
+/* ============================================================
+   A small YAML reader.
+   It understands the subset playbooks are written in: lists,
+   key/value maps, nesting by indentation, comments and quotes.
+   It reports the LINE NUMBER of a mistake, which is most of
+   what makes the feedback useful.
+   ============================================================ */
+function parseYAML(text){
+  if(/\t/.test(text)){
+    const ln = text.split('\n').findIndex(l=> l.indexOf('\t') >= 0) + 1;
+    throw {line:ln, msg:'There is a TAB character on this line. YAML never allows tabs for indentation — use spaces.'};
+  }
+  const raw = text.split('\n');
+  const L = [];                                   // {text, n} with blanks/comments removed
+  raw.forEach((l,idx)=>{
+    const stripped = l.replace(/\s+$/,'');
+    const t = stripped.trim();
+    if(t === '' || t.charAt(0) === '#' || t === '---' || t === '...') return;
+    L.push({text: stripped, n: idx+1});
+  });
+  if(!L.length) throw {line:1, msg:'The file is empty. Nothing to run.'};
+
+  let i = 0;
+  const ind  = s => s.match(/^ */)[0].length;
+  const unq  = v => {
+    v = v.trim();
+    const c = v.charAt(0);
+    if((c === '"' || c === "'") && v.charAt(v.length-1) === c) return v.slice(1,-1);
+    return v;
+  };
+  const isItem = s => /^\s*-(\s|$)/.test(s);
+
+  function block(col){
+    if(i >= L.length) return null;
+    return isItem(L[i].text) ? seq(col) : map(col);
+  }
+  function seq(col){
+    const arr = [];
+    while(i < L.length){
+      const {text, n} = L[i], cur = ind(text);
+      if(cur < col) break;
+      if(cur > col) throw {line:n, msg:'This line is indented too far for the list it belongs to.'};
+      if(!isItem(text)) break;
+      const m = text.match(/^(\s*)-\s*(.*)$/);
+      const rest = m[2];
+      if(rest === ''){                              // "-" alone: block on the next line
+        i++;
+        if(i < L.length && ind(L[i].text) > col) arr.push(block(ind(L[i].text)));
+        else arr.push(null);
+      } else if(/^[^:#]+:(\s|$)/.test(rest)){       // "- key: value" starts a map
+        const contentCol = text.indexOf(rest, m[1].length);
+        L[i] = {text: ' '.repeat(contentCol) + rest, n};   // rewrite, do not advance
+        arr.push(map(contentCol));
+      } else {
+        arr.push(unq(rest));                        // plain list item
+        i++;
+      }
+    }
+    return arr;
+  }
+  function map(col){
+    const obj = {};
+    while(i < L.length){
+      const {text, n} = L[i], cur = ind(text);
+      if(cur < col) break;
+      if(cur > col) throw {line:n, msg:'This line is indented further than the line above it, but nothing here opens a new block.'};
+      if(isItem(text)) break;
+      const m = text.match(/^\s*([^:#]+?)\s*:\s*(.*)$/);
+      if(!m) throw {line:n, msg:'This line is not <code>key: value</code>. Every mapping line needs a colon and a space after it.'};
+      const key = m[1].trim();
+      const val = m[2].trim();
+      if(Object.prototype.hasOwnProperty.call(obj, key))
+        throw {line:n, msg:'The key <code>'+key+'</code> appears twice at the same level. Each key may appear only once.'};
+      i++;
+      if(val === '' || val.charAt(0) === '#'){
+        if(i < L.length && ind(L[i].text) > cur)                    obj[key] = block(ind(L[i].text));
+        else if(i < L.length && ind(L[i].text) === cur && isItem(L[i].text)) obj[key] = seq(cur);
+        else obj[key] = null;
+      } else {
+        obj[key] = unq(val);
+      }
+    }
+    return obj;
+  }
+  const doc = block(ind(L[0].text));
+  if(i < L.length) throw {line:L[i].n, msg:'This line does not line up with anything above it. Check the indentation.'};
+  return doc;
+}
+
+/* ---------- helpers used by every checker ---------- */
+const NOT_MODULE = ['name','when','loop','notify','become','become_user','tags','args','register',
+                    'vars','with_items','loop_control','ignore_errors','delegate_to','changed_when','failed_when'];
+const Y = {
+  plays(doc){ return Array.isArray(doc) ? doc : (doc && typeof doc === 'object' ? [doc] : []); },
+  play(doc){ return Y.plays(doc)[0] || null; },
+  list(v){ return Array.isArray(v) ? v : []; },
+  tasks(p){ return p ? Y.list(p.tasks) : []; },
+  handlers(p){ return p ? Y.list(p.handlers) : []; },
+  mod(t){
+    if(!t || typeof t !== 'object') return {key:null, short:null, val:null};
+    for(const k of Object.keys(t)){
+      if(NOT_MODULE.indexOf(k) === -1)
+        return {key:k, short:k.replace(/^ansible\.builtin\./,''), val:t[k]};
+    }
+    return {key:null, short:null, val:null};
+  },
+  byMod(p, short){ return Y.tasks(p).filter(t=> Y.mod(t).short === short); },
+  anyMod(p, shorts){ return Y.tasks(p).filter(t=> shorts.indexOf(Y.mod(t).short) >= 0); },
+  arg(t, k){ const v = Y.mod(t).val; return (v && typeof v === 'object') ? v[k] : undefined; },
+  yes(v){ return ['true','yes','on','True','Yes'].indexOf(String(v)) >= 0; },
+  eq(a,b){ return String(a==null?'':a).trim().toLowerCase() === String(b).toLowerCase(); },
+  jinja(v, name){ const s = String(v==null?'':v); return new RegExp('\\{\\{\\s*'+name+'\\s*\\}\\}').test(s); }
+};
+const req = (ok, text) => ({ok:!!ok, text:text});
+
+/* ============================================================
+   THE SIMULATOR — pretends to run a playbook against 2 hosts
+   ============================================================ */
+/* The test fleet. Each machine knows which groups it belongs to and what
+   family it runs, which is all that hosts: and when: need to behave
+   the way they would against real servers. A lab may supply its own. */
+const SIM_FLEET = [
+  {name:'web01.nerdlab.co.in', groups:['webservers'], os_family:'Debian', distro:'Ubuntu'},
+  {name:'web02.nerdlab.co.in', groups:['webservers'], os_family:'Debian', distro:'Ubuntu'},
+  {name:'db01.nerdlab.co.in',  groups:['databases'],  os_family:'Debian', distro:'Ubuntu'}
+];
+
+function simFleet(){ return (typeof LAB !== 'undefined' && LAB && LAB.fleet) ? LAB.fleet : SIM_FLEET; }
+
+function simHosts(pattern){
+  const p = String(pattern == null ? 'all' : pattern).trim();
+  const fleet = simFleet();
+  if(p === 'all' || p === '') return fleet;
+  return fleet.filter(h=> h.name === p || h.name.split('.')[0] === p || h.groups.indexOf(p) >= 0);
+}
+
+/* Enough of a Jinja reader to resolve the conditions this course teaches. */
+function simWhen(expr, host){
+  if(expr == null) return true;
+  const s = String(expr);
+  const fam = s.match(/os_family[^=!]*([=!]=)\s*["']?([A-Za-z]+)/);
+  if(fam) return fam[1] === '==' ? host.os_family === fam[2] : host.os_family !== fam[2];
+  const dis = s.match(/distribution[^=!]*([=!]=)\s*["']?([A-Za-z]+)/);
+  if(dis) return dis[1] === '==' ? host.distro === dis[2] : host.distro !== dis[2];
+  return true;
+}
+
+function pad(label, width){
+  const n = Math.max(4, width - label.length - 1);
+  return label + ' ' + '*'.repeat(n);
+}
+function simulate(doc, runNo){
+  const out = [];
+  const plays = Y.plays(doc);
+  if(!plays.length) return ['ERROR! playbook must be a list of plays'];
+  const order = [], recap = {};
+  const touch = h =>{
+    if(!recap[h.name]){ recap[h.name] = {ok:0, changed:0, skipped:0}; order.push(h.name); }
+    return recap[h.name];
+  };
+  const first = runNo === 1;
+
+  plays.forEach((play, pi)=>{
+    if(pi) out.push('');
+    const hosts = simHosts(play.hosts);
+    out.push('<span class="rk">'+pad('PLAY ['+(play.name || 'play')+']', 60)+'</span>');
+    out.push('');
+    if(!hosts.length){
+      out.push('<span class="ry">skipping: no hosts matched \''+String(play.hosts)+'\'</span>');
+      return;
+    }
+    out.push('<span class="rk">'+pad('TASK [Gathering Facts]', 60)+'</span>');
+    hosts.forEach(h=>{ out.push('<span class="rg">ok: ['+h.name+']</span>'); touch(h).ok++; });
+
+    const notified = [];
+    Y.tasks(play).forEach(t=>{
+      const m = Y.mod(t);
+      if(!m.short) return;
+      out.push('');
+      out.push('<span class="rk">'+pad('TASK ['+(t.name || m.short)+']', 60)+'</span>');
+
+      /* is this task idempotent on a second run? */
+      let changes;
+      if(first) changes = true;
+      else if(['apt','dnf','yum','package'].indexOf(m.short) >= 0 && Y.eq(Y.arg(t,'state'),'latest')) changes = true;
+      else if((m.short === 'command' || m.short === 'shell') && !(t.args && t.args.creates)) changes = true;
+      else changes = false;
+      if(m.short === 'debug') changes = false;
+
+      const items = Y.list(t.loop);
+      hosts.forEach(h=>{
+        if(!simWhen(t.when, h)){
+          out.push('<span class="ry">skipping: ['+h.name+']</span>');
+          touch(h).skipped++;
+          return;
+        }
+        const targets = items.length ? items : [null];
+        targets.forEach(it=>{
+          const suffix = it === null ? '' : ' => (item='+it+')';
+          if(m.short === 'debug'){
+            const msg = (m.val && typeof m.val === 'object') ? (m.val.msg || '') : '';
+            out.push('<span class="rg">ok: ['+h.name+'] => {</span>');
+            out.push('<span class="rg">    "msg": "'+String(msg)
+              .replace(/\{\{\s*ansible_hostname\s*\}\}/g, h.name.split('.')[0])
+              .replace(/\{\{\s*ansible_facts\[.os_family.\]\s*\}\}/g, h.os_family)+'"</span>');
+            out.push('<span class="rg">}</span>');
+            touch(h).ok++;
+          } else if(changes){
+            out.push('<span class="rc">changed: ['+h.name+']'+suffix+'</span>');
+            touch(h).ok++; touch(h).changed++;
+            if(t.notify && notified.indexOf(t.notify) === -1) notified.push(t.notify);
+          } else {
+            out.push('<span class="rg">ok: ['+h.name+']'+suffix+'</span>');
+            touch(h).ok++;
+          }
+        });
+      });
+    });
+
+    Y.handlers(play).forEach(hd=>{
+      if(notified.indexOf(hd.name) === -1) return;
+      out.push('');
+      out.push('<span class="rk">'+pad('RUNNING HANDLER ['+hd.name+']', 60)+'</span>');
+      hosts.forEach(host=>{
+        out.push('<span class="rc">changed: ['+host.name+']</span>');
+        touch(host).ok++; touch(host).changed++;
+      });
+    });
+  });
+
+  out.push('');
+  out.push('<span class="rk">'+pad('PLAY RECAP', 60)+'</span>');
+  order.forEach(n=>{
+    const r = recap[n];
+    out.push('<span class="'+(r.changed?'rc':'rg')+'">'+n.padEnd(24)+
+             ': ok='+r.ok+'    changed='+r.changed+'    unreachable=0    failed=0    skipped='+r.skipped+'</span>');
+  });
+  return out;
+}
+
+/* ============================================================
+   ENGINE
+   ============================================================ */
+const S = { ch:0, q:0, xp:0, up:100, tries:0, hinted:false, done:[], frags:[], lab:false, labDone:false };
+const log  = document.getElementById('log');
+const main = document.getElementById('main');
+
+const esc = s => String(s).replace(/&(?!\w+;|#)/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const md  = s => s.replace(/\*([^*]+)\*/g,"<i>$1</i>");
+
+function add(html, cls){
+  const d = document.createElement('div');
+  d.className = 'blk ' + (cls||'');
+  d.innerHTML = html;
+  log.appendChild(d);
+  return d;
+}
+function screen(){ log.innerHTML = ''; }
+function focusQuiet(el){ if(!el) return; try{ el.focus({preventScroll:true}); }catch(e){} }
+function toTop(){
+  main.scrollTop = 0;
+  requestAnimationFrame(()=>{ main.scrollTop = 0; requestAnimationFrame(()=>{ main.scrollTop = 0; }); });
+}
+function bringIntoView(el){ if(el && el.scrollIntoView) el.scrollIntoView({block:'nearest', behavior:'smooth'}); }
+function nextBtn(label, fn){
+  const r = document.createElement('div'); r.className = 'blk row';
+  const b = document.createElement('button');
+  b.className = 'btn'; b.innerHTML = label; b.onclick = fn;
+  r.appendChild(b); log.appendChild(r);
+  setTimeout(()=> focusQuiet(b), 120);
+  return b;
+}
+function line(part){
+  if(part.startsWith('date:'))      add(part.slice(5).trim(),'dateline');
+  else if(part.startsWith('sys:'))  add(md(part.slice(4).trim()),'sys');
+  else if(part.startsWith('out:'))  add(esc(part.slice(4)).replace(/\n/g,'<br>'),'out');
+  else if(part.startsWith('npc:')){
+    const body = part.slice(4), cut = body.indexOf('|');
+    add('<b>'+body.slice(0,cut)+':</b> '+md(body.slice(cut+1)),'npc');
+  }
+  else add(md(part),'narr');
+}
+
+/* Rank is earned by finishing the quest — every chapter plus the capstone —
+   not accumulated from XP. XP is the score; the rank is the qualification. */
+function rankOf(){ return (S.done.length >= CHAPTERS.length && S.labDone) ? QUEST.rankEnd : QUEST.rankStart; }
+
+/* A short code the student can hand in. The trailing letter is a checksum
+   over the rest, so a casually edited score stops matching. */
+function completionCode(){
+  const core = 'SRE-'+S.xp+'-'+S.up+'-'+S.frags.length;
+  let h = 7;
+  for(let i=0;i<core.length;i++) h = (h*31 + core.charCodeAt(i)) % 26;
+  return core+'-'+String.fromCharCode(65+h);
+}
+function hud(){
+  document.getElementById('s-rank').textContent = rankOf();
+  document.getElementById('s-up').textContent   = S.up + '%';
+  document.getElementById('s-ch').textContent   = (S.lab ? 'LAB' : CHAPTERS[S.ch].id + '/' + QUEST.chTotal);
+  document.getElementById('s-fr').textContent   = (QUEST.fragOffset + S.frags.length) + '/' + QUEST.fragTotal;
+  const bar = document.getElementById('s-bar');
+  bar.style.width = S.up + '%';
+  bar.style.background = S.up > 70 ? 'var(--green)' : S.up > 35 ? 'var(--amber)' : 'var(--red)';
+}
+function award(n){ S.xp += n; hud(); }
+function damage(n){
+  S.up = Math.max(0, S.up - n); hud();
+  if(S.up === 0){
+    S.up = 60; hud();
+    add("<b>Something broke.</b> Server uptime hit zero. Priya undoes the change, buys you a coffee, and puts the servers back to 60%. Nobody is fired. Nobody ever is. Keep going.", 'fb hint');
+  }
+}
+
+function norm(s){ return String(s).replace(/[‘’“”]/g,'"').replace(/\s+/g,' ').trim().toLowerCase(); }
+function normCmd(s){ return norm(s).replace(/^\$\s*/,'').replace(/"/g,'').replace(/'/g,''); }
+function normFill(s){
+  let t = norm(s).replace(/:$/,'').replace(/^["']|["']$/g,'');
+  return t.replace(/\{\{\s*/g,'{{ ').replace(/\s*\}\}/g,' }}');
+}
+const shuffle = a => a.map(v=>[Math.random(),v]).sort((x,y)=>x[0]-y[0]).map(p=>p[1]);
+
+/* ============================================================
+   FLOW
+   ============================================================ */
+let briefHTML = '';
+
+function walkTable(annot){
+  if(!annot) return '';
+  return '<div class="walk"><div class="wh">Line by line</div><table>'+
+    annot.map(([c,e])=>'<tr><td>'+esc(c)+'</td><td>'+e+'</td></tr>').join('')+'</table></div>';
+}
+function briefBody(b){
+  return '<ul>'+b.lines.map(l=>'<li>'+l+'</li>').join('')+'</ul>'+
+         (b.code ? '<pre>'+esc(b.code)+'</pre>' : '') + walkTable(b.annot);
+}
+function crumb(extra){
+  const c = CHAPTERS[S.ch];
+  return '<div class="crumb blk">Chapter '+c.id+' / '+QUEST.chTotal+' &nbsp;·&nbsp; <b>'+c.title+'</b>'+
+         (extra ? ' &nbsp;·&nbsp; '+extra : '')+'</div>';
+}
+
+function startChapter(i){
+  S.ch = i; S.q = 0; S.lab = false;
+  const c = CHAPTERS[i];
+  hud(); screen(); toTop();
+  briefHTML = '<summary>'+c.brief.h+'</summary><div class="inner">'+briefBody(c.brief)+'</div>';
+  add('<div class="k">CHAPTER '+String(c.id).padStart(2,'0')+'</div><h2>'+c.title+'</h2><p>'+c.sub+'</p>','chaptercard');
+  c.story.forEach(line);
+  nextBtn('Open the field manual →', showBrief);
+  toTop();
+}
+function showBrief(){
+  const c = CHAPTERS[S.ch];
+  screen(); toTop();
+  add(crumb('Field manual'));
+  add('<h3>'+c.brief.h+'</h3>'+briefBody(c.brief), 'brief');
+  nextBtn('Start the '+c.ch.length+' challenges →', ()=>{ S.q = 0; askNext(); });
+  toTop();
+}
+function askNext(){
+  const c = CHAPTERS[S.ch];
+  if(S.q >= c.ch.length) return endChapter();
+  S.tries = 0; S.hinted = false;
+  screen(); toTop();
+  add(crumb('Challenge '+(S.q+1)+' of '+c.ch.length));
+  const det = document.createElement('details');
+  det.className = 'manual blk';
+  det.innerHTML = briefHTML;
+  log.appendChild(det);
+  render(c.ch[S.q]);
+  toTop();
+}
+
+function makeBank(tokens, onPick){
+  const wrap = document.createElement('div');
+  wrap.className = 'bank';
+  wrap.innerHTML = '<div class="lab">Tap to use — some of these are decoys</div>';
+  shuffle(tokens.slice()).forEach(t=>{
+    const b = document.createElement('button');
+    b.className = 'tok'; b.type = 'button'; b.textContent = t;
+    b.onclick = ()=> onPick(t, b);
+    wrap.appendChild(b);
+  });
+  return wrap;
+}
+
+/* ---------- the code editor used by "write" tasks and the lab ---------- */
+function buildEditor(spec, onCheck){
+  const box = document.createElement('div');
+  box.className = 'edwrap';
+  box.innerHTML = '<div class="edbar">FILE <b>'+spec.file+'</b> &nbsp;·&nbsp; spaces only, never tabs &nbsp;·&nbsp; Tab key inserts 2 spaces</div>';
+  const ta = document.createElement('textarea');
+  ta.className = 'editor'; ta.spellcheck = false;
+  ta.placeholder = spec.placeholder || '';
+  box.appendChild(ta);
+
+  ta.addEventListener('keydown', e=>{
+    if(e.key === 'Tab'){
+      e.preventDefault();
+      const s = ta.selectionStart, en = ta.selectionEnd;
+      ta.value = ta.value.slice(0,s) + '  ' + ta.value.slice(en);
+      ta.selectionStart = ta.selectionEnd = s + 2;
+      ta.dispatchEvent(new Event('input'));
+    }
+  });
+
+  const reqBox = document.createElement('div');
+  reqBox.className = 'reqs';
+  reqBox.innerHTML = '<div class="lab">Requirements — these tick as you type</div><div class="reqlist"></div>';
+
+  const errBox = document.createElement('div');
+  errBox.style.display = 'none';
+  errBox.className = 'parseerr';
+
+  function evaluate(){
+    const text = ta.value;
+    let reqs = null, perr = null;
+    if(spec.raw){
+      try { reqs = spec.check(null, text); } catch(e){ reqs = []; }
+    } else if(!text.trim()){
+      /* empty editor: show the checklist with nothing ticked, and no scary error yet */
+      try { reqs = spec.check(null, ''); } catch(e){ reqs = null; }
+    } else {
+      try { reqs = spec.check(parseYAML(text), text); }
+      catch(e){ perr = e; reqs = null; }
+    }
+    /* nothing has been written yet, so nothing is known to be true —
+       .every() on an empty list would otherwise tick by itself */
+    if(!text.trim() && reqs) reqs = reqs.map(function(r){ return {ok:false, text:r.text}; });
+
+    if(perr){
+      errBox.style.display = '';
+      errBox.innerHTML = '<b>YAML problem on line '+perr.line+'.</b><br>'+perr.msg;
+    } else {
+      errBox.style.display = 'none';
+    }
+    const list = reqBox.querySelector('.reqlist');
+    if(perr){
+      /* Do NOT leave the old ticks on screen — the file cannot be read, so nothing is known to be true. */
+      list.innerHTML = '<div class="req off"><span class="mk">—</span><span>Cannot check the requirements until the YAML above is fixed.</span></div>';
+    } else if(reqs){
+      list.innerHTML = reqs.map(r=>
+        '<div class="req '+(r.ok?'on':'off')+'"><span class="mk">'+(r.ok?'✓':'○')+'</span><span>'+r.text+'</span></div>').join('');
+    }
+    return {reqs, perr};
+  }
+
+  let t = null;
+  ta.addEventListener('input', ()=>{ clearTimeout(t); t = setTimeout(evaluate, 250); });
+
+  return {box, ta, reqBox, errBox, evaluate};
+}
+
+function render(ch){
+  const box = add('', 'chal');
+  const tag = ch.boss ? 'FINAL CHALLENGE' :
+              ch.type === 'mc' ? 'Decision' :
+              ch.type === 'cmd' ? 'Terminal' :
+              ch.type === 'write' ? 'Type it yourself' : 'Fill in the playbook';
+  let body = '<div class="tag">'+tag+' · '+ch.xp+' XP</div><div class="q">'+ch.q+'</div>';
+
+  /* ---- multiple choice ---- */
+  if(ch.type === 'mc'){
+    body += '<div class="opts">' + ch.options.map((o,i)=>
+      '<button class="opt" data-i="'+i+'">'+String.fromCharCode(65+i)+'. &nbsp;'+o+'</button>').join('') + '</div>';
+    box.innerHTML = body;
+    box.querySelectorAll('.opt').forEach(btn=>{
+      btn.onclick = ()=>{
+        const i = +btn.dataset.i;
+        box.querySelectorAll('.opt').forEach(b=> b.disabled = true);
+        if(i === ch.correct){ btn.classList.add('right'); good(box, ch); }
+        else {
+          btn.classList.add('wrong');
+          box.querySelectorAll('.opt')[ch.correct].classList.add('right');
+          bad(box, ch, null);
+        }
+      };
+    });
+  }
+
+  /* ---- terminal ---- */
+  else if(ch.type === 'cmd'){
+    body += (ch.shape ? '<div class="shape">Shape: '+ch.shape+'</div>' : '')
+         +  '<div class="term"><span>$</span><input type="text" spellcheck="false" autocomplete="off" placeholder="tap the chips below, or type it yourself…"></div>';
+    box.innerHTML = body;
+    const inp = box.querySelector('input');
+    if(ch.bank) box.appendChild(makeBank(ch.bank, (t,b)=>{
+      inp.value = (inp.value.trim() + ' ' + t).trim(); b.classList.add('used'); focusQuiet(inp);
+    }));
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = '<button class="btn" data-go>Execute</button><button class="btn ghost" data-hint>Hint</button><button class="btn ghost" data-clear>Clear</button>';
+    box.appendChild(r);
+    const go = ()=>{
+      const val = inp.value.trim(); if(!val) return;
+      if(ch.answers.some(a=> normCmd(a) === normCmd(val))){
+        inp.disabled = true; box.querySelectorAll('.btn, .tok').forEach(b=> b.disabled = true);
+        good(box, ch);
+      } else {
+        bad(box, ch, ()=>{
+          inp.value = ch.answers[0]; inp.disabled = true;
+          box.querySelectorAll('.btn, .tok').forEach(b=> b.disabled = true);
+        }, ch.answers[0]);
+      }
+    };
+    box.querySelector('[data-go]').onclick = go;
+    box.querySelector('[data-hint]').onclick = ()=> showHint(box, ch);
+    box.querySelector('[data-clear]').onclick = ()=>{
+      inp.value=''; box.querySelectorAll('.tok').forEach(t=> t.classList.remove('used')); focusQuiet(inp);
+    };
+    inp.addEventListener('keydown', e=>{ if(e.key === 'Enter') go(); });
+    setTimeout(()=> focusQuiet(inp), 120);
+  }
+
+  /* ---- type it yourself ---- */
+  else if(ch.type === 'write'){
+    box.innerHTML = body;
+    const ed = buildEditor(ch);
+    box.appendChild(ed.box);
+    box.appendChild(ed.errBox);
+    box.appendChild(ed.reqBox);
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = '<button class="btn" data-go>Check my file</button><button class="btn ghost" data-hint>Hint</button><button class="btn ghost" data-clear>Clear</button>';
+    box.appendChild(r);
+    ed.evaluate();
+    const go = ()=>{
+      const {reqs, perr} = ed.evaluate();
+      if(!perr && reqs && reqs.every(x=> x.ok)){
+        ed.ta.disabled = true;
+        box.querySelectorAll('.btn').forEach(b=> b.disabled = true);
+        good(box, ch);
+      } else {
+        const missing = perr ? null : reqs.filter(x=> !x.ok);
+        bad(box, ch, ()=>{
+          ed.ta.value = ch.solution; ed.evaluate(); ed.ta.disabled = true;
+          box.querySelectorAll('.btn').forEach(b=> b.disabled = true);
+        }, ch.solution,
+        perr ? ('YAML could not be read — see the message above line '+perr.line+'.')
+             : ('Still missing: <ul><li>'+missing.map(m=>m.text).join('</li><li>')+'</li></ul>'));
+      }
+    };
+    box.querySelector('[data-go]').onclick = go;
+    box.querySelector('[data-hint]').onclick = ()=> showHint(box, ch);
+    box.querySelector('[data-clear]').onclick = ()=>{ ed.ta.value=''; ed.evaluate(); focusQuiet(ed.ta); };
+    setTimeout(()=> focusQuiet(ed.ta), 120);
+  }
+
+  /* ---- fill in the blanks ---- */
+  else {
+    let code = esc(ch.code).replace(/\n/g,'<br>').replace(/ /g,'&nbsp;');
+    ch.blanks.forEach((b,i)=>{
+      code = code.replace('@'+(i+1)+'@',
+        '<input class="blank" data-i="'+i+'" size="'+(b.w||10)+'" spellcheck="false" autocomplete="off">');
+    });
+    body += '<pre>'+code+'</pre>';
+    box.innerHTML = body;
+    const inputs = [...box.querySelectorAll('.blank')];
+    let focused = 0;
+    inputs.forEach((inp,i)=> inp.addEventListener('focus', ()=> focused = i));
+    if(ch.bank) box.appendChild(makeBank(ch.bank, t=>{
+      let target = inputs[focused];
+      if(!target || target.value.trim()) target = inputs.find(i=> !i.value.trim()) || inputs[focused];
+      if(target){ target.value = t; target.classList.remove('no'); focusQuiet(target); }
+    }));
+    const r = document.createElement('div'); r.className = 'row';
+    r.innerHTML = '<button class="btn" data-go>Apply</button><button class="btn ghost" data-hint>Hint</button><button class="btn ghost" data-clear>Clear</button>';
+    box.appendChild(r);
+    const go = ()=>{
+      let all = true, right = 0;
+      inputs.forEach((inp,i)=>{
+        const ok = ch.blanks[i].a.some(a=> normFill(a) === normFill(inp.value));
+        inp.classList.toggle('ok', ok); inp.classList.toggle('no', !ok);
+        if(ok) right++; else all = false;
+      });
+      if(all){
+        inputs.forEach(i=> i.disabled = true);
+        box.querySelectorAll('.btn, .tok').forEach(b=> b.disabled = true);
+        good(box, ch);
+      } else {
+        bad(box, ch, ()=>{
+          inputs.forEach((inp,i)=>{
+            inp.value = ch.blanks[i].a[0]; inp.disabled = true;
+            inp.classList.add('ok'); inp.classList.remove('no');
+          });
+          box.querySelectorAll('.btn, .tok').forEach(b=> b.disabled = true);
+        }, null,
+        inputs.length > 1 ? right+' of '+inputs.length+' correct — green ones are right, fix the red.' : 'Not that one. Try another chip.');
+      }
+    };
+    box.querySelector('[data-go]').onclick = go;
+    box.querySelector('[data-hint]').onclick = ()=> showHint(box, ch);
+    box.querySelector('[data-clear]').onclick = ()=>{
+      inputs.forEach(i=>{ i.value=''; i.classList.remove('ok','no'); }); focusQuiet(inputs[0]);
+    };
+    inputs.forEach(inp=> inp.addEventListener('keydown', e=>{ if(e.key === 'Enter') go(); }));
+    setTimeout(()=> focusQuiet(inputs[0]), 120);
+  }
+}
+
+function showHint(box, ch){
+  if(S.hinted) return;
+  S.hinted = true;
+  const hb = box.querySelector('[data-hint]'); if(hb) hb.disabled = true;
+  const d = document.createElement('div');
+  d.className = 'fb hint'; d.innerHTML = '<b>Hint.</b> ' + ch.hint;
+  box.appendChild(d); bringIntoView(d);
+}
+function good(box, ch){
+  const earned = Math.max(10, ch.xp - S.tries * 5);
+  award(earned);
+  const d = document.createElement('div');
+  d.className = 'fb good';
+  d.innerHTML = '<span class="lead"><b>Correct. +'+earned+' XP</b></span>' + ch.why;
+  box.appendChild(d);
+  cont(box);
+}
+function bad(box, ch, showAnswer, answer, extra){
+  S.tries++;
+  damage(TUNE.damage);
+  const d = document.createElement('div');
+  d.className = 'fb bad';
+  if(S.tries >= TUNE.triesBeforeReveal && ch.type !== 'mc'){
+    award(TUNE.revealXP);
+    d.innerHTML = '<span class="lead"><b>Here it is — +'+TUNE.revealXP+' XP for sticking with it.</b></span>' +
+                  (answer ? '<pre>'+esc(answer)+'</pre>' : '') + ch.why;
+    box.appendChild(d);
+    if(showAnswer) showAnswer();
+    cont(box);
+  } else if(ch.type === 'mc'){
+    d.innerHTML = '<span class="lead"><b>Not that one.</b></span>' + ch.why;
+    box.appendChild(d);
+    cont(box);
+  } else {
+    const left = TUNE.triesBeforeReveal - S.tries;
+    d.innerHTML = '<span class="lead"><b>Not yet.</b> ('+left+' more '+(left===1?'try':'tries')+', then I show you.)</span>' +
+                  (extra || 'Try again.');
+    box.appendChild(d);
+    setTimeout(()=>{ if(d.parentNode) d.remove(); }, 9000);
+    bringIntoView(d);
+  }
+}
+function cont(box){
+  const c = CHAPTERS[S.ch];
+  const last = S.q >= c.ch.length - 1;
+  const r = document.createElement('div'); r.className = 'row';
+  const b = document.createElement('button');
+  b.className = 'btn';
+  b.textContent = last ? 'Finish chapter '+c.id+' →' : 'Next challenge →';
+  b.onclick = ()=>{ S.q++; askNext(); };
+  r.appendChild(b); box.appendChild(r); bringIntoView(r);
+  setTimeout(()=> focusQuiet(b), 100);
+}
+
+/* The debrief closes the work. It says nothing about fragments —
+   recovery is its own screen, reached from here. */
+function endChapter(){
+  const c = CHAPTERS[S.ch];
+  const last = S.ch === CHAPTERS.length - 1;
+  if(!S.done.includes(S.ch)) S.done.push(S.ch);
+  hud(); screen(); toTop();
+  add(crumb('Debrief'));
+  c.outro.forEach(line);
+  add('<div class="tag">'+(last ? 'Chapters complete — one thing left' : 'Chapter '+c.id+' complete')+
+      '</div><div class="q">Rank: <b style="color:var(--purple)">'+
+      rankOf()+'</b> · '+S.xp+' XP</div>','chal');
+
+  if(c.relic) nextBtn('Search the code history →', showFragment);
+  else nextBtn('Continue →', afterFragment);
+  toTop();
+}
+
+/* ============================================================
+   FRAGMENT RECOVERY — a screen of its own.
+   Nothing about scores, tries or answers appears here. One
+   commit from Emma, the collection so far, and a way onward.
+   ============================================================ */
+function showFragment(){
+  const c = CHAPTERS[S.ch];
+  if(!S.frags.some(f=> f.sha === c.relic.sha)) S.frags.push(c.relic);
+  const n = QUEST.fragOffset + S.frags.length;
+  hud(); screen(); toTop();
+
+  add('<div class="crumb blk">Code history &nbsp;·&nbsp; <b>Fragment recovery</b> &nbsp;·&nbsp; chapter '+c.id+'</div>');
+  add(esc('$ git log --author=emma --reverse\nsearching 11 years of history…\n1 commit recovered.')
+        .replace(/\n/g,'<br>'), 'frag-scan');
+
+  add('<div class="fr-k">Fragment '+n+' of '+QUEST.fragTotal+' recovered</div>'+
+      '<div class="fr-sha">commit '+c.relic.sha+'</div>'+
+      '<div class="fr-meta">Author: Emma &nbsp;·&nbsp; Date: '+c.relic.date+'</div>'+
+      '<div class="fr-msg">'+c.relic.msg+'</div>'+
+      '<div class="fr-pips">'+Array.from({length:QUEST.fragTotal},(_,i)=>
+        '<i class="'+(i < n ? (i < QUEST.fragOffset ? 'on past' : 'on') : '')+'"></i>').join('')+'</div>'+
+      '<div class="fr-foot">'+(n === QUEST.fragTotal
+        ? 'Every fragment recovered.'
+        : (QUEST.fragTotal - n)+' still buried in the history.')+'</div>', 'fragcard');
+
+  nextBtn('Close the log →', afterFragment);
+  toTop();
+}
+
+/* Where the story picks back up after the fragment screen. */
+function afterFragment(){
+  const c = CHAPTERS[S.ch];
+  if(S.ch === CHAPTERS.length - 1) return startLab();
+  screen(); toTop();
+  add(crumb('Next'));
+  if(c.hook) add(c.hook, 'narr');
+  nextBtn('Chapter '+(c.id+1)+': '+CHAPTERS[S.ch+1].title+' →', ()=> startChapter(S.ch + 1));
+  toTop();
+}
+
+/* ============================================================
+   THE LAB
+   ============================================================ */
+function startLab(){
+  S.lab = true; hud(); screen(); toTop();
+  add('<div class="k">CAPSTONE</div><h2>'+LAB.title+'</h2><p>'+
+      (LAB.twice ? 'Write it from nothing, then run it twice.' : 'Write it from nothing, then run it.')+
+      '</p>','chaptercard');
+  LAB.story.forEach(line);
+  nextBtn('Open the editor →', labEditor);
+  toTop();
+}
+function labEditor(){
+  screen(); toTop();
+  add('<div class="crumb blk">Capstone &nbsp;·&nbsp; <b>'+LAB.title+'</b> &nbsp;·&nbsp; test environment, '+
+      simFleet().length+' machines</div>');
+  const det = document.createElement('details');
+  det.className = 'manual blk';
+  det.innerHTML = '<summary>Everything you have learned — quick reference</summary><div class="inner"><table class="cheat">'+
+    CHEATSHEET.map(([a,b])=>'<tr><td>'+esc(a)+'</td><td>'+b+'</td></tr>').join('')+'</table></div>';
+  log.appendChild(det);
+
+  const box = add('<div class="tag">Capstone · '+LAB.xp+' XP</div><div class="q">'+LAB.q+'</div>', 'chal');
+  const ed = buildEditor(LAB);
+  box.appendChild(ed.box);
+  box.appendChild(ed.errBox);
+  box.appendChild(ed.reqBox);
+  const r = document.createElement('div'); r.className = 'row';
+  r.innerHTML = '<button class="btn" data-run>▶ Run playbook</button>'+
+                '<button class="btn ghost" data-hint>Hint</button>'+
+                '<button class="btn ghost" data-sol>Show a working answer</button>';
+  box.appendChild(r);
+  ed.evaluate();
+
+  let ran = 0;
+  const outHost = document.createElement('div');
+  box.appendChild(outHost);
+
+  box.querySelector('[data-run]').onclick = ()=>{
+    const {reqs, perr} = ed.evaluate();
+    outHost.innerHTML = '';
+    if(perr){
+      const d = document.createElement('div'); d.className = 'runout';
+      d.innerHTML = '<span class="rr">ERROR! Syntax Error while loading YAML.\n  line '+perr.line+'\n\n'+
+                    esc(perr.msg.replace(/<[^>]+>/g,''))+'</span>';
+      outHost.appendChild(d); bringIntoView(d); return;
+    }
+    const missing = reqs.filter(x=> !x.ok);
+    if(missing.length){
+      const d = document.createElement('div'); d.className = 'fb bad';
+      d.innerHTML = '<span class="lead"><b>It parses, but it is not finished yet.</b></span>'+
+                    'Still missing: <ul><li>'+missing.map(m=>m.text).join('</li><li>')+'</li></ul>';
+      outHost.appendChild(d); bringIntoView(d);
+      return;
+    }
+    const doc = parseYAML(ed.ta.value);
+    ran++;
+    const first = simulate(doc, 1);
+    const d1 = document.createElement('div'); d1.className = 'runout';
+    d1.innerHTML = '<span class="rk">$ ansible-playbook -i inventory.ini '+LAB.file+'</span>\n\n' + first.join('\n');
+    outHost.appendChild(d1);
+
+    let second = null;
+    if(LAB.twice){
+      second = simulate(doc, 2);
+      const d2 = document.createElement('div'); d2.className = 'runout';
+      d2.innerHTML = '<span class="rk">$ ansible-playbook -i inventory.ini '+LAB.file+'   # second run</span>\n\n' + second.join('\n');
+      outHost.appendChild(d2);
+    }
+
+    const clean = !LAB.twice ||
+      (/changed=0/.test(second.join('\n')) && !/changed=[1-9]/.test(second.slice(-5).join('\n')));
+    const v = document.createElement('div');
+    if(clean){
+      v.className = 'fb good';
+      v.innerHTML = LAB.twice
+        ? '<span class="lead"><b>Second run: changed=0 on every machine.</b></span>'+
+          'That is the proof Dev asked for. Your playbook did the work once and then did nothing, which means it is safe to run '+
+          'every hour forever. Everything in it described a <i>result</i>, so once the result was true there was nothing left to do.'
+        : '<span class="lead"><b>It ran. Every play, every machine, no errors.</b></span>'+
+          'You went from an empty file to something Ansible could execute, and you did it without a single blank to fill in. '+
+          'Notice that each play only touched the machines in its own group — that is the inventory doing its job.';
+      const rr = document.createElement('div'); rr.className = 'row';
+      const bb = document.createElement('button'); bb.className = 'btn';
+      bb.textContent = LAB.runBtn || 'Deploy to all 400 machines →';
+      bb.onclick = ()=>{ award(LAB.xp); labDone(); };
+      rr.appendChild(bb); v.appendChild(rr);
+      box.querySelector('[data-run]').textContent = '▶ Run again';
+    } else {
+      v.className = 'fb hint';
+      v.innerHTML = '<span class="lead"><b>The second run still reports changes.</b></span>'+
+        'Something in the playbook does work it did not need to do. Look for <code>state: latest</code>, or a '+
+        '<code>command</code> task with no <code>creates:</code> — those are the two usual causes.';
+    }
+    outHost.appendChild(v);
+    bringIntoView(v);
+  };
+  box.querySelector('[data-hint]').onclick = ()=>{
+    const d = document.createElement('div');
+    d.className = 'fb hint'; d.innerHTML = '<b>Hint.</b> ' + LAB.hint;
+    box.appendChild(d); bringIntoView(d);
+  };
+  box.querySelector('[data-sol]').onclick = ()=>{
+    ed.ta.value = LAB.solution; ed.evaluate(); focusQuiet(ed.ta);
+    const d = document.createElement('div');
+    d.className = 'fb hint';
+    d.innerHTML = '<b>One working answer loaded.</b> Read it, change something, and run it — try setting '+
+                  '<code>state: latest</code> and watch what the second run does.';
+    box.appendChild(d); bringIntoView(d);
+  };
+  toTop();
+}
+/* The capstone is done. The rank is earned here, not at the last chapter. */
+function labDone(){
+  S.labDone = true;
+  hud(); screen(); toTop();
+  add('<div class="crumb blk">'+LAB.doneCrumb+'</div>');
+  LAB.done.forEach(line);
+  nextBtn(LAB.doneBtn, QUEST.isFinal ? finale : questComplete);
+  toTop();
+}
+
+/* ============================================================
+   END OF QUEST — the promotion, the completion code, and the
+   handoff to the next file.
+   ============================================================ */
+function questComplete(){
+  const code = completionCode();
+  const veil = document.createElement('div'); veil.className = 'veil';
+  veil.innerHTML =
+    '<div class="card">'+
+    '<h1>ANSIBLE QUEST '+QUEST.roman+'</h1><h2>'+QUEST.title+' · complete</h2>'+
+    '<div class="promo"><div class="promo-k">Qualified</div>'+
+    '<div class="promo-r">'+QUEST.rankStart+' &nbsp;→&nbsp; <b>'+QUEST.rankEnd+'</b></div></div>'+
+    '<p><b>'+S.xp+' XP</b> · server uptime <b>'+S.up+'%</b> · '+
+      (QUEST.fragOffset + S.frags.length)+' of '+QUEST.fragTotal+' fragments recovered</p>'+
+    '<div class="codebox"><div class="code-k">Completion code — hand this in</div>'+
+    '<div class="code-v" id="q-code">'+code+'</div>'+
+    '<button class="btn ghost" id="q-copy">Copy</button></div>'+
+    (NEXT_UP ? '<p>'+NEXT_UP+'</p>' : '')+
+        '<div class="row"><button class="btn ghost" id="q-frag">Read the fragments</button>'+
+    '<button class="btn ghost" id="q-note">Open the notebook</button>'+
+    '<button class="btn ghost" id="q-again">Play this quest again</button></div></div>';
+  document.body.appendChild(veil);
+  veil.querySelector('#q-again').onclick = ()=> location.reload();
+  veil.querySelector('#q-frag').onclick  = ()=>{ veil.remove(); openFrags(); };
+  veil.querySelector('#q-note').onclick  = ()=>{ veil.remove(); openNotebook(); };
+  veil.querySelector('#q-copy').onclick  = function(){
+    const b = this;
+    try{ navigator.clipboard.writeText(code); b.textContent = 'Copied'; }
+    catch(e){
+      const r = document.createRange(); r.selectNode(veil.querySelector('#q-code'));
+      window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+      b.textContent = 'Selected — press Ctrl+C';
+    }
+  };
+}
+
+/* ---------- overlays ---------- */
+function overlay(inner){
+  const veil = document.createElement('div'); veil.className = 'veil';
+  veil.innerHTML = '<div class="card">'+inner+'<div class="row"><button class="btn" id="x">Close</button></div></div>';
+  document.body.appendChild(veil);
+  veil.querySelector('#x').onclick = ()=> veil.remove();
+  veil.onclick = e=>{ if(e.target === veil) veil.remove(); };
+  return veil;
+}
+function openNotebook(){
+  overlay('<h1 style="font-size:20px">EMMA\'S NOTEBOOK</h1>'+
+    '<p class="dim">Everything the game has taught you, on one page.</p><table class="cheat">'+
+    CHEATSHEET.map(([a,b])=>'<tr><td>'+esc(a)+'</td><td>'+b+'</td></tr>').join('')+'</table>');
+}
+function openFrags(){
+  const body = S.frags.length
+    ? S.frags.map(f=>'<div class="relic"><div class="sha">commit '+f.sha+' · '+f.date+'</div><div class="msg">"'+f.msg+'"</div></div>').join('')
+    : '<p class="dim">No fragments yet. Finish a chapter, then search the code history.</p>';
+  overlay('<h1 style="font-size:20px">RECOVERED FRAGMENTS</h1>'+
+    '<p class="dim">'+(QUEST.fragOffset + S.frags.length)+' of '+QUEST.fragTotal+' saved notes recovered from the code history.</p>'+body);
+}
+function openMap(){
+  const reachedMax = Math.max.apply(null, S.done.concat([S.ch]));
+  const chips = CHAPTERS.map((c,i)=>{
+    const reached = i <= reachedMax;
+    const cls = S.done.includes(i) ? 'chip done' : reached ? 'chip' : 'chip locked';
+    return '<button class="'+cls+'" data-i="'+i+'"'+(reached?'':' disabled')+'>'+c.id+'. '+c.title+'</button>';
+  }).join('') + (S.done.length === CHAPTERS.length ? '<button class="chip done" data-i="lab">★ '+LAB.title+'</button>' : '');
+  const veil = overlay('<h1 style="font-size:20px">CHAPTERS</h1>'+
+    '<p class="dim">Jump to any chapter you have reached. Progress lives in this tab only — refreshing starts over.</p>'+
+    '<div class="chips">'+chips+'</div>');
+  veil.querySelectorAll('.chip:not(.locked)').forEach(b=>{
+    b.onclick = ()=>{
+      veil.remove();
+      if(b.dataset.i === 'lab') startLab(); else startChapter(+b.dataset.i);
+    };
+  });
+}
+
+document.getElementById('b-note').onclick = openNotebook;
+document.getElementById('b-map').onclick  = openMap;
+document.getElementById('b-frag').onclick = openFrags;
+
+/* ---------- title ---------- */
+(function title(){
+  const veil = document.createElement('div'); veil.className = 'veil';
+  veil.innerHTML =
+    '<div class="card">'+
+    '<h1>ANSIBLE QUEST '+QUEST.roman+'</h1><h2>'+QUEST.title+'</h2>'+
+    '<div class="promo"><div class="promo-k">'+
+      (QUEST.roman ? 'Part '+QUEST.n+' of '+QUEST.of+' &nbsp;·&nbsp; chapters '+QUEST.chFrom+'–'+QUEST.chTo+' of '+QUEST.chTotal
+                   : 'Complete edition &nbsp;·&nbsp; all '+QUEST.chTotal+' chapters')+'</div>'+
+    '<div class="promo-r">'+QUEST.rankStart+' &nbsp;→&nbsp; <b>'+QUEST.rankEnd+'</b></div></div>'+
+    '<p>'+STORY_SO_FAR+'</p>'+
+    '<div class="promo-k" style="margin-top:16px">By the end of this quest you can</div>'+
+    '<ul class="cando">'+QUEST_CAN+'</ul>'+
+    '<p>'+QUEST_GOAL+' Every chapter ends by making you <b>type the whole file yourself</b>, with a checklist that ticks as you go. '+
+    'The quest finishes in a lab: an empty editor and a simulator that really runs what you write.</p>'+
+    '<p class="dim">Hints are free. Three tries before the answer is shown. A wrong answer costs server uptime, never progress, so you cannot get stuck. '+
+    'Each chapter unlocks one piece of her story.</p>'+
+    '<div class="row"><button class="btn" id="go">'+START_LABEL+'</button>'+
+    '<button class="btn ghost" id="nb">Notebook</button></div></div>';
+  document.body.appendChild(veil);
+  veil.querySelector('#go').onclick = ()=>{ veil.remove(); hud(); startChapter(0); };
+  veil.querySelector('#nb').onclick = openNotebook;
+  setTimeout(()=> focusQuiet(veil.querySelector('#go')), 150);
+})();
+</script>
+
+<script>
+/* ============================================================
+   This file is complete in itself, so the closing screen talks
+   about the qualification — nothing before it, nothing after.
+   ============================================================ */
+function finale(){
+  const code = completionCode();
+  const veil = document.createElement('div'); veil.className = 'veil';
+  veil.innerHTML =
+    '<div class="card">'+
+    '<h1>ANSIBLE QUEST</h1><h2>'+QUEST.title+' · complete</h2>'+
+    '<div class="promo"><div class="promo-k">'+QUEST.chTotal+' chapters · one capstone · qualified</div>'+
+    '<div class="promo-r">'+QUEST.rankStart+' &nbsp;→&nbsp; <b>'+QUEST.rankEnd+'</b></div></div>'+
+    '<p><b>'+S.xp+' XP</b> · server uptime <b>'+S.up+'%</b> · '+
+      S.frags.length+' of '+QUEST.fragTotal+' fragments recovered</p>'+
+    '<div class="promo-k" style="margin-top:16px">You can now</div>'+
+    '<ul class="cando">'+QUEST_CAN+'</ul>'+
+    '<p>A playbook that works once is a script with better syntax. What you wrote here does the work, then does nothing — every hour, forever, without anyone watching it.</p>'+
+    '<div class="codebox"><div class="code-k">Completion code — hand this in</div>'+
+    '<div class="code-v" id="q-code">'+code+'</div>'+
+    '<button class="btn ghost" id="q-copy">Copy</button></div>'+
+    '<div class="row"><button class="btn ghost" id="q-frag">Read the fragments</button>'+
+    '<button class="btn ghost" id="q-note">Open the notebook</button>'+
+    '<button class="btn ghost" id="q-again">Play again</button></div></div>';
+  document.body.appendChild(veil);
+  veil.querySelector('#q-again').onclick = ()=> location.reload();
+  veil.querySelector('#q-frag').onclick  = ()=>{ veil.remove(); openFrags(); };
+  veil.querySelector('#q-note').onclick  = ()=>{ veil.remove(); openNotebook(); };
+  veil.querySelector('#q-copy').onclick  = function(){
+    const b = this;
+    try{ navigator.clipboard.writeText(code); b.textContent = 'Copied'; }
+    catch(e){
+      const r = document.createRange(); r.selectNode(veil.querySelector('#q-code'));
+      window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+      b.textContent = 'Selected — press Ctrl+C';
+    }
+  };
+}
+</script>
+
+<script>
+/* ============================================================
+   NerdLab bridge. The quest is self-contained; this reports a
+   genuine finish (every chapter plus the capstone lab) to the
+   platform so points are awarded. Wrapping the two ending
+   screens means completion cannot be signalled any other way.
+   ============================================================ */
+(function () {
+  var TASK_ID = 8;
+  var reported = false;
+
+  function report() {
+    if (reported) return;
+    reported = true;
+    try {
+      window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+    } catch (e) { /* standalone: no parent to tell */ }
+  }
+
+  ['finale', 'questComplete'].forEach(function (name) {
+    var original = window[name];
+    if (typeof original !== 'function') return;
+    window[name] = function () {
+      var result = original.apply(this, arguments);
+      report();
+      return result;
+    };
+  });
+})();
+</script>
+</body>
+</html>
