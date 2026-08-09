@@ -258,10 +258,39 @@
   /* --- NerdLab embed ---------------------------------------------------
      The platform viewer forces html/body to height:auto, so the lab owns its
      own viewport through this shell. That keeps `main` scrolling internally
-     and keeps position:fixed overlays inside the visible frame. */
-  .questshell{ height:100vh; min-height:520px; display:flex; flex-direction:column; overflow:hidden; }
+     and keeps position:fixed overlays inside the visible frame.
+     Everything below overrides the standalone styling above, so the lab uses
+     the full width of the panel it sits in and borrows the platform's
+     slate borders instead of its own green ones. */
+  .questshell{ height:100vh; min-height:560px; display:flex; flex-direction:column; overflow:hidden; }
   body{ background:var(--bg); }
   body::after{ display:none; }   /* scanline overlay reads as noise on the platform */
+
+  /* Use the width the panel actually gives us. */
+  header{ padding:10px 28px; }
+  main{ padding:26px 28px 64px; }
+  .wrap{ max-width:1180px; }
+  .card{ max-width:1040px; }
+
+  /* Platform borders: slate outlines, one accent edge, no green boxes. */
+  .card{ border-color:#334155; }
+  .chaptercard{
+    border-color:#334155;
+    border-left-color:#38bdf8;
+    background:linear-gradient(90deg, rgba(56,189,248,.07), transparent);
+  }
+  .brief{ border-left:4px solid #f59e0b; border-radius:0 8px 8px 0; }
+
+
+  /* Structural boxes use slate too; green stays reserved for "you got it right". */
+  .frag-scan{ border-left-color:#38bdf8; }
+  .codebox{ border-color:#334155; }
+  .runout{ border-color:#334155; }
+
+  /* Wide screens read better with the walkthrough tables given more room. */
+  @media (min-width:1000px){
+    table.walk td:first-child{ width:30%; }
+  }
 </style>
 </head>
 <body>
