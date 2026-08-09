@@ -9,6 +9,7 @@ import {
   ArrowRight,
   CheckCircle,
   Zap,
+  Workflow,
 } from 'lucide-react';
 
 const LandingPage = () => {
@@ -40,6 +41,13 @@ const LandingPage = () => {
       color: 'from-blue-500 to-cyan-500',
       badge: 'Cloud Native',
       desc: 'Deploy resilient microservices, scale replicas, expose NodePort services, and manage ingress.',
+    },
+    {
+      name: 'Ansible Automation',
+      icon: Workflow,
+      color: 'from-red-500 to-rose-600',
+      badge: 'Configuration',
+      desc: 'Write inventories and playbooks, split work into roles, and roll changes out in batches without downtime.',
     },
   ];
 
@@ -120,7 +128,9 @@ const LandingPage = () => {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {/* Five modules: 3-then-2 on laptops, all five in a row on wide
+            screens. A 4-column grid would strand the fifth card alone. */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
           {categories.map((cat, idx) => {
             const Icon = cat.icon;
             return (
