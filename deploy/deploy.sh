@@ -155,6 +155,9 @@ JWT_SECRET=$JWT_SECRET
 JWT_EXPIRES_IN=7d
 JWT_RESET_SECRET=$JWT_RESET_SECRET
 
+# nginx runs on this host, as does cloudflared if a tunnel is used, so only
+# loopback proxies are trusted when working out the real client IP.
+TRUST_PROXY=loopback
 CORS_ORIGIN=$CLIENT_URL
 RATE_LIMIT_WINDOW_MS=900000
 RATE_LIMIT_MAX_REQUESTS=100

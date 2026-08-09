@@ -120,6 +120,37 @@ Every setting is an environment variable with a sensible default:
 3. **Configure SMTP** in the app under *Admin → Email Configuration*, then send the
    test message. Until email works, students cannot reset their own passwords.
 
+## Putting a domain in front (Cloudflare Tunnel or any reverse proxy)
+
+The script fills in `CLIENT_URL` and `CORS_ORIGIN` with the VM's external IP, because
+that is all it can detect. Once traffic arrives on a hostname, point both at it —
+password reset links are built from `CLIENT_URL`, so they stay wrong until you do:
+
+```bash
+sudo sed -i 's|^CLIENT_URL=.*|CLIENT_URL=https://your-domain.example|; s|^CORS_ORIGIN=.*|CORS_ORIGIN=https://your-domain.example|' /opt/nerdlab/server/.env
+sudo systemctl restart nerdlab-api
+```
+
+A tunnel should hand the whole site to nginx, not to the API and not a single path:
+
+```yaml
+ingress:
+  - hostname: your-domain.example
+    service: http://localhost:80
+  - service: http_status:404
+```
+
+`TRUST_PROXY=loopback` is already set, so the app reads the real client address from
+`CF-Connecting-IP` or `X-Forwarded-For` rather than seeing every request as 127.0.0.1.
+
+Once the tunnel is the only way in, close the direct route — it stops anyone reaching
+the origin without going through Cloudflare, and with it any chance of spoofing those
+headers:
+
+```bash
+gcloud compute firewall-rules delete nerdlab-http
+```
+
 ## Troubleshooting
 
 ```bash

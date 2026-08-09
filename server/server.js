@@ -20,6 +20,14 @@ const adminRoutes = require('./routes/adminRoutes');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// nginx — and a Cloudflare Tunnel when one is in front of it — both connect
+// from this machine, so without this every request looks like it came from
+// 127.0.0.1. 'loopback' trusts only proxies on the local host, so a client
+// cannot spoof its address by sending its own X-Forwarded-For: anything it
+// sends is treated as untrusted and becomes the resolved IP only if no local
+// proxy added a hop. Set TRUST_PROXY when the topology is different.
+app.set('trust proxy', process.env.TRUST_PROXY || 'loopback');
+
 // Security Middlewares
 app.use(helmet({
   contentSecurityPolicy: false, // Disabled for iframe embedding of local task HTML

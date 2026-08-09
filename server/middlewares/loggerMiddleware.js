@@ -1,16 +1,16 @@
 const useragent = require('useragent');
 const LogModel = require('../models/logModel');
+const { getClientIp } = require('../utils/clientIp');
 
 const loggerMiddleware = (req, res, next) => {
   const startTime = Date.now();
   const source = req.headers['user-agent'] || '';
   const agent = useragent.parse(source);
 
-  const ipAddress =
-    req.headers['x-forwarded-for'] ||
-    req.socket.remoteAddress ||
-    req.ip ||
-    '127.0.0.1';
+  // Reading x-forwarded-for directly used to store the whole proxy chain
+  // ("1.2.3.4, 127.0.0.1") in a VARCHAR(45) column, which is both wrong and
+  // long enough to fail the insert once IPv6 is involved.
+  const ipAddress = getClientIp(req);
 
   req.clientInfo = {
     ipAddress,
