@@ -248,13 +248,9 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
-    # Lab HTML is served by the API from server/tasks.
-    location /tasks/ {
-        proxy_pass http://127.0.0.1:$APP_PORT;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-    }
+    # Note: /tasks and /tasks/:id are app routes, not API routes — they must
+    # fall through to the SPA below. Lab HTML is served from
+    # /api/tasks/:id/content, which the /api/ block above already covers.
 
     # Single-page app: every other path is handled by React Router.
     location / {

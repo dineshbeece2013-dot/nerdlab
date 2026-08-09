@@ -6,14 +6,14 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
+      // Only /api is proxied. `/tasks` and `/tasks/:id` are app routes, and
+      // proxying them meant any full page load there returned an API 404
+      // instead of the lab catalogue. Lab HTML is fetched via
+      // /api/tasks/:id/content, so nothing needs the server's static mount.
       '/api': {
         target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
-      },
-      '/tasks': {
-        target: 'http://localhost:5000',
-        changeOrigin: true,
       },
     },
   },

@@ -1,10 +1,11 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Terminal, Shield, Cpu, Code2, Workflow } from 'lucide-react';
 
 const Footer = () => {
   return (
     <footer className="bg-slate-950 border-t border-slate-900 text-slate-400 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="space-y-4">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-lg bg-sky-500/20 border border-sky-500/30 flex items-center justify-center">
@@ -13,7 +14,7 @@ const Footer = () => {
             <span className="font-bold text-white tracking-wide text-lg">NerdLab</span>
           </div>
           <p className="text-sm text-slate-400 leading-relaxed">
-            Production-grade interactive DevOps hands-on learning platform powered by PostgreSQL, Node, Express, and React.
+            Interactive DevOps hands-on learning platform powered by PostgreSQL, Node, Express, and React.
           </p>
         </div>
 
@@ -30,22 +31,14 @@ const Footer = () => {
 
         <div>
           <h4 className="text-white text-sm font-semibold mb-4 uppercase tracking-wider">Quick Navigation</h4>
+          {/* Router links, not plain anchors: a full page load on /tasks is
+              handed to the API by the dev proxy instead of the app. */}
           <ul className="space-y-2 text-sm">
-            <li><a href="/tasks" className="hover:text-sky-400 transition-colors">Lab Catalog</a></li>
-            <li><a href="/leaderboard" className="hover:text-sky-400 transition-colors">Student Leaderboard</a></li>
-            <li><a href="/register" className="hover:text-sky-400 transition-colors">Create Student Account</a></li>
-            <li><a href="/login" className="hover:text-sky-400 transition-colors">Sign In</a></li>
+            <li><Link to="/tasks" className="hover:text-sky-400 transition-colors">Lab Catalog</Link></li>
+            <li><Link to="/leaderboard" className="hover:text-sky-400 transition-colors">Student Leaderboard</Link></li>
+            <li><Link to="/register" className="hover:text-sky-400 transition-colors">Create Student Account</Link></li>
+            <li><Link to="/login" className="hover:text-sky-400 transition-colors">Sign In</Link></li>
           </ul>
-        </div>
-
-        <div>
-          <h4 className="text-white text-sm font-semibold mb-4 uppercase tracking-wider">Deployment Stack</h4>
-          <p className="text-xs text-slate-500 mb-3">
-            Deployable on Google Cloud Platform using Ubuntu VM, Nginx, PM2, and PostgreSQL.
-          </p>
-          <span className="inline-block bg-sky-500/10 border border-sky-500/20 text-sky-400 text-xs px-3 py-1.5 rounded-lg font-mono">
-            v1.0.0 Stable Release
-          </span>
         </div>
       </div>
 
