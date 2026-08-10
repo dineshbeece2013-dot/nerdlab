@@ -195,7 +195,9 @@ const TaskDetailPage = () => {
           never renders its own scrollbar; the page scrolls as one surface. */}
       <TaskIframeViewer
         taskId={task.id}
-        taskUrl={taskService.getTaskHtmlUrl(task.id)}
+        /* Bundle labs are served statically from /labs so their relative assets
+           resolve; single-file labs come inline from /content (ADR-010). */
+        taskUrl={task.lab_url || taskService.getTaskHtmlUrl(task.id)}
         onTaskComplete={handleAllStepsComplete}
       />
     </div>

@@ -15,6 +15,12 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+      // Bundle labs are static files served by the API (ADR-010). Safe to
+      // proxy: /labs is not an app route, unlike /tasks.
+      '/labs': {
+        target: 'http://localhost:5000',
+        changeOrigin: true,
+      },
     },
   },
 });

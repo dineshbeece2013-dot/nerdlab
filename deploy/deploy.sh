@@ -303,6 +303,14 @@ server {
         proxy_set_header X-Forwarded-Proto \$scheme;
     }
 
+    # Bundle labs: static assets served by the API (ADR-010).
+    location /labs/ {
+        proxy_pass http://127.0.0.1:$APP_PORT;
+        proxy_http_version 1.1;
+        proxy_set_header Host \;
+        proxy_set_header X-Forwarded-For \;
+    }
+
     # Note: /tasks and /tasks/:id are app routes, not API routes — they must
     # fall through to the SPA below. Lab HTML is served from
     # /api/tasks/:id/content, which the /api/ block above already covers.

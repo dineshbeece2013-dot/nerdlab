@@ -56,6 +56,12 @@ class TaskController {
         progress = await ProgressModel.getUserTaskProgress(req.user.id, task.id);
       }
 
+      // Tell the client where to load the lab from: a bundle is served
+      // statically, a single file is sent inline by /content (ADR-010).
+      const lab = TaskService.resolveLab(task.file_path);
+      task.lab_kind = lab.kind;
+      task.lab_url = lab.kind === 'bundle' ? lab.url : `/api/tasks/${task.id}/content`;
+
       return ResponseHandler.success(res, 'Task details fetched.', { task, progress });
     } catch (err) {
       next(err);
@@ -72,6 +78,13 @@ class TaskController {
 
       if (task.is_coming_soon) {
         return ResponseHandler.error(res, 'This lab is coming soon and cannot be opened yet.', 403);
+      }
+
+      // A bundle cannot be inlined — its assets are relative. Send the caller
+      // to the static URL instead of returning a broken page.
+      const lab = TaskService.resolveLab(task.file_path);
+      if (lab.kind === 'bundle') {
+        return res.redirect(302, lab.url);
       }
 
       const htmlContent = TaskService.getTaskHtmlContent(task.file_path);

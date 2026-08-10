@@ -65,6 +65,13 @@ app.use('/api/logs', logRoutes);
 app.use('/api/admin', adminRoutes);
 
 // Static Tasks Directory Serving
+// Bundle labs (ADR-010): a directory of index.html plus its own assets, served
+// statically so relative paths inside the bundle resolve. Mounted at /labs, not
+// /tasks, because /tasks and /tasks/:id are app routes in the SPA — proxying
+// those would shadow the catalogue and every lab deep link.
+app.use('/labs', express.static(path.join(__dirname, 'tasks')));
+
+// Legacy mount, kept for anything still pointing here. Not used by the client.
 app.use('/tasks', express.static(path.join(__dirname, 'tasks')));
 
 // 404 Route Handler

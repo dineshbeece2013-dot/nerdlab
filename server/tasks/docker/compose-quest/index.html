@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Compose Quest: Build the Stack</title>
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Chapter intro screen -->
+  <section id="intro" class="screen">
+    <div class="panel">
+      <span class="badge" id="intro-chapter">Chapter 1 of 5</span>
+      <h1 id="intro-title">…</h1>
+      <div id="intro-body" class="lede"></div>
+      <div class="goal">
+        <h4>What you are building</h4>
+        <ul id="intro-goal"></ul>
+      </div>
+      <button class="btn" id="intro-go">Start building →</button>
+    </div>
+  </section>
+
+  <!-- The builder -->
+  <section id="build" class="screen hidden">
+    <div class="hud">
+      <span class="hud-item">CHAPTER <b id="hud-chapter">1/5</b></span>
+      <span class="hud-item">SERVICES <b id="hud-services">0</b></span>
+      <span class="hud-item">STACK <b id="hud-state" class="down">not running</b></span>
+      <div class="hud-bar"><i id="hud-fill"></i></div>
+    </div>
+
+    <div class="cols">
+      <aside class="side">
+        <h3 id="build-title">…</h3>
+        <p class="hint-text" id="build-task"></p>
+
+        <h4>Add a container</h4>
+        <div id="palette" class="palette"></div>
+
+        <h4>Wiring</h4>
+        <div id="options" class="options"></div>
+
+        <div class="side-actions">
+          <button class="btn" id="run">▶ Run the stack</button>
+          <button class="btn ghost" id="reset">↺ Reset chapter</button>
+          <button class="btn ghost" id="hint">Hint</button>
+        </div>
+        <div id="hintbox" class="hintbox"></div>
+      </aside>
+
+      <main class="stage">
+        <div class="stage-label">your stack</div>
+        <div id="diagram" class="diagram"></div>
+        <div class="stage-label">what happened when it ran</div>
+        <pre id="trace" class="trace">Press “Run the stack” to try it.</pre>
+        <div id="verdict" class="verdict"></div>
+      </main>
+    </div>
+  </section>
+
+  <!-- Finish -->
+  <section id="done" class="screen hidden">
+    <div class="panel">
+      <span class="badge done">Complete</span>
+      <h1>The stack is up</h1>
+      <div class="lede" id="done-body"></div>
+      <div class="goal">
+        <h4>What you learned</h4>
+        <ul>
+          <li><strong>One container does one job.</strong> The app and its database are separate containers that talk to each other.</li>
+          <li><strong>Containers find each other by name.</strong> Compose gives every service a name that works as its address.</li>
+          <li><strong>A container forgets everything when it stops</strong> — unless you attach a volume to keep the data outside it.</li>
+          <li><strong>Nothing is reachable from outside until you publish a port.</strong> Inside the stack is a private world.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<script src="./chapters.js"></script>
+<script src="./engine.js"></script>
+</body>
+</html>
