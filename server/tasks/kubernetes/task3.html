@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Task 3: Changing Version Without Going Down</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; color:#f8fafc;
+         padding:2rem 1.5rem 4rem; margin:0; line-height:1.6; }
+  .container { max-width:900px; margin:0 auto; }
+  .panel { background:#1e293b; padding:2rem; border-radius:12px; border:1px solid #334155;
+           box-shadow:0 10px 25px rgba(0,0,0,.5); }
+  h1 { color:#38bdf8; margin:.6rem 0 .4rem; font-size:1.75rem; }
+  h2 { color:#38bdf8; font-size:1.1rem; }
+  .badge { display:inline-block; background:#0284c7; color:#fff; padding:.25rem .75rem;
+           border-radius:9999px; font-size:.875rem; font-weight:600; }
+  .lede { color:#cbd5e1; }
+  code { background:#0b1220; padding:.1rem .35rem; border-radius:4px; color:#a5f3fc; font-size:.92em; }
+  pre { background:#090d16; color:#a5f3fc; padding:1rem; border-radius:8px; overflow-x:auto;
+        border:1px solid #1e293b; font-size:.85rem; margin:.75rem 0 0; }
+
+  #status { position:sticky; top:0; z-index:20; margin:1.25rem 0; padding:.85rem 1.1rem;
+            background:#16213a; border:1px solid #334155; border-radius:12px; display:flex;
+            flex-wrap:wrap; gap:.75rem 1.5rem; align-items:center;
+            font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
+  #status .item { display:flex; align-items:center; gap:.45rem; color:#94a3b8; }
+  #status .val { color:#e2e8f0; font-weight:700; }
+  #bar { flex:1 1 160px; min-width:140px; height:8px; background:#0f172a; border-radius:999px;
+         overflow:hidden; border:1px solid #334155; }
+  #fill { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#10b981); transition:width .45s ease; }
+
+  .scene { border:1px solid #334155; border-radius:12px; background:#1a2437; margin-bottom:1.1rem; overflow:hidden; }
+  .scene.locked { opacity:.55; }
+  .scene.active { border-color:#38bdf8; box-shadow:0 0 0 1px rgba(56,189,248,.25); }
+  .scene.solved { border-color:#10b981; background:#101f1c; }
+  .scene-head { display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; }
+  .scene.solved .scene-head, .scene.collapsible .scene-head { cursor:pointer; }
+  .scene-num { flex:none; width:1.9rem; height:1.9rem; border-radius:8px; background:#0b1220;
+               border:1px solid #334155; color:#94a3b8; display:flex; align-items:center;
+               justify-content:center; font-weight:700; font-size:.85rem; }
+  .scene.active .scene-num { background:#0284c7; border-color:#38bdf8; color:#fff; }
+  .scene.solved .scene-num { background:#065f46; border-color:#10b981; color:#d1fae5; }
+  .scene-title { font-weight:700; color:#f1f5f9; flex:1; }
+  .scene-state { font-size:.75rem; font-family:ui-monospace,Consolas,monospace; color:#64748b;
+                 text-transform:uppercase; letter-spacing:.04em; }
+  .scene.solved .scene-state { color:#34d399; }
+  .scene-body { padding:0 1.25rem 1.35rem; display:none; }
+  .scene.open .scene-body { display:block; }
+  .scene-body p { color:#cbd5e1; }
+
+  .voice { border-left:3px solid #c084fc; background:#1b1630; padding:.65rem .9rem;
+           border-radius:0 8px 8px 0; margin:.9rem 0; color:#e9d5ff; font-size:.92rem; }
+  .voice strong { color:#c084fc; }
+  .brief { background:#16213a; border:1px solid #334155; border-left:4px solid #f59e0b;
+           border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:.9rem 0; font-size:.92rem; color:#e2e8f0; }
+  .brief h4 { margin:0 0 .35rem; color:#fbbf24; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; }
+  .brief ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  .brief li { margin-bottom:.2rem; }
+
+  .editor-label { display:flex; justify-content:space-between; align-items:baseline;
+                  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-top:1rem; }
+  textarea.editor { width:100%; min-height:120px; background:#060910; color:#a5f3fc;
+                    border:1px solid #334155; border-radius:8px; padding:.85rem 1rem;
+                    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; line-height:1.7;
+                    resize:vertical; white-space:pre; overflow-x:auto; }
+  textarea.editor:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+  .btn-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.85rem; align-items:center; }
+  button { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:.6rem 1.15rem;
+           font-weight:700; cursor:pointer; font-size:.88rem; font-family:inherit; transition:background .15s ease; }
+  button:hover { background:#38bdf8; }
+  button.ghost { background:#24324a; color:#cbd5e1; }
+  button.ghost:hover { background:#334155; }
+  .scene.solved button.run { background:#10b981; cursor:default; }
+
+  .out { margin-top:.9rem; display:none; }
+  .out.show { display:block; }
+  .out-head { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-bottom:.35rem; }
+  .parsed { background:#060910; border:1px solid #1e293b; border-radius:8px; padding:.8rem 1rem;
+            font-family:ui-monospace,Consolas,monospace; font-size:.8rem; white-space:pre-wrap;
+            color:#cbd5e1; margin:0; }
+  .verdict { margin-top:.7rem; font-size:.9rem; padding:.7rem .9rem; border-radius:8px; }
+  .verdict.bad { background:#2a1215; border:1px solid #7f1d1d; color:#fca5a5; }
+  .verdict.good { background:#052e22; border:1px solid #10b981; color:#6ee7b7; font-weight:600; }
+  .verdict .lbl { font-weight:700; }
+
+  .hints { margin-top:.8rem; }
+  .hint { display:none; background:#0b1220; border:1px dashed #475569; border-radius:8px;
+          padding:.6rem .9rem; margin-bottom:.5rem; font-size:.88rem; color:#cbd5e1; }
+  .hint.show { display:block; }
+  .hint b { color:#94a3b8; }
+  .locked-note { padding:0 1.25rem 1.1rem; color:#64748b; font-size:.88rem; }
+
+  #finale { display:none; margin-top:1.5rem; }
+  #done-banner { display:none; margin-top:1.25rem; background:#052e22; border:1px solid #10b981;
+                 color:#6ee7b7; padding:1.1rem 1.25rem; border-radius:10px; font-weight:bold; }
+  #done-banner p { color:#a7f3d0; font-weight:normal; margin:.6rem 0 0; font-size:.9rem; }
+  .debrief { margin-top:1.5rem; }
+  .debrief li { margin-bottom:.35rem; color:#cbd5e1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="panel">
+    <span class="badge">Kubernetes Level 3</span>
+    <h1>Kubernetes: Changing Version Without Going Down</h1>
+
+    <h2>The point of running several copies</h2>
+    <p class="lede">
+      Three copies of an app is not only about handling load. It is what makes it possible to
+      replace the app while people are using it: take one copy out, upgrade it, put it back,
+      repeat. The other two carry the traffic in the meantime.
+    </p>
+    <p class="lede">
+      Kubernetes calls this a <strong>rolling update</strong>, and it is the default. Two settings
+      control how brave it is. <code>maxUnavailable</code> is how many copies may be missing at
+      once. <code>maxSurge</code> is how many extra it may start before removing an old one.
+    </p>
+    <p class="lede">
+      There is also a <code>Recreate</code> strategy, which stops everything and then starts the
+      new version. It is simpler, faster, and takes the site down for the duration — occasionally
+      that is the right choice, and you should know when you are making it.
+    </p>
+
+    <h2>Your turn</h2>
+    <p class="lede">
+      The checkout app is going from version 1.0 to 2.0. Roll it out three different ways and
+      watch the serving capacity in the output — that number is your customers.
+    </p>
+    <div id="status" role="status" aria-live="polite">
+      <span class="item">PODS <span class="val" id="s-branch">0</span></span>
+      <span class="item">READY <span class="val" id="s-commits">no</span></span>
+      <span class="item">STEP <span class="val" id="s-step">0/3</span></span>
+      <div id="bar" role="img" aria-label="Progress"><div id="fill"></div></div>
+    </div>
+    <div id="scenes"></div>
+    <div id="finale"><div id="done-banner">Done — your points have been awarded.</div></div>
+  </div>
+</div>
+
+<script>
+function yamlError(line, msg) { return { line: line, msg: msg }; }
+
+function stripComment(s) {
+    var out = '', q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { out += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; out += c; continue; }
+        if (c === '#' && (i === 0 || /\s/.test(s.charAt(i - 1)))) break;
+        out += c;
+    }
+    return out;
+}
+
+function unquote(s) {
+    if (s.length > 1 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+        return s.slice(1, -1).replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
+    }
+    if (s.length > 1 && s.charAt(0) === "'" && s.charAt(s.length - 1) === "'") {
+        return s.slice(1, -1).replace(/''/g, "'");
+    }
+    return s;
+}
+
+function splitTop(s, sep) {
+    var parts = [], depth = 0, q = null, cur = '';
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { cur += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; cur += c; continue; }
+        if (c === '[' || c === '{') depth++;
+        if (c === ']' || c === '}') depth--;
+        if (c === sep && depth === 0) { parts.push(cur); cur = ''; continue; }
+        cur += c;
+    }
+    if (cur.trim() !== '' || parts.length) parts.push(cur);
+    return parts;
+}
+
+function parseScalar(s, line) {
+    s = s.trim();
+    if (s === '') return null;
+    if ((s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') ||
+        (s.charAt(0) === "'" && s.charAt(s.length - 1) === "'")) return unquote(s);
+    if (s.charAt(0) === '[' && s.charAt(s.length - 1) === ']') {
+        var inner = s.slice(1, -1).trim();
+        if (inner === '') return [];
+        return splitTop(inner, ',').map(function (p) { return parseScalar(p, line); });
+    }
+    if (s.charAt(0) === '{' && s.charAt(s.length - 1) === '}') {
+        var body = s.slice(1, -1).trim(), obj = {};
+        if (body === '') return obj;
+        splitTop(body, ',').forEach(function (pair) {
+            var kv = splitKey(pair.trim(), line);
+            obj[kv.key] = parseScalar(kv.rest, line);
+        });
+        return obj;
+    }
+    if (/^(null|~)$/i.test(s)) return null;
+    if (/^(true|yes|on)$/i.test(s)) return true;
+    if (/^(false|no|off)$/i.test(s)) return false;
+    if (/^[-+]?\d+$/.test(s)) return parseInt(s, 10);
+    if (/^[-+]?(\d+\.\d*|\.\d+|\d+)([eE][-+]?\d+)?$/.test(s) && /[.eE]/.test(s)) return parseFloat(s);
+    return s;
+}
+
+function splitKey(s, line) {
+    var q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; continue; }
+        if (c === ':' && (i + 1 >= s.length || s.charAt(i + 1) === ' ')) {
+            return { key: unquote(s.slice(0, i).trim()), rest: s.slice(i + 1).trim() };
+        }
+    }
+    throw yamlError(line, 'line ' + line + ' is not a "name: value" pair. YAML needs a colon and then a space between the name and its value.');
+}
+
+function isKeyValue(s) {
+    try { splitKey(s, 0); return true; } catch (e) { return false; }
+}
+
+function peekLine(ctx) {
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        var s = stripComment(raw).replace(/\s+$/, '');
+        if (s.trim() === '') { ctx.i++; continue; }
+        var indent = s.match(/^ */)[0].length;
+        return { indent: indent, content: s.slice(indent), line: ctx.offset + ctx.i + 1 };
+    }
+    return null;
+}
+
+function parseBlockScalar(ctx, indent, ind) {
+    var literal = ind.charAt(0) === '|';
+    var chomp = ind.length > 1 ? ind.charAt(1) : '';
+    var body = [], blockIndent = null;
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        if (raw.trim() === '') { body.push(''); ctx.i++; continue; }
+        var ind2 = raw.match(/^ */)[0].length;
+        if (ind2 <= indent) break;
+        if (blockIndent === null) blockIndent = ind2;
+        body.push(raw.slice(Math.min(blockIndent, ind2)));
+        ctx.i++;
+    }
+    while (body.length && body[body.length - 1] === '') body.pop();
+    var out;
+    if (literal) {
+        out = body.join('\n');
+    } else {
+        out = '';
+        for (var k = 0; k < body.length; k++) {
+            if (body[k] === '') { out += '\n'; continue; }
+            if (out !== '' && out.charAt(out.length - 1) !== '\n') out += ' ';
+            out += body[k];
+        }
+    }
+    if (chomp !== '-' && out !== '') out += '\n';
+    return out;
+}
+
+function parseValue(ctx, indent, rest, line) {
+    var anchor = null;
+    var m = /^&([A-Za-z0-9_\-]+)\s*/.exec(rest);
+    if (m) { anchor = m[1]; rest = rest.slice(m[0].length).trim(); }
+    var val;
+    if (rest === '') {
+        // A block sequence may sit at its parent key's own indentation.
+        var nxt = peekLine(ctx);
+        if (nxt && nxt.indent === indent && /^-(\s|$)/.test(nxt.content)) {
+            val = parseSeq(ctx, indent);
+        } else {
+            val = parseNode(ctx, indent + 1);
+        }
+    } else if (/^[|>][-+]?$/.test(rest)) {
+        val = parseBlockScalar(ctx, indent, rest);
+    } else if (/^\*[A-Za-z0-9_\-]+$/.test(rest)) {
+        var name = rest.slice(1);
+        if (!(name in ctx.anchors)) {
+            throw yamlError(line, 'line ' + line + ' points at *' + name +
+                ', but nothing above it in this part of the file was labelled &' + name + '.');
+        }
+        val = ctx.anchors[name];
+    } else {
+        val = parseScalar(rest, line);
+    }
+    if (anchor) ctx.anchors[anchor] = val;
+    return val;
+}
+
+function parseMap(ctx, indent) {
+    var map = {}, explicit = {}, merges = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' is pushed too far to the right. It does not line up with anything above it. Inside a list item, the keys line up with the first key after the dash.');
+        if (/^-(\s|$)/.test(p.content)) throw yamlError(p.line, 'line ' + p.line + ' starts with a dash, so YAML reads it as a list item. A "name: value" pair was expected here instead.');
+        var kv = splitKey(p.content, p.line);
+        ctx.i++;
+        var value = parseValue(ctx, p.indent, kv.rest, p.line);
+        if (kv.key === '<<') { merges.push(value); }
+        else { map[kv.key] = value; explicit[kv.key] = true; }
+    }
+    for (var a = 0; a < merges.length; a++) {
+        var src = merges[a];
+        var list = Array.isArray(src) ? src : [src];
+        for (var b = 0; b < list.length; b++) {
+            var o = list[b];
+            if (!o || typeof o !== 'object') continue;
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k) && !explicit[k]) map[k] = o[k];
+        }
+    }
+    return map;
+}
+
+function parseSeq(ctx, indent) {
+    var arr = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' starts further to the right than the list item above it.');
+        // A key at the sequence's own indentation ends the sequence; whoever
+        // called us decides whether that key is legal there.
+        if (!/^-(\s|$)/.test(p.content)) break;
+        var after = p.content.slice(1);
+        var lead = after.match(/^ */)[0].length;
+        var content = after.trim();
+        ctx.i++;
+        if (content === '') {
+            arr.push(parseNode(ctx, indent + 1));
+        } else if (isKeyValue(content)) {
+            var itemIndent = indent + 1 + lead;
+            var pad = new Array(itemIndent + 1).join(' ');
+            ctx.lines[ctx.i - 1] = pad + content;
+            ctx.i--;
+            arr.push(parseMap(ctx, itemIndent));
+        } else {
+            arr.push(parseScalar(content, p.line));
+        }
+    }
+    return arr;
+}
+
+function parseNode(ctx, indent) {
+    var p = peekLine(ctx);
+    if (!p || p.indent < indent) return null;
+    if (/^-(\s|$)/.test(p.content)) return parseSeq(ctx, p.indent);
+    return parseMap(ctx, p.indent);
+}
+
+function parseYaml(text) {
+    var all = text.replace(/\r\n?/g, '\n').split('\n');
+    for (var i = 0; i < all.length; i++) {
+        if (/^ *\t/.test(all[i])) {
+            return { ok: false, error: yamlError(i + 1, 'line ' + (i + 1) + ' starts with a TAB character. YAML only allows real spaces at the start of a line. A Tab there stops the file being read at all — it is not just untidy.') };
+        }
+    }
+    var chunks = [], cur = [], start = 0;
+    for (i = 0; i < all.length; i++) {
+        if (/^---\s*(#.*)?$/.test(all[i]) || /^\.\.\.\s*$/.test(all[i])) {
+            chunks.push({ lines: cur, offset: start });
+            cur = []; start = i + 1; continue;
+        }
+        cur.push(all[i]);
+    }
+    chunks.push({ lines: cur, offset: start });
+
+    var docs = [];
+    try {
+        for (var c = 0; c < chunks.length; c++) {
+            var blank = chunks[c].lines.every(function (l) { return stripComment(l).trim() === ''; });
+            if (blank) continue;
+            var ctx = { lines: chunks[c].lines.slice(), offset: chunks[c].offset, i: 0, anchors: {} };
+            var doc = parseNode(ctx, 0);
+            var leftover = peekLine(ctx);
+            if (leftover) throw yamlError(leftover.line, 'line ' + leftover.line + ' does not belong to anything above it. Check how far in it starts.');
+            docs.push(doc);
+        }
+    } catch (e) {
+        if (e && e.msg) return { ok: false, error: e };
+        return { ok: false, error: yamlError(0, 'something in this file could not be read: ' + e) };
+    }
+    if (!docs.length) return { ok: false, error: yamlError(1, 'there is nothing in the file yet — only blank lines and comments. Write your first line, then press the button again.') };
+    return { ok: true, docs: docs, data: docs[0] };
+}
+
+/* ---------- structure rendering: show learners what YAML actually produced ---------- */
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function typeName(v) {
+    if (v === null) return 'null';
+    if (Array.isArray(v)) return 'list';
+    if (typeof v === 'object') return 'map';
+    if (typeof v === 'number') return Number.isInteger(v) ? 'int' : 'float';
+    return typeof v;
+}
+function renderStructure(v, indent) {
+    indent = indent || '';
+    var out = '';
+    if (Array.isArray(v)) {
+        if (!v.length) return indent + '(empty list)\n';
+        v.forEach(function (item) {
+            if (item && typeof item === 'object') {
+                out += indent + '-\n' + renderStructure(item, indent + '    ');
+            } else {
+                out += indent + '- ' + scalarLine(item) + '\n';
+            }
+        });
+        return out;
+    }
+    if (v && typeof v === 'object') {
+        for (var k in v) {
+            if (!Object.prototype.hasOwnProperty.call(v, k)) continue;
+            var val = v[k];
+            if (val && typeof val === 'object') {
+                out += indent + k + ':  [' + typeName(val) + ']\n' + renderStructure(val, indent + '  ');
+            } else {
+                out += indent + k + ': ' + scalarLine(val) + '\n';
+            }
+        }
+        return out;
+    }
+    return indent + scalarLine(v) + '\n';
+}
+function scalarLine(v) {
+    var shown;
+    if (typeof v === 'string') shown = JSON.stringify(v);
+    else shown = String(v);
+    if (shown.length > 70) shown = shown.slice(0, 67) + '..."';
+    return shown + '   [' + typeName(v) + ']';
+}
+function deepEq(a, b) {
+    if (a === b) return true;
+    if (typeof a !== typeof b) return false;
+    if (a === null || b === null) return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (typeof a !== 'object') return false;
+    var ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (var i = 0; i < ka.length; i++) {
+        if (!Object.prototype.hasOwnProperty.call(b, ka[i])) return false;
+        if (!deepEq(a[ka[i]], b[ka[i]])) return false;
+    }
+    return true;
+}
+
+function get(obj, path) {
+  var cur = obj;
+  for (var i = 0; i < path.length; i++) {
+    if (cur === null || typeof cur !== 'object') return undefined;
+    cur = cur[path[i]];
+  }
+  return cur;
+}
+
+// Work out what would be running, and whether the pieces actually connect.
+function cluster(text) {
+  var res = parseYaml(text);
+  var out = { ok: res.ok, error: res.error, docs: res.ok ? res.docs : [], notes: [], pods: 0, reachable: false };
+  if (!res.ok) return out;
+
+  var dep = out.docs.filter(function (d) { return d && d.kind === 'Deployment'; })[0];
+  var svc = out.docs.filter(function (d) { return d && d.kind === 'Service'; })[0];
+  out.dep = dep; out.svc = svc;
+
+  if (dep) {
+    var replicas = get(dep, ['spec', 'replicas']);
+    var podLabels = get(dep, ['spec', 'template', 'metadata', 'labels']) || {};
+    var selector = get(dep, ['spec', 'selector', 'matchLabels']) || {};
+    var containers = get(dep, ['spec', 'template', 'spec', 'containers']) || [];
+    out.replicas = replicas;
+    out.podLabels = podLabels;
+    out.selector = selector;
+    out.containers = containers;
+
+    var selKeys = Object.keys(selector);
+    var matches = selKeys.length > 0 && selKeys.every(function (k) { return String(podLabels[k]) === String(selector[k]); });
+    out.selectorMatches = matches;
+
+    if (!selKeys.length) out.notes.push('the Deployment has no selector, so it does not know which copies are its own');
+    else if (!matches) out.notes.push('the selector ' + JSON.stringify(selector) + ' does not match the copy labels ' +
+                                      JSON.stringify(podLabels) + ' — Kubernetes would refuse this Deployment');
+    else if (typeof replicas === 'number') out.pods = replicas;
+
+    if (out.pods && !containers.length) { out.notes.push('no container is described, so there is nothing to run'); out.pods = 0; }
+
+    var c0 = containers[0] || {};
+    out.probe = c0.readinessProbe;
+    out.containerPort = get(c0, ['ports', 0, 'containerPort']);
+  } else {
+    out.notes.push('no Deployment, so nothing would be running');
+  }
+
+  if (svc) {
+    var svcSel = get(svc, ['spec', 'selector']) || {};
+    var keys = Object.keys(svcSel);
+    var hits = keys.length > 0 && keys.every(function (k) { return String((out.podLabels || {})[k]) === String(svcSel[k]); });
+    out.svcSelector = svcSel;
+    out.svcMatches = hits;
+    out.port = get(svc, ['spec', 'ports', 0, 'port']);
+    out.targetPort = get(svc, ['spec', 'ports', 0, 'targetPort']);
+    if (!keys.length) out.notes.push('the Service selects nothing, so it has no copies behind it');
+    else if (!hits) out.notes.push('the Service looks for ' + JSON.stringify(svcSel) + ' but the copies are labelled ' +
+                                   JSON.stringify(out.podLabels || {}) + ' — it would have no one to send traffic to');
+    out.reachable = !!(hits && out.pods > 0);
+  }
+  return out;
+}
+
+
+
+/* ---------------------------------------------------------------------------
+   Pod status. A manifest can be perfectly valid YAML and still never run, so
+   these labs model what the cluster would report back: the image it cannot
+   pull, the probe that never answers, the container killed for using too much
+   memory. Every check reads this, not the text you typed.
+   --------------------------------------------------------------------------- */
+// What the registry actually contains. Anything else cannot be pulled.
+var REGISTRY = ['nerdlab/checkout:1.0', 'nerdlab/checkout:1.1', 'nerdlab/checkout:2.0', 'postgres:16'];
+
+function podStatus(c) {
+  var out = { phase: 'Running', ready: true, reasons: [], restarts: 0 };
+  if (!c.dep) { out.phase = 'None'; out.ready = false; out.reasons.push('there is no Deployment, so no pods exist'); return out; }
+  var container = (c.containers || [])[0];
+  if (!container) { out.phase = 'None'; out.ready = false; out.reasons.push('no container described'); return out; }
+
+  if (!container.image) {
+    out.phase = 'InvalidImageName'; out.ready = false;
+    out.reasons.push('the container has no image, so there is nothing to run');
+    return out;
+  }
+  if (REGISTRY.indexOf(container.image) === -1) {
+    out.phase = 'ImagePullBackOff'; out.ready = false;
+    out.reasons.push('the image "' + container.image + '" does not exist in the registry');
+    out.reasons.push('available: ' + REGISTRY.join(', '));
+    return out;
+  }
+
+  var mem = container.resources && container.resources.limits && container.resources.limits.memory;
+  if (mem) {
+    var mb = parseInt(String(mem).replace(/[^0-9]/g, ''), 10);
+    if (/Mi$/.test(String(mem)) && mb < 128) {
+      out.phase = 'CrashLoopBackOff'; out.ready = false; out.restarts = 7;
+      out.reasons.push('the app needs about 128Mi to start; the limit is ' + mem);
+      out.reasons.push('it is killed for using too much memory, restarted, killed again');
+      return out;
+    }
+  }
+
+  var probe = container.readinessProbe;
+  if (probe && probe.httpGet) {
+    var pport = Number(probe.httpGet.port);
+    var cport = Number(c.containerPort);
+    if (cport && pport !== cport) {
+      out.ready = false;
+      out.reasons.push('the readiness probe asks on port ' + pport + ', but the app listens on ' + cport);
+      out.reasons.push('the check never answers, so the pod is never marked ready and gets no traffic');
+    } else if (probe.httpGet.path !== '/healthz') {
+      out.ready = false;
+      out.reasons.push('the probe asks for ' + probe.httpGet.path + ', which this app answers with 404');
+    }
+  }
+  return out;
+}
+
+/* A rolling update, stepped out so the settings visibly matter. */
+function rollout(c) {
+  var want = c.replicas || 0;
+  var strat = get(c.dep, ['spec', 'strategy']) || {};
+  var type = strat.type || 'RollingUpdate';
+  var ru = strat.rollingUpdate || {};
+  var maxUnavailable = ru.maxUnavailable === undefined ? 1 : Number(ru.maxUnavailable);
+  var maxSurge = ru.maxSurge === undefined ? 1 : Number(ru.maxSurge);
+  var st = podStatus(c);
+  var lines = [], minAvailable = want;
+
+  if (type === 'Recreate') {
+    lines.push('strategy: Recreate');
+    lines.push('  stopping all ' + want + ' old pods at once');
+    lines.push('  capacity during the change: 0 of ' + want + '  <- the site is down here');
+    lines.push('  starting ' + want + ' new pods');
+    minAvailable = 0;
+  } else {
+    lines.push('strategy: RollingUpdate  (maxUnavailable=' + maxUnavailable + ', maxSurge=' + maxSurge + ')');
+    var replaced = 0, available = want;
+    while (replaced < want) {
+      var batch = Math.max(1, maxUnavailable);
+      var down = Math.min(batch, want - replaced);
+      available = want - down + Math.min(maxSurge, want - replaced);
+      available = Math.min(available, want);
+      minAvailable = Math.min(minAvailable, want - down);
+      lines.push('  replacing ' + down + ' pod(s); serving capacity ' + (want - down) + ' of ' + want);
+      replaced += down;
+    }
+    lines.push('  all ' + want + ' pods now on the new version');
+  }
+  if (!st.ready) {
+    lines.push('  the new pods never become ready — the rollout stalls here and stops');
+    minAvailable = Math.min(minAvailable, 0);
+  }
+  return { type: type, maxUnavailable: maxUnavailable, maxSurge: maxSurge,
+           minAvailable: minAvailable, lines: lines, ready: st.ready };
+}
+
+function describeCluster(c, opts) {
+  if (!c.ok) return 'Could not read the file. ' + c.error.msg;
+  var out = 'kinds found : ' + (c.docs.map(function (d) { return d && d.kind ? d.kind : '(no kind)'; }).join(', ') || 'none') + '\n';
+  if (c.dep) {
+    var container = (c.containers || [])[0] || {};
+    out += 'wanted copies : ' + (c.replicas === undefined ? '(not set)' : c.replicas) + '\n';
+    out += 'image         : ' + (container.image || '(none)') + '\n';
+    if (c.containerPort !== undefined) out += 'listens on    : ' + c.containerPort + '\n';
+    var st = podStatus(c);
+    out += '\nkubectl get pods\n';
+    out += '  STATUS    ' + st.phase + '\n';
+    out += '  READY     ' + (st.ready ? 'yes' : 'no') + '\n';
+    if (st.restarts) out += '  RESTARTS  ' + st.restarts + '\n';
+    if (st.reasons.length) {
+      out += '\nkubectl describe pod\n';
+      st.reasons.forEach(function (r) { out += '  ' + r + '\n'; });
+    }
+    if (opts && opts.rollout) {
+      var ro = rollout(c);
+      out += '\nrolling out a new version:\n';
+      ro.lines.forEach(function (l) { out += '  ' + l + '\n'; });
+      out += '  lowest capacity during the change: ' + ro.minAvailable + ' of ' + (c.replicas || 0) + '\n';
+    }
+  }
+  return out;
+}
+
+var TASK_ID = 17;
+
+
+var SCENES = [
+{
+  id: 1,
+  title: 'The strategy that takes the site down',
+  story: '<p>Start with the blunt one so the contrast is real.</p>' +
+         '<p><code>Recreate</code> stops every old copy, then starts the new ones. For a moment there ' +
+         'is nothing serving at all. For a background job that is fine. For a shop it is an outage.</p>' +
+         '<p>Set it, apply, and read the lowest capacity line.</p>',
+  voice: { who: 'Maya', line: '"I want to see the number go to zero once, so I never do this by accident."' },
+  brief: ['upgrade the image to <code>nerdlab/checkout:2.0</code>',
+          'set the strategy type to <code>Recreate</code>',
+          'the output should show capacity dropping to 0'],
+  start: 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: checkout\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: checkout\n  template:\n    metadata:\n      labels:\n        app: checkout\n    spec:\n      containers:\n        - name: web\n          image: nerdlab/checkout:1.0\n          ports:\n            - containerPort: 8080\n',
+  hints: ['Two changes: the image version, and a new <code>strategy</code> section under <code>spec</code>.',
+          '<code>strategy</code> sits alongside <code>replicas</code> and <code>selector</code>, not inside the template.',
+          'Add <code>strategy:</code> then indented <code>type: Recreate</code>.'],
+  validate: function (c, st) {
+    if (!c.ok) return { ok: false, msg: c.error.msg };
+    if (!c.dep) return { ok: false, msg: 'There is no Deployment in the file.' };
+    if (c.containers[0].image !== 'nerdlab/checkout:2.0') return { ok: false, msg: 'The image should be <code>nerdlab/checkout:2.0</code>; it is <code>' + c.containers[0].image + '</code>.' };
+    var strat = get(c.dep, ['spec', 'strategy']) || {};
+    if (strat.type !== 'Recreate') return { ok: false, msg: 'The strategy type is <code>' + (strat.type || 'not set, so RollingUpdate') + '</code>. This chapter wants <code>Recreate</code>.' };
+    var ro = rollout(c);
+    if (ro.minAvailable !== 0) return { ok: false, msg: 'Capacity never reached 0, so this is not really a Recreate.' };
+    return { ok: true, log: 'capacity hit 0 — every customer saw an error for the length of the restart' };
+  }
+},
+{
+  id: 2,
+  title: 'Replace them one at a time',
+  story: '<p>Now the default, done deliberately.</p>' +
+         '<p>With <code>maxUnavailable: 1</code>, Kubernetes takes one copy out, upgrades it, and only ' +
+         'then moves on. Two of the three are always serving, so nobody notices.</p>' +
+         '<p>Slower, and nobody gets an error. That is usually the trade you want.</p>',
+  voice: { who: 'Priya', line: '"Slow is a feature here. You are buying the ability to stop halfway."' },
+  brief: ['keep the image at <code>2.0</code>',
+          'switch the strategy to <code>RollingUpdate</code>',
+          'set <code>maxUnavailable: 1</code> and <code>maxSurge: 1</code>',
+          'capacity must never fall below 2 of 3'],
+  start: 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: checkout\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: checkout\n  template:\n    metadata:\n      labels:\n        app: checkout\n    spec:\n      containers:\n        - name: web\n          image: nerdlab/checkout:2.0\n          ports:\n            - containerPort: 8080\n',
+  hints: ['The two numbers live in a <code>rollingUpdate</code> section inside <code>strategy</code>.',
+          '<code>strategy:</code>, then <code>type: RollingUpdate</code>, then <code>rollingUpdate:</code> with the two settings under it.',
+          '<code>maxUnavailable: 1</code> and <code>maxSurge: 1</code>'],
+  validate: function (c, st) {
+    if (!c.ok) return { ok: false, msg: c.error.msg };
+    if (!c.dep) return { ok: false, msg: 'There is no Deployment in the file.' };
+    if (c.containers[0].image !== 'nerdlab/checkout:2.0') return { ok: false, msg: 'Keep the image at <code>nerdlab/checkout:2.0</code>.' };
+    var strat = get(c.dep, ['spec', 'strategy']) || {};
+    if (strat.type !== 'RollingUpdate') return { ok: false, msg: 'Set the strategy type to <code>RollingUpdate</code>; it is <code>' + (strat.type || 'not set') + '</code>.' };
+    var ru = strat.rollingUpdate;
+    if (!ru) return { ok: false, msg: 'There is no <code>rollingUpdate</code> section, so the two settings have nowhere to live.' };
+    if (Number(ru.maxUnavailable) !== 1) return { ok: false, msg: '<code>maxUnavailable</code> is <code>' + ru.maxUnavailable + '</code>; this chapter wants 1.' };
+    if (Number(ru.maxSurge) !== 1) return { ok: false, msg: '<code>maxSurge</code> is <code>' + ru.maxSurge + '</code>; this chapter wants 1.' };
+    var ro = rollout(c);
+    if (ro.minAvailable < 2) return { ok: false, msg: 'Capacity dropped to ' + ro.minAvailable + ' of 3. With maxUnavailable 1 it should never go below 2.' };
+    return { ok: true, log: 'lowest capacity 2 of 3 — the upgrade was invisible to customers' };
+  }
+},
+{
+  id: 3,
+  title: 'A rollout that stops itself',
+  story: '<p>Last piece, and the one that makes rolling updates safe rather than merely gradual.</p>' +
+         '<p>Kubernetes only counts a new copy as done once it reports <em>ready</em>. Add a readiness ' +
+         'probe and a broken version can never take the whole service down: the first new copy never ' +
+         'goes ready, so the rollout stops with the old copies still serving.</p>' +
+         '<p>Without a probe, Kubernetes assumes started means working, and cheerfully replaces all ' +
+         'three with something broken.</p>',
+  voice: { who: 'Priya', line: '"The probe is what turns a rolling update into a safety net."' },
+  brief: ['keep the rolling update settings from the last chapter',
+          'add a readiness probe on <code>/healthz</code>, port <code>8080</code>',
+          'wait 5 seconds before the first check, then every 5',
+          'the rollout must complete with the pods ready'],
+  start: 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: checkout\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: checkout\n  template:\n    metadata:\n      labels:\n        app: checkout\n    spec:\n      containers:\n        - name: web\n          image: nerdlab/checkout:2.0\n          ports:\n            - containerPort: 8080\n  strategy:\n    type: RollingUpdate\n    rollingUpdate:\n      maxUnavailable: 1\n      maxSurge: 1\n',
+  hints: ['Careful with indentation — <code>strategy</code> belongs under <code>spec</code>, the probe belongs to the container.',
+          'The probe goes at the same level as <code>image</code> and <code>ports</code>.',
+          '<code>readinessProbe:</code> with <code>httpGet:</code> (<code>path: /healthz</code>, <code>port: 8080</code>), then <code>initialDelaySeconds: 5</code> and <code>periodSeconds: 5</code>.'],
+  validate: function (c, st) {
+    if (!c.ok) return { ok: false, msg: c.error.msg };
+    if (!c.dep) return { ok: false, msg: 'There is no Deployment in the file.' };
+    var strat = get(c.dep, ['spec', 'strategy']) || {};
+    var ru = strat.rollingUpdate || {};
+    if (strat.type !== 'RollingUpdate' || Number(ru.maxUnavailable) !== 1) return { ok: false, msg: 'Keep the rolling update settings from the last chapter.' };
+    var probe = c.containers[0] && c.containers[0].readinessProbe;
+    if (!probe || !probe.httpGet) return { ok: false, msg: 'There is no readiness probe yet, so a broken version would replace all three copies unchecked.' };
+    if (probe.httpGet.path !== '/healthz') return { ok: false, msg: 'The probe should ask for <code>/healthz</code>.' };
+    if (Number(probe.httpGet.port) !== 8080) return { ok: false, msg: 'The probe should ask on <code>8080</code>, the port the app listens on.' };
+    if (Number(probe.initialDelaySeconds) !== 5) return { ok: false, msg: 'Set <code>initialDelaySeconds: 5</code>.' };
+    if (Number(probe.periodSeconds) !== 5) return { ok: false, msg: 'Set <code>periodSeconds: 5</code>.' };
+    if (!st.ready) return { ok: false, msg: 'The pods still are not ready: ' + (st.reasons[0] || '') + '.' };
+    var ro = rollout(c);
+    if (ro.minAvailable < 2) return { ok: false, msg: 'Capacity fell to ' + ro.minAvailable + '; it should stay at 2 or above.' };
+    return { ok: true, log: 'rollout completes, and a bad version would now stall instead of taking the service down' };
+  }
+}
+];
+
+
+function runScene(sc, ta, out, runBtn, card) {
+  if (solved[sc.id]) return;
+  var c = cluster(ta.value);
+  var pre = out.querySelector('.parsed');
+  var verdict = out.querySelector('.verdict');
+  out.classList.add('show');
+  pre.textContent = describeCluster(c, { rollout: true });
+  var st = c.ok && c.dep ? podStatus(c) : { ready: false };
+  document.getElementById('s-branch').textContent = c.pods || 0;
+  document.getElementById('s-commits').textContent = st.ready ? 'yes' : 'no';
+  var v = sc.validate(c, st);
+  if (!v.ok) {
+    verdict.className = 'verdict bad';
+    verdict.innerHTML = '<span class="lbl">\u2717 Not yet \u2014 </span>' + v.msg;
+    return;
+  }
+  verdict.className = 'verdict good';
+  verdict.innerHTML = '<span class="lbl">\u2713 Fixed. </span>' + v.log;
+  solveScene(sc, card, runBtn, ta);
+}
+
+/* ---------- engine ---------- */
+var solved = {}, reported = false;
+
+function buildScenes() {
+  var host = document.getElementById('scenes');
+  SCENES.forEach(function (sc, idx) {
+    var card = document.createElement('section');
+    card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+    card.id = 'scene-' + sc.id;
+
+    var head = document.createElement('div');
+    head.className = 'scene-head';
+    head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+      '<h2 class="scene-title">' + sc.title + '</h2>' +
+      '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+    head.addEventListener('click', function () {
+      if (!card.classList.contains('locked')) card.classList.toggle('open');
+    });
+    card.appendChild(head);
+
+    if (idx !== 0) {
+      var note = document.createElement('p');
+      note.className = 'locked-note';
+      note.textContent = 'Locked — finish the step above first.';
+      card.appendChild(note);
+    }
+
+    var body = document.createElement('div');
+    body.className = 'scene-body';
+    body.innerHTML = sc.story +
+      '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+      '<div class="brief"><h4>Make all of this true</h4><ul>' +
+      sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="editor-label"><span>manifest.yaml — spaces only, no Tab key</span><span>step ' + sc.id + ' of 3</span></div>';
+
+    var ta = document.createElement('textarea');
+    ta.className = 'editor'; ta.style.minHeight = '280px';
+    ta.value = sc.start;
+    ta.spellcheck = false;
+    ta.setAttribute('aria-label', 'Kubernetes manifest for step ' + sc.id);
+    body.appendChild(ta);
+
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+    var runBtn = document.createElement('button');
+    runBtn.className = 'run'; runBtn.type = 'button'; runBtn.textContent = 'Apply to the cluster';
+    var hintBtn = document.createElement('button');
+    hintBtn.className = 'ghost'; hintBtn.type = 'button'; hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'ghost'; resetBtn.type = 'button'; resetBtn.textContent = 'Start over';
+    row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+    body.appendChild(row);
+
+    var hints = document.createElement('div');
+    hints.className = 'hints';
+    sc.hints.forEach(function (h, hi) {
+      var el = document.createElement('div');
+      el.className = 'hint';
+      el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+      hints.appendChild(el);
+    });
+    body.appendChild(hints);
+
+    var out = document.createElement('div');
+    out.className = 'out';
+    out.innerHTML = '<div class="out-head">what the cluster reports back</div>' +
+                    '<pre class="parsed"></pre><div class="verdict"></div>';
+    body.appendChild(out);
+
+    card.appendChild(body);
+    host.appendChild(card);
+
+    var shown = 0;
+    hintBtn.addEventListener('click', function () {
+      if (shown >= sc.hints.length) return;
+      hints.children[shown].classList.add('show');
+      shown++;
+      hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+    });
+    resetBtn.addEventListener('click', function () {
+      if (solved[sc.id]) return;
+      ta.value = sc.start; out.classList.remove('show'); ta.focus();
+    });
+    runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
+    });
+  });
+}
+
+function solveScene(sc, card, runBtn, ta) {
+  solved[sc.id] = true;
+  card.classList.remove('active');
+  card.classList.add('solved', 'collapsible');
+  card.querySelector('.scene-state').textContent = 'done';
+  runBtn.textContent = 'Done';
+  ta.readOnly = true;
+
+  var count = Object.keys(solved).length;
+  document.getElementById('s-step').textContent = count + '/' + SCENES.length;
+  document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+
+  if (count === SCENES.length) { finish(); return; }
+
+  card.classList.remove('open');
+  var next = SCENES[SCENES.indexOf(sc) + 1];
+  var nextCard = document.getElementById('scene-' + next.id);
+  nextCard.classList.remove('locked');
+  nextCard.classList.add('active', 'open', 'collapsible');
+  nextCard.querySelector('.scene-state').textContent = 'active';
+  var note = nextCard.querySelector('.locked-note');
+  if (note) note.parentNode.removeChild(note);
+  nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+  // Fired only after every step's validator passed against the simulated repository.
+  if (!reported) {
+    reported = true;
+    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  }
+  var finale = document.getElementById('finale');
+  finale.style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+buildScenes();
+</script>
+</body>
+</html>
