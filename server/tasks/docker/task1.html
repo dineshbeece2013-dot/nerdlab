@@ -1,170 +1,563 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Docker Task 1: Build & Run Web Container</title>
-    <style>
-        body { font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 2rem; margin: 0; }
-        .container { max-width: 800px; margin: 0 auto; background: #1e293b; padding: 2rem; border-radius: 12px; border: 1px solid #334155; }
-        h1 { color: #38bdf8; }
-        pre { background: #090d16; color: #a5f3fc; padding: 1rem; border-radius: 8px; overflow-x: auto; }
-        .step { margin-bottom: 1.5rem; border-left: 4px solid #0284c7; padding-left: 1rem; }
-        .btn-complete { background: #10b981; color: white; padding: 0.75rem 1.5rem; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Docker Task 1: The Same App Everywhere</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; color:#f8fafc;
+         padding:2rem 1.5rem 4rem; margin:0; line-height:1.6; }
+  .container { max-width:900px; margin:0 auto; }
+  .panel { background:#1e293b; padding:2rem; border-radius:12px; border:1px solid #334155;
+           box-shadow:0 10px 25px rgba(0,0,0,.5); }
+  h1 { color:#38bdf8; margin:.6rem 0 .4rem; font-size:1.75rem; }
+  h2 { color:#38bdf8; font-size:1.1rem; }
+  .badge { display:inline-block; background:#0284c7; color:#fff; padding:.25rem .75rem;
+           border-radius:9999px; font-size:.875rem; font-weight:600; }
+  .lede { color:#cbd5e1; }
+  code { background:#0b1220; padding:.1rem .35rem; border-radius:4px; color:#a5f3fc; font-size:.92em; }
+  pre { background:#090d16; color:#a5f3fc; padding:1rem; border-radius:8px; overflow-x:auto;
+        border:1px solid #1e293b; font-size:.85rem; margin:.75rem 0 0; }
 
-        .verify {
-            margin-top: 2rem;
-            border-top: 2px solid #334155;
-            padding-top: 1.5rem;
-        }
-        .verify h2 { color: #38bdf8; font-size: 1.1rem; }
-        #progress-wrap { margin-bottom: 1.25rem; font-weight: 600; color: #cbd5e1; }
-        #bar { height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; margin-top: 0.5rem; border: 1px solid #334155; }
-        #fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5e9, #10b981); transition: width 0.35s ease; }
-        .check-item {
-            background: #16213a;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1rem;
-        }
-        .check-item.done { border-color: #10b981; background: #0d2620; }
-        .check-item p { margin: 0 0 0.6rem; color: #e2e8f0; }
-        .check-item input {
-            background: #090d16;
-            border: 1px solid #334155;
-            color: #a5f3fc;
-            border-radius: 8px;
-            padding: 0.6rem 0.8rem;
-            width: 100%;
-            max-width: 460px;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-        .check-item button {
-            margin-left: 0.5rem;
-            background: #0ea5e9;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 0.6rem 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .check-item button:hover { background: #38bdf8; }
-        .check-item.done button { background: #10b981; cursor: default; }
-        .feedback { display: block; margin-top: 0.5rem; font-size: 0.85rem; color: #94a3b8; min-height: 1.2em; }
-        .check-item.done .feedback { color: #10b981; font-weight: 600; }
-        .feedback.bad { color: #f87171; }
-        #done-banner {
-            display: none;
-            margin-top: 1.5rem;
-            background: #052e22;
-            border: 1px solid #10b981;
-            color: #6ee7b7;
-            padding: 1rem 1.25rem;
-            border-radius: 10px;
-            font-weight: bold;
-        }
-    </style>
+  #status { position:sticky; top:0; z-index:20; margin:1.25rem 0; padding:.85rem 1.1rem;
+            background:#16213a; border:1px solid #334155; border-radius:12px; display:flex;
+            flex-wrap:wrap; gap:.75rem 1.5rem; align-items:center;
+            font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
+  #status .item { display:flex; align-items:center; gap:.45rem; color:#94a3b8; }
+  #status .val { color:#e2e8f0; font-weight:700; }
+  #bar { flex:1 1 160px; min-width:140px; height:8px; background:#0f172a; border-radius:999px;
+         overflow:hidden; border:1px solid #334155; }
+  #fill { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#10b981); transition:width .45s ease; }
+
+  .scene { border:1px solid #334155; border-radius:12px; background:#1a2437; margin-bottom:1.1rem; overflow:hidden; }
+  .scene.locked { opacity:.55; }
+  .scene.active { border-color:#38bdf8; box-shadow:0 0 0 1px rgba(56,189,248,.25); }
+  .scene.solved { border-color:#10b981; background:#101f1c; }
+  .scene-head { display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; }
+  .scene.solved .scene-head, .scene.collapsible .scene-head { cursor:pointer; }
+  .scene-num { flex:none; width:1.9rem; height:1.9rem; border-radius:8px; background:#0b1220;
+               border:1px solid #334155; color:#94a3b8; display:flex; align-items:center;
+               justify-content:center; font-weight:700; font-size:.85rem; }
+  .scene.active .scene-num { background:#0284c7; border-color:#38bdf8; color:#fff; }
+  .scene.solved .scene-num { background:#065f46; border-color:#10b981; color:#d1fae5; }
+  .scene-title { font-weight:700; color:#f1f5f9; flex:1; }
+  .scene-state { font-size:.75rem; font-family:ui-monospace,Consolas,monospace; color:#64748b;
+                 text-transform:uppercase; letter-spacing:.04em; }
+  .scene.solved .scene-state { color:#34d399; }
+  .scene-body { padding:0 1.25rem 1.35rem; display:none; }
+  .scene.open .scene-body { display:block; }
+  .scene-body p { color:#cbd5e1; }
+
+  .voice { border-left:3px solid #c084fc; background:#1b1630; padding:.65rem .9rem;
+           border-radius:0 8px 8px 0; margin:.9rem 0; color:#e9d5ff; font-size:.92rem; }
+  .voice strong { color:#c084fc; }
+  .brief { background:#16213a; border:1px solid #334155; border-left:4px solid #f59e0b;
+           border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:.9rem 0; font-size:.92rem; color:#e2e8f0; }
+  .brief h4 { margin:0 0 .35rem; color:#fbbf24; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; }
+  .brief ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  .brief li { margin-bottom:.2rem; }
+
+  .editor-label { display:flex; justify-content:space-between; align-items:baseline;
+                  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-top:1rem; }
+  textarea.editor { width:100%; min-height:120px; background:#060910; color:#a5f3fc;
+                    border:1px solid #334155; border-radius:8px; padding:.85rem 1rem;
+                    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; line-height:1.7;
+                    resize:vertical; white-space:pre; overflow-x:auto; }
+  textarea.editor:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+  .btn-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.85rem; align-items:center; }
+  button { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:.6rem 1.15rem;
+           font-weight:700; cursor:pointer; font-size:.88rem; font-family:inherit; transition:background .15s ease; }
+  button:hover { background:#38bdf8; }
+  button.ghost { background:#24324a; color:#cbd5e1; }
+  button.ghost:hover { background:#334155; }
+  .scene.solved button.run { background:#10b981; cursor:default; }
+
+  .out { margin-top:.9rem; display:none; }
+  .out.show { display:block; }
+  .out-head { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-bottom:.35rem; }
+  .parsed { background:#060910; border:1px solid #1e293b; border-radius:8px; padding:.8rem 1rem;
+            font-family:ui-monospace,Consolas,monospace; font-size:.8rem; white-space:pre-wrap;
+            color:#cbd5e1; margin:0; }
+  .verdict { margin-top:.7rem; font-size:.9rem; padding:.7rem .9rem; border-radius:8px; }
+  .verdict.bad { background:#2a1215; border:1px solid #7f1d1d; color:#fca5a5; }
+  .verdict.good { background:#052e22; border:1px solid #10b981; color:#6ee7b7; font-weight:600; }
+  .verdict .lbl { font-weight:700; }
+
+  .hints { margin-top:.8rem; }
+  .hint { display:none; background:#0b1220; border:1px dashed #475569; border-radius:8px;
+          padding:.6rem .9rem; margin-bottom:.5rem; font-size:.88rem; color:#cbd5e1; }
+  .hint.show { display:block; }
+  .hint b { color:#94a3b8; }
+  .locked-note { padding:0 1.25rem 1.1rem; color:#64748b; font-size:.88rem; }
+
+  #finale { display:none; margin-top:1.5rem; }
+  #done-banner { display:none; margin-top:1.25rem; background:#052e22; border:1px solid #10b981;
+                 color:#6ee7b7; padding:1.1rem 1.25rem; border-radius:10px; font-weight:bold; }
+  #done-banner p { color:#a7f3d0; font-weight:normal; margin:.6rem 0 0; font-size:.9rem; }
+  .debrief { margin-top:1.5rem; }
+  .debrief li { margin-bottom:.35rem; color:#cbd5e1; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>Docker Task 1: Build & Run Container</h1>
-        <p>In this lab exercise, you will create a custom Dockerfile for an Nginx web application and map port 8080.</p>
-        
-        <div class="step">
-            <h3>Step 1: Write Dockerfile</h3>
-            <pre>FROM nginx:alpine
-COPY index.html /usr/share/nginx/html/index.html
-EXPOSE 80</pre>
-        </div>
+<div class="container">
+  <div class="panel">
+    <span class="badge">Docker Level 1</span>
+    <h1>Docker: The Same App Everywhere</h1>
 
-        <div class="step">
-            <h3>Step 2: Build & Run Docker Image</h3>
-            <pre>docker build -t my-devops-app:v1 .
-docker run -d -p 8080:80 --name web-container my-devops-app:v1</pre>
-        </div>
+    <h2>What is Docker?</h2>
+    <p class="lede">
+      An app is never just the code. It needs a particular version of a language, a handful
+      of libraries, some settings, a folder in the right place. Install it on a second
+      computer where any one of those differs and it behaves differently — or refuses to
+      start. That is the oldest complaint in software: <em>it works on my machine.</em>
+    </p>
+    <p class="lede">
+      <strong>Docker</strong> ends the argument by shipping the machine with the app. You
+      write down everything the app needs in a file called a <strong>Dockerfile</strong>.
+      Docker follows that file and packs the app, its language, and its libraries into one
+      sealed bundle called an <strong>image</strong>. Anyone who runs that image gets exactly
+      what you had — on a laptop, a server, or a cloud, identically.
+    </p>
 
-        <div class="verify">
-            <h2>Verification — complete every check to earn your points</h2>
-            <div id="progress-wrap">
-                <span id="progress-text">0 of 3 checks passed</span>
-                <div id="bar"><div id="fill"></div></div>
-            </div>
+    <h2>Your turn</h2>
+    <p class="lede">
+      Dev has finished a small web app. It runs on his laptop. It does not run on Maya's, and
+      neither of them can work out what is different — and the server it has to live on runs
+      neither of their setups. Instead of hunting the difference, they are going to describe
+      the app's world in a Dockerfile so it stops depending on whose computer it is on.
+    </p>
+    <p class="lede">
+      You will write real Dockerfiles below. This page reads them the way Docker does, builds
+      the image step by step, and shows you what happened — the layers, what got cached, and
+      how big the result is.
+    </p>
 
-            <div class="check-item" data-step="1">
-                <p><strong>Check 1.</strong> Which base image does the Dockerfile start from? (write the full FROM line)</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(1);}" />
-                <button type="button" onclick="checkStep(1)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-
-            <div class="check-item" data-step="2">
-                <p><strong>Check 2.</strong> Which command builds the image and tags it my-devops-app:v1 from the current directory?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(2);}" />
-                <button type="button" onclick="checkStep(2)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-
-            <div class="check-item" data-step="3">
-                <p><strong>Check 3.</strong> Which command runs that image detached, mapping host port 8080 to container port 80?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(3);}" />
-                <button type="button" onclick="checkStep(3)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-            <div id="done-banner">All checks passed — your points have been awarded.</div>
-        </div>
+    <div id="status" role="status" aria-live="polite">
+      <span class="item">LAYERS <span class="val" id="s-branch">0</span></span>
+      <span class="item">IMAGE <span class="val" id="s-commits">—</span></span>
+      <span class="item">STEP <span class="val" id="s-step">0/4</span></span>
+      <div id="bar" role="img" aria-label="Progress"><div id="fill"></div></div>
     </div>
 
-    <script>
-        var TASK_ID = 2;
-        var ANSWERS = {
-            1: /^FROM\s+nginx:alpine$/i,
-            2: /^docker\s+build\s+-t\s+my-devops-app:v1\s+\.$/i,
-            3: /^docker\s+run\s+-d\s+-p\s+8080:80\s+.*my-devops-app:v1$/i
-        };
-        var TOTAL = Object.keys(ANSWERS).length;
-        var completed = {};
-        var reported = false;
+    <div id="scenes"></div>
 
-        function render() {
-            var count = Object.keys(completed).length;
-            document.getElementById('progress-text').textContent = count + ' of ' + TOTAL + ' checks passed';
-            document.getElementById('fill').style.width = (count / TOTAL * 100) + '%';
+    <div id="finale">
+      <div id="done-banner">
+        The image builds anywhere and rebuilds in seconds — your points have been awarded.
+        <p>Same bundle on Dev's laptop, Maya's laptop, and the server.</p>
+      </div>
+      <div class="debrief">
+        <h2>What you learned</h2>
+        <ul>
+          <li><strong>A Dockerfile is a recipe.</strong> Every line is a step, and Docker follows them in order.</li>
+          <li><strong>Order decides speed.</strong> Copy the dependency list before the source, and installing is skipped on most rebuilds.</li>
+          <li><strong>Each step is a saved layer.</strong> Docker reuses a layer until something it depends on changes — then everything after it is redone.</li>
+          <li><strong>Say what runs and where.</strong> Without a start command the image is a box nobody can open.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 
-            if (count === TOTAL && !reported) {
-                reported = true;
-                document.getElementById('done-banner').style.display = 'block';
-                // Single source of truth for completion: fired only when every check passes.
-                window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
-            }
-        }
+<script>
 
-        function checkStep(n) {
-            var el = document.querySelector('.check-item[data-step="' + n + '"]');
-            var feedback = el.querySelector('.feedback');
-            if (completed[n]) return;
+/* =========================================================================
+   A small Docker. It reads the Dockerfile the way Docker does — instruction
+   by instruction — builds a layer list, and works out what a rebuild would
+   reuse. Every check below inspects that build, not the text you typed.
+   ========================================================================= */
+var KNOWN = ['FROM','WORKDIR','COPY','ADD','RUN','CMD','ENTRYPOINT','EXPOSE','ENV','USER','ARG','LABEL','VOLUME'];
 
-            var value = el.querySelector('input').value.trim();
-            if (!value) { feedback.textContent = 'Enter an answer first.'; feedback.className = 'feedback bad'; return; }
+function parseDockerfile(text) {
+  var lines = text.replace(/\r\n?/g, '\n').split('\n');
+  var out = { steps: [], errors: [] };
+  var joined = [], buf = '', bufLine = 0;
 
-            if (!ANSWERS[n].test(value)) {
-                feedback.textContent = 'Not quite — re-read the step above and try again.';
-                feedback.className = 'feedback bad';
-                return;
-            }
+  lines.forEach(function (raw, i) {
+    var line = raw.trim();
+    if (!line || line.charAt(0) === '#') return;
+    if (buf) { buf += ' ' + line.replace(/\\$/, '').trim(); if (!/\\$/.test(line)) { joined.push({ text: buf, line: bufLine }); buf = ''; } return; }
+    if (/\\$/.test(line)) { buf = line.replace(/\\$/, '').trim(); bufLine = i + 1; return; }
+    joined.push({ text: line, line: i + 1 });
+  });
+  if (buf) joined.push({ text: buf, line: bufLine });
 
-            completed[n] = true;
-            el.classList.add('done');
-            feedback.textContent = 'Correct';
-            feedback.className = 'feedback';
-            el.querySelector('button').textContent = 'Passed';
-            el.querySelector('input').readOnly = true;
-            render();
-        }
+  joined.forEach(function (j) {
+    var m = /^([A-Za-z]+)\s+([\s\S]+)$/.exec(j.text);
+    if (!m) { out.errors.push('line ' + j.line + ': "' + j.text + '" is not an instruction'); return; }
+    var kw = m[1].toUpperCase(), rest = m[2].trim();
+    if (KNOWN.indexOf(kw) === -1) { out.errors.push('line ' + j.line + ': Docker does not know the instruction ' + kw); return; }
+    out.steps.push({ kw: kw, arg: rest, line: j.line });
+  });
+  return out;
+}
 
-        render();
-    </script>
+// Rough size model, enough to show that copying junk costs you.
+function buildImage(df, opts) {
+  opts = opts || {};
+  var layers = [], size = 0, base = null, workdir = '/', started = false;
+  var ignore = opts.dockerignore || '';
+  var ignoresModules = /(^|\n)\s*node_modules\s*(\n|$)/.test(ignore);
+
+  df.steps.forEach(function (s) {
+    var mb = 0, note = '';
+    if (s.kw === 'FROM') {
+      base = s.arg; started = true;
+      mb = /alpine|slim/.test(s.arg) ? 45 : 380;
+      note = /alpine|slim/.test(s.arg) ? 'small base image' : 'full base image — large';
+    } else if (s.kw === 'RUN') {
+      mb = /npm (ci|install)/.test(s.arg) ? 60 : 8;
+      note = /npm (ci|install)/.test(s.arg) ? 'installs the libraries the app needs' : '';
+    } else if (s.kw === 'COPY' || s.kw === 'ADD') {
+      var copiesEverything = /^\.\s|\s\.\s*$|^\.\s*\./.test(s.arg) || /^\.\s+\./.test(s.arg);
+      if (/package.*\.json/.test(s.arg)) { mb = 1; note = 'just the dependency list'; }
+      else if (copiesEverything && !ignoresModules) { mb = 190; note = 'copies node_modules too — most of this is waste'; }
+      else { mb = 4; note = ignoresModules ? 'source only; node_modules excluded' : 'source files'; }
+    } else if (s.kw === 'WORKDIR') { workdir = s.arg; mb = 0; }
+    size += mb;
+    layers.push({ kw: s.kw, arg: s.arg, mb: mb, note: note });
+  });
+  return { started: started, base: base, workdir: workdir, layers: layers, sizeMb: size, ignoresModules: ignoresModules };
+}
+
+// Which layers survive a rebuild after only the source changed?
+function rebuildAfterSourceChange(df) {
+  var invalidated = false, reused = 0, redone = 0, installRedone = false;
+  df.steps.forEach(function (s) {
+    var touchesSource = (s.kw === 'COPY' || s.kw === 'ADD') && !/package.*\.json/.test(s.arg);
+    if (touchesSource) invalidated = true;
+    if (invalidated) { redone++; if (s.kw === 'RUN' && /npm (ci|install)/.test(s.arg)) installRedone = true; }
+    else reused++;
+  });
+  return { reused: reused, redone: redone, installRedone: installRedone };
+}
+
+function has(df, kw) { return df.steps.some(function (s) { return s.kw === kw; }); }
+function firstIndex(df, pred) { for (var i = 0; i < df.steps.length; i++) if (pred(df.steps[i])) return i; return -1; }
+
+function describeBuild(df, img, rb) {
+  if (df.errors.length) return 'Docker stopped:\n  ' + df.errors.join('\n  ');
+  if (!df.steps.length) return 'The Dockerfile is empty.';
+  var out = 'building, step by step:\n';
+  img.layers.forEach(function (l, i) {
+    out += '  ' + (i + 1) + '. ' + l.kw + ' ' + (l.arg.length > 46 ? l.arg.slice(0, 43) + '...' : l.arg) +
+           (l.mb ? '   +' + l.mb + ' MB' : '') + (l.note ? '   (' + l.note + ')' : '') + '\n';
+  });
+  out += '\nfinished image  : ' + img.sizeMb + ' MB\n';
+  out += 'start command   : ' + (has(df, 'CMD') || has(df, 'ENTRYPOINT') ? 'set' : 'MISSING — the image would start and immediately stop') + '\n';
+  if (rb) out += 'rebuild after a code change: ' + rb.reused + ' step(s) reused from cache, ' + rb.redone +
+                 ' redone' + (rb.installRedone ? ' — including the slow library install' : '') + '\n';
+  return out;
+}
+
+var TASK_ID = 2;
+
+var SCENES = [
+{
+  id: 1,
+  title: 'Describe the app\u2019s world',
+  story: '<p>A Dockerfile is read from the top down, one instruction per line. Three of them do most of the work.</p>' +
+         '<p><code>FROM</code> picks the starting point — a ready-made bundle with the language already in it, so you ' +
+         'are not building a computer from nothing. <code>COPY</code> brings your files in. <code>CMD</code> says what ' +
+         'to run when someone starts the app.</p>' +
+         '<p>Miss the last one and you get an image that starts, has nothing to do, and stops.</p>',
+  voice: { who: 'Dev', line: '"It is a recipe. Ingredients, method, and what to do with the result."' },
+  brief: ['start <code>FROM node:20-alpine</code>',
+          'set the working folder to <code>/app</code>',
+          'copy the files in, and install the libraries with <code>npm install</code>',
+          'finish with a <code>CMD</code> that runs <code>node server.js</code>'],
+  start: '# one instruction per line\n\n',
+  hints: ['Five lines. FROM, WORKDIR, COPY, RUN, CMD — in that order.',
+          'COPY takes two arguments: what to copy, and where to put it. <code>COPY . .</code> means "everything here, into the working folder".',
+          'The last line is <code>CMD ["node", "server.js"]</code>'],
+  validate: function (df, img, rb) {
+    if (df.errors.length) return { ok: false, msg: 'Docker could not read it: ' + df.errors[0] };
+    if (!df.steps.length) return { ok: false, msg: 'The file is empty. Start with a <code>FROM</code> line.' };
+    if (df.steps[0].kw !== 'FROM') return { ok: false, msg: 'The first instruction must be <code>FROM</code> — Docker needs a starting point before it can do anything else. Yours starts with <code>' + df.steps[0].kw + '</code>.' };
+    if (!/^node:20-alpine\b/.test(df.steps[0].arg)) return { ok: false, msg: 'Start from <code>node:20-alpine</code>. Yours starts from <code>' + df.steps[0].arg + '</code>.' };
+    var wd = df.steps.filter(function (s) { return s.kw === 'WORKDIR'; })[0];
+    if (!wd) return { ok: false, msg: 'There is no <code>WORKDIR</code>. Without it Docker works in the root of the image and your files land in a mess.' };
+    if (wd.arg !== '/app') return { ok: false, msg: 'The working folder should be <code>/app</code>, not <code>' + wd.arg + '</code>.' };
+    if (!has(df, 'COPY')) return { ok: false, msg: 'Nothing is copied in, so the image has no app inside it.' };
+    if (!df.steps.some(function (s) { return s.kw === 'RUN' && /npm (ci|install)/.test(s.arg); }))
+      return { ok: false, msg: 'The libraries are never installed. Add a <code>RUN npm install</code> step.' };
+    if (!has(df, 'CMD') && !has(df, 'ENTRYPOINT'))
+      return { ok: false, msg: 'There is no start command, so the container would start and immediately stop with nothing to do. Add a <code>CMD</code>.' };
+    var cmd = df.steps.filter(function (s) { return s.kw === 'CMD' || s.kw === 'ENTRYPOINT'; }).pop();
+    if (!/server\.js/.test(cmd.arg) || !/node/.test(cmd.arg))
+      return { ok: false, msg: 'The start command should run <code>node server.js</code>. Yours is <code>' + cmd.arg + '</code>.' };
+    return { ok: true, log: 'image builds in ' + img.layers.length + ' steps and knows what to run' };
+  }
+},
+{
+  id: 2,
+  title: 'Make the rebuild fast',
+  story: '<p>It works — but every time Dev changes one line of code, the rebuild reinstalls every library from ' +
+         'scratch. A minute each time, all day.</p>' +
+         '<p>Here is why. Docker saves the result of each step and reuses it next time, but only until something ' +
+         'changes: once one step has to be redone, every step after it is redone too. Copying the source code ' +
+         '<em>before</em> installing means a one-character edit invalidates the install.</p>' +
+         '<p>The fix is to copy the dependency list on its own, install from it, and only then copy the code.</p>',
+  voice: { who: 'Priya', line: '"Put the things that rarely change near the top. The cache does the rest."' },
+  brief: ['copy <code>package.json</code> and <code>package-lock.json</code> first',
+          'run the install',
+          '<em>then</em> copy the rest of the source with <code>COPY . .</code>',
+          'a code change must no longer trigger the install'],
+  start: 'FROM node:20-alpine\nWORKDIR /app\nCOPY . .\nRUN npm install\nCMD ["node", "server.js"]\n',
+  hints: ['You are reordering, not adding much — one COPY becomes two, in different places.',
+          '<code>COPY package*.json ./</code> matches both files at once.',
+          'FROM, WORKDIR, <code>COPY package*.json ./</code>, <code>RUN npm install</code>, <code>COPY . .</code>, CMD'],
+  validate: function (df, img, rb) {
+    if (df.errors.length) return { ok: false, msg: 'Docker could not read it: ' + df.errors[0] };
+    if (!has(df, 'CMD') && !has(df, 'ENTRYPOINT')) return { ok: false, msg: 'Keep the start command — the image still needs to know what to run.' };
+    var pkg = firstIndex(df, function (s) { return s.kw === 'COPY' && /package.*\.json/.test(s.arg); });
+    var inst = firstIndex(df, function (s) { return s.kw === 'RUN' && /npm (ci|install)/.test(s.arg); });
+    var srcCopy = firstIndex(df, function (s) { return s.kw === 'COPY' && !/package.*\.json/.test(s.arg); });
+    if (pkg === -1) return { ok: false, msg: 'The dependency list is never copied on its own. Add a <code>COPY package*.json ./</code> before the install.' };
+    if (inst === -1) return { ok: false, msg: 'The install step has gone. Keep <code>RUN npm install</code>.' };
+    if (pkg > inst) return { ok: false, msg: 'The install happens before the dependency list is copied, so there is nothing to install from.' };
+    if (srcCopy === -1) return { ok: false, msg: 'The source code is never copied in — only the dependency list. Add <code>COPY . .</code> after the install.' };
+    if (srcCopy < inst) return { ok: false, msg: 'The source is still copied before the install, which is the problem we started with: a code change invalidates the install. Move <code>COPY . .</code> after <code>RUN npm install</code>.' };
+    if (rb.installRedone) return { ok: false, msg: 'A code change still forces the install to run again. The install step has to come before anything that copies source.' };
+    return { ok: true, log: 'a code change now reuses ' + rb.reused + ' steps and skips the install' };
+  }
+},
+{
+  id: 3,
+  title: 'Stop shipping the rubbish',
+  story: '<p>The image is 300 MB for an app whose source is a few hundred kilobytes. <code>COPY . .</code> is honest ' +
+         'about the word <em>everything</em>: it also copies the <code>node_modules</code> folder from the laptop — ' +
+         'the very libraries the image installs for itself a step earlier.</p>' +
+         '<p>Worse, those are the laptop\u2019s copies, built for the laptop. That is exactly the difference Docker ' +
+         'is supposed to remove.</p>' +
+         '<p>A <code>.dockerignore</code> file lists what to leave behind. It works like a shopping list in reverse.</p>',
+  voice: { who: 'Maya', line: '"We are posting the parcel and the packaging it came in."' },
+  brief: ['keep the Dockerfile from the last step',
+          'in the second box, list what Docker should ignore',
+          'leave out <code>node_modules</code> and the <code>.git</code> history folder',
+          'the finished image should drop well under 200 MB'],
+  start: 'FROM node:20-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nCMD ["node", "server.js"]\n',
+  second: { label: '.dockerignore — one name per line', value: '' },
+  hints: ['The second box is a separate file. One filename or folder name per line, nothing else.',
+          'You need two lines.',
+          '<code>node_modules</code> on the first line, <code>.git</code> on the second.'],
+  validate: function (df, img, rb, extra) {
+    if (df.errors.length) return { ok: false, msg: 'Docker could not read the Dockerfile: ' + df.errors[0] };
+    var ig = (extra || '');
+    if (!/\S/.test(ig)) return { ok: false, msg: 'The ignore list is empty, so <code>COPY . .</code> still takes everything — including node_modules.' };
+    if (!/(^|\n)\s*node_modules\s*(\n|$)/.test(ig)) return { ok: false, msg: 'The big one is missing: <code>node_modules</code> is still being copied in.' };
+    if (!/(^|\n)\s*\.git\s*(\n|$)/.test(ig)) return { ok: false, msg: 'Also leave out <code>.git</code> — the whole history of the project has no business inside a running image.' };
+    if (img.sizeMb >= 200) return { ok: false, msg: 'The image is still ' + img.sizeMb + ' MB. Check the Dockerfile is the one from the last step.' };
+    return { ok: true, log: 'image down to ' + img.sizeMb + ' MB, and the libraries in it are the ones the image built' };
+  }
+},
+{
+  id: 4,
+  title: 'Open a door, and stop being root',
+  story: '<p>Two things are still missing, and both are about the outside world.</p>' +
+         '<p><code>EXPOSE</code> writes down which port the app listens on. It does not open anything by itself — ' +
+         'it is documentation that tooling reads, so nobody has to guess.</p>' +
+         '<p>The other is quieter. By default everything inside the container runs as <strong>root</strong>, the ' +
+         'administrator account with no limits. If the app is ever broken into, the attacker inherits that. ' +
+         '<code>USER</code> drops it to an ordinary account for everything that follows.</p>',
+  voice: { who: 'Priya', line: '"An app that only serves web pages has no reason to be an administrator."' },
+  brief: ['keep the whole Dockerfile from step 3',
+          'declare the port the app listens on: <code>3000</code>',
+          'switch to the ordinary <code>node</code> account before the start command',
+          'the <code>USER</code> line must come after the install, or the install cannot write'],
+  start: 'FROM node:20-alpine\nWORKDIR /app\nCOPY package*.json ./\nRUN npm install\nCOPY . .\nCMD ["node", "server.js"]\n',
+  second: { label: '.dockerignore — carried over from step 3', value: 'node_modules\n.git\n' },
+  hints: ['Two new lines, both near the bottom.',
+          'One is <code>EXPOSE 3000</code>. The other names an account.',
+          'Put <code>EXPOSE 3000</code> and <code>USER node</code> after <code>COPY . .</code> and before <code>CMD</code>.'],
+  validate: function (df, img, rb, extra) {
+    if (df.errors.length) return { ok: false, msg: 'Docker could not read it: ' + df.errors[0] };
+    var exp = df.steps.filter(function (s) { return s.kw === 'EXPOSE'; })[0];
+    if (!exp) return { ok: false, msg: 'No <code>EXPOSE</code> line, so nothing records which port the app listens on.' };
+    if (!/\b3000\b/.test(exp.arg)) return { ok: false, msg: 'The app listens on port 3000, but the file says <code>' + exp.arg + '</code>.' };
+    var userIdx = firstIndex(df, function (s) { return s.kw === 'USER'; });
+    if (userIdx === -1) return { ok: false, msg: 'The container still runs as root. Add a <code>USER</code> line to drop to an ordinary account.' };
+    if (!/^node\b/.test(df.steps[userIdx].arg)) return { ok: false, msg: 'Switch to the <code>node</code> account — that one already exists in this base image.' };
+    var instIdx = firstIndex(df, function (s) { return s.kw === 'RUN' && /npm (ci|install)/.test(s.arg); });
+    if (instIdx !== -1 && userIdx < instIdx) return { ok: false, msg: 'The <code>USER</code> line comes before the install, so the install has no permission to write. Move it below <code>RUN npm install</code>.' };
+    var cmdIdx = firstIndex(df, function (s) { return s.kw === 'CMD' || s.kw === 'ENTRYPOINT'; });
+    if (cmdIdx !== -1 && userIdx > cmdIdx) return { ok: false, msg: 'The <code>USER</code> line is after the start command, so it never takes effect. Put it above <code>CMD</code>.' };
+    if (!/(^|\n)\s*node_modules\s*(\n|$)/.test(extra || '')) return { ok: false, msg: 'Keep <code>node_modules</code> in the ignore list from the last step.' };
+    return { ok: true, log: 'port declared, running as an ordinary account, image ' + img.sizeMb + ' MB' };
+  }
+}
+];
+
+/* ---------- topic glue: run a scene through the Docker simulator ---------- */
+function runScene(sc, ta, out, runBtn, card, extraTa) {
+  if (solved[sc.id]) return;
+  var df = parseDockerfile(ta.value);
+  var extra = extraTa ? extraTa.value : '';
+  var img = buildImage(df, { dockerignore: extra });
+  var rb = rebuildAfterSourceChange(df);
+  var pre = out.querySelector('.parsed');
+  var verdict = out.querySelector('.verdict');
+  out.classList.add('show');
+  pre.textContent = describeBuild(df, img, rb);
+
+  document.getElementById('s-branch').textContent = img.layers.length;
+  document.getElementById('s-commits').textContent = img.sizeMb ? img.sizeMb + ' MB' : '—';
+
+  var v = sc.validate(df, img, rb, extra);
+  if (!v.ok) {
+    verdict.className = 'verdict bad';
+    verdict.innerHTML = '<span class="lbl">\u2717 Not yet \u2014 </span>' + v.msg;
+    return;
+  }
+  verdict.className = 'verdict good';
+  verdict.innerHTML = '<span class="lbl">\u2713 Built. </span>' + v.log;
+  solveScene(sc, card, runBtn, ta);
+}
+
+/* ---------- engine ---------- */
+var solved = {}, reported = false;
+
+function buildScenes() {
+  var host = document.getElementById('scenes');
+  SCENES.forEach(function (sc, idx) {
+    var card = document.createElement('section');
+    card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+    card.id = 'scene-' + sc.id;
+
+    var head = document.createElement('div');
+    head.className = 'scene-head';
+    head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+      '<h2 class="scene-title">' + sc.title + '</h2>' +
+      '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+    head.addEventListener('click', function () {
+      if (!card.classList.contains('locked')) card.classList.toggle('open');
+    });
+    card.appendChild(head);
+
+    if (idx !== 0) {
+      var note = document.createElement('p');
+      note.className = 'locked-note';
+      note.textContent = 'Locked — finish the step above first.';
+      card.appendChild(note);
+    }
+
+    var body = document.createElement('div');
+    body.className = 'scene-body';
+    body.innerHTML = sc.story +
+      '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+      '<div class="brief"><h4>Make all of this true</h4><ul>' +
+      sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="editor-label"><span>Dockerfile</span><span>step ' + sc.id + ' of 4</span></div>';
+
+    var ta = document.createElement('textarea');
+    ta.className = 'editor';
+    ta.value = sc.start;
+    ta.spellcheck = false;
+    ta.setAttribute('aria-label', 'Dockerfile for step ' + sc.id);
+    body.appendChild(ta);
+
+    var extraTa = null;
+    if (sc.second) {
+      var lbl2 = document.createElement('div');
+      lbl2.className = 'editor-label';
+      lbl2.innerHTML = '<span>' + sc.second.label + '</span><span>second file</span>';
+      body.appendChild(lbl2);
+      extraTa = document.createElement('textarea');
+      extraTa.className = 'editor';
+      extraTa.style.minHeight = '70px';
+      extraTa.value = sc.second.value;
+      extraTa.spellcheck = false;
+      extraTa.setAttribute('aria-label', 'Second file for step ' + sc.id);
+      body.appendChild(extraTa);
+    }
+
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+    var runBtn = document.createElement('button');
+    runBtn.className = 'run'; runBtn.type = 'button'; runBtn.textContent = 'Build the image';
+    var hintBtn = document.createElement('button');
+    hintBtn.className = 'ghost'; hintBtn.type = 'button'; hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'ghost'; resetBtn.type = 'button'; resetBtn.textContent = 'Start over';
+    row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+    body.appendChild(row);
+
+    var hints = document.createElement('div');
+    hints.className = 'hints';
+    sc.hints.forEach(function (h, hi) {
+      var el = document.createElement('div');
+      el.className = 'hint';
+      el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+      hints.appendChild(el);
+    });
+    body.appendChild(hints);
+
+    var out = document.createElement('div');
+    out.className = 'out';
+    out.innerHTML = '<div class="out-head">what Docker did, layer by layer</div>' +
+                    '<pre class="parsed"></pre><div class="verdict"></div>';
+    body.appendChild(out);
+
+    card.appendChild(body);
+    host.appendChild(card);
+
+    var shown = 0;
+    hintBtn.addEventListener('click', function () {
+      if (shown >= sc.hints.length) return;
+      hints.children[shown].classList.add('show');
+      shown++;
+      hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+    });
+    resetBtn.addEventListener('click', function () {
+      if (solved[sc.id]) return;
+      ta.value = sc.start; if (extraTa && sc.second) extraTa.value = sc.second.value; out.classList.remove('show'); ta.focus();
+    });
+    runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card, extraTa); });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card, extraTa); }
+    });
+  });
+}
+
+function solveScene(sc, card, runBtn, ta) {
+  solved[sc.id] = true;
+  card.classList.remove('active');
+  card.classList.add('solved', 'collapsible');
+  card.querySelector('.scene-state').textContent = 'done';
+  runBtn.textContent = 'Done';
+  ta.readOnly = true;
+
+  var count = Object.keys(solved).length;
+  document.getElementById('s-step').textContent = count + '/' + SCENES.length;
+  document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+
+  if (count === SCENES.length) { finish(); return; }
+
+  card.classList.remove('open');
+  var next = SCENES[SCENES.indexOf(sc) + 1];
+  var nextCard = document.getElementById('scene-' + next.id);
+  nextCard.classList.remove('locked');
+  nextCard.classList.add('active', 'open', 'collapsible');
+  nextCard.querySelector('.scene-state').textContent = 'active';
+  var note = nextCard.querySelector('.locked-note');
+  if (note) note.parentNode.removeChild(note);
+  nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+  // Fired only after every step's validator passed against the simulated repository.
+  if (!reported) {
+    reported = true;
+    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  }
+  var finale = document.getElementById('finale');
+  finale.style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+buildScenes();
+</script>
 </body>
 </html>

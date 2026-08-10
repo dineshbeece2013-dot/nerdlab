@@ -45,14 +45,13 @@ ON CONFLICT (id) DO UPDATE SET
   description = EXCLUDED.description;
 
 -- 4. Insert Default Tasks
--- The Git/Docker/Terraform/Kubernetes entries are placeholders: they hold the
--- category open in the catalogue and are flagged is_coming_soon until a real
--- lab is written for them.
+-- Every category has a real lab. is_coming_soon stays in the schema so a new
+-- category can be announced before its lab is written.
 INSERT INTO tasks (id, module_id, category_id, title, slug, description, difficulty, points, estimated_minutes, file_path, is_coming_soon) VALUES
-(1, 1, 1, 'Git Task 1: Basic Commit & Branching', 'git-task-1', 'Learn how to initialize a repository, create commits, and work with branches.', 'Easy', 100, 20, 'tasks/git/task1.html', TRUE),
-(2, 2, 2, 'Docker Task 1: Build & Run Web Container', 'docker-task-1', 'Write a Dockerfile for a web server and run it on port 8080.', 'Medium', 150, 30, 'tasks/docker/task1.html', TRUE),
-(3, 3, 3, 'Terraform Task 1: Provision Web Server', 'terraform-task-1', 'Write Terraform HCL to provision an Nginx web server instance.', 'Medium', 150, 35, 'tasks/terraform/task1.html', TRUE),
-(4, 4, 4, 'Kubernetes Task 1: Deploy Pods & Services', 'kubernetes-task-1', 'Create a Kubernetes Deployment and expose it via a NodePort Service.', 'Hard', 200, 45, 'tasks/kubernetes/task1.html', TRUE),
+(1, 1, 1, 'Git Task 1: Trying Things Without Fear', 'git-task-1', 'What Git is and why it exists, then a working repository you build yourself: take the first snapshot, branch off to try an idea, and merge it back without ever risking the version that works.', 'Easy', 100, 25, 'tasks/git/task1.html', FALSE),
+(2, 2, 2, 'Docker Task 1: The Same App Everywhere', 'docker-task-1', 'Why an app that runs on one laptop fails on another, and how a Dockerfile fixes it. Write one, then make the rebuild fast, the image small, and the container stop running as administrator.', 'Easy', 150, 30, 'tasks/docker/task1.html', FALSE),
+(3, 3, 3, 'Terraform Task 1: Infrastructure You Can Rebuild', 'terraform-task-1', 'Servers made by clicking cannot be rebuilt. Describe them in a file instead: one server, then two, then variables and count — and prove that running it twice changes nothing.', 'Medium', 150, 35, 'tasks/terraform/task1.html', FALSE),
+(4, 4, 4, 'Kubernetes Task 1: Many Copies, Kept Alive', 'kubernetes-task-1', 'Ask for three copies of an app and keep them alive. Covers the label mismatch that breaks silently, putting one stable address in front of copies that come and go, and why running is not the same as ready.', 'Medium', 200, 40, 'tasks/kubernetes/task1.html', FALSE),
 (5, 5, 5, 'YAML Task 1: The Basics', 'yaml-task-1', 'Start from zero. What YAML actually is, the difference between text, whole numbers, decimals and true/false, and how to write a settings file line by line from an empty box. No prior experience needed.', 'Easy', 100, 25, 'tasks/yaml/task1.html', FALSE),
 (6, 5, 5, 'YAML Part 2 - 3:14 AM The Callout', 'yaml-task-2', 'A payment service goes down in the night and the settings file is broken in six places. Fix each fault for real — tabs, values that changed type, misaligned lists, block text, reused settings, and splitting one file into two.', 'Medium', 150, 30, 'tasks/yaml/task2.html', FALSE),
 (7, 6, 6, 'Ansible Quest 1: Take the Keys', 'ansible-task-1', 'You inherit a rack of servers nobody documented. Write the inventory, reach the machines with ad-hoc commands, and hand-write your first playbook. Intern to Junior SRE.', 'Easy', 150, 45, 'tasks/ansible/task1.html', FALSE),

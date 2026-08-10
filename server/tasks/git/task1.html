@@ -1,234 +1,609 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Git Task 1: Basic Commit & Branching</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #0f172a;
-            color: #f8fafc;
-            padding: 2rem;
-            margin: 0;
-            line-height: 1.6;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background-color: #1e293b;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            border: 1px solid #334155;
-        }
-        h1 {
-            color: #38bdf8;
-            border-bottom: 2px solid #334155;
-            padding-bottom: 0.5rem;
-        }
-        .badge {
-            display: inline-block;
-            background: #0284c7;
-            color: #fff;
-            padding: 0.25rem 0.75rem;
-            border-radius: 9999px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-        pre {
-            background-color: #090d16;
-            color: #a5f3fc;
-            padding: 1rem;
-            border-radius: 8px;
-            overflow-x: auto;
-            border: 1px solid #1e293b;
-        }
-        .step {
-            margin-bottom: 1.5rem;
-            padding-left: 1rem;
-            border-left: 4px solid #38bdf8;
-        }
-        .btn-complete {
-            display: inline-block;
-            margin-top: 1.5rem;
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 0.75rem 1.5rem;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .btn-complete:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Git Task 1: The Friday Afternoon Branch</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; color:#f8fafc;
+         padding:2rem 1.5rem 4rem; margin:0; line-height:1.6; }
+  .container { max-width:900px; margin:0 auto; }
+  .panel { background:#1e293b; padding:2rem; border-radius:12px; border:1px solid #334155;
+           box-shadow:0 10px 25px rgba(0,0,0,.5); }
+  h1 { color:#38bdf8; margin:.6rem 0 .4rem; font-size:1.75rem; }
+  h2 { color:#38bdf8; font-size:1.1rem; }
+  .badge { display:inline-block; background:#0284c7; color:#fff; padding:.25rem .75rem;
+           border-radius:9999px; font-size:.875rem; font-weight:600; }
+  .lede { color:#cbd5e1; }
+  code { background:#0b1220; padding:.1rem .35rem; border-radius:4px; color:#a5f3fc; font-size:.92em; }
+  pre { background:#090d16; color:#a5f3fc; padding:1rem; border-radius:8px; overflow-x:auto;
+        border:1px solid #1e293b; font-size:.85rem; margin:.75rem 0 0; }
 
-        .verify {
-            margin-top: 2rem;
-            border-top: 2px solid #334155;
-            padding-top: 1.5rem;
-        }
-        .verify h2 { color: #38bdf8; font-size: 1.1rem; }
-        #progress-wrap { margin-bottom: 1.25rem; font-weight: 600; color: #cbd5e1; }
-        #bar { height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; margin-top: 0.5rem; border: 1px solid #334155; }
-        #fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5e9, #10b981); transition: width 0.35s ease; }
-        .check-item {
-            background: #16213a;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1rem;
-        }
-        .check-item.done { border-color: #10b981; background: #0d2620; }
-        .check-item p { margin: 0 0 0.6rem; color: #e2e8f0; }
-        .check-item input {
-            background: #090d16;
-            border: 1px solid #334155;
-            color: #a5f3fc;
-            border-radius: 8px;
-            padding: 0.6rem 0.8rem;
-            width: 100%;
-            max-width: 460px;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-        .check-item button {
-            margin-left: 0.5rem;
-            background: #0ea5e9;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 0.6rem 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .check-item button:hover { background: #38bdf8; }
-        .check-item.done button { background: #10b981; cursor: default; }
-        .feedback { display: block; margin-top: 0.5rem; font-size: 0.85rem; color: #94a3b8; min-height: 1.2em; }
-        .check-item.done .feedback { color: #10b981; font-weight: 600; }
-        .feedback.bad { color: #f87171; }
-        #done-banner {
-            display: none;
-            margin-top: 1.5rem;
-            background: #052e22;
-            border: 1px solid #10b981;
-            color: #6ee7b7;
-            padding: 1rem 1.25rem;
-            border-radius: 10px;
-            font-weight: bold;
-        }
-    </style>
+  #status { position:sticky; top:0; z-index:20; margin:1.25rem 0; padding:.85rem 1.1rem;
+            background:#16213a; border:1px solid #334155; border-radius:12px; display:flex;
+            flex-wrap:wrap; gap:.75rem 1.5rem; align-items:center;
+            font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
+  #status .item { display:flex; align-items:center; gap:.45rem; color:#94a3b8; }
+  #status .val { color:#e2e8f0; font-weight:700; }
+  #bar { flex:1 1 160px; min-width:140px; height:8px; background:#0f172a; border-radius:999px;
+         overflow:hidden; border:1px solid #334155; }
+  #fill { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#10b981); transition:width .45s ease; }
+
+  .scene { border:1px solid #334155; border-radius:12px; background:#1a2437; margin-bottom:1.1rem; overflow:hidden; }
+  .scene.locked { opacity:.55; }
+  .scene.active { border-color:#38bdf8; box-shadow:0 0 0 1px rgba(56,189,248,.25); }
+  .scene.solved { border-color:#10b981; background:#101f1c; }
+  .scene-head { display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; }
+  .scene.solved .scene-head, .scene.collapsible .scene-head { cursor:pointer; }
+  .scene-num { flex:none; width:1.9rem; height:1.9rem; border-radius:8px; background:#0b1220;
+               border:1px solid #334155; color:#94a3b8; display:flex; align-items:center;
+               justify-content:center; font-weight:700; font-size:.85rem; }
+  .scene.active .scene-num { background:#0284c7; border-color:#38bdf8; color:#fff; }
+  .scene.solved .scene-num { background:#065f46; border-color:#10b981; color:#d1fae5; }
+  .scene-title { font-weight:700; color:#f1f5f9; flex:1; }
+  .scene-state { font-size:.75rem; font-family:ui-monospace,Consolas,monospace; color:#64748b;
+                 text-transform:uppercase; letter-spacing:.04em; }
+  .scene.solved .scene-state { color:#34d399; }
+  .scene-body { padding:0 1.25rem 1.35rem; display:none; }
+  .scene.open .scene-body { display:block; }
+  .scene-body p { color:#cbd5e1; }
+
+  .voice { border-left:3px solid #c084fc; background:#1b1630; padding:.65rem .9rem;
+           border-radius:0 8px 8px 0; margin:.9rem 0; color:#e9d5ff; font-size:.92rem; }
+  .voice strong { color:#c084fc; }
+  .brief { background:#16213a; border:1px solid #334155; border-left:4px solid #f59e0b;
+           border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:.9rem 0; font-size:.92rem; color:#e2e8f0; }
+  .brief h4 { margin:0 0 .35rem; color:#fbbf24; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; }
+  .brief ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  .brief li { margin-bottom:.2rem; }
+
+  .editor-label { display:flex; justify-content:space-between; align-items:baseline;
+                  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-top:1rem; }
+  textarea.editor { width:100%; min-height:120px; background:#060910; color:#a5f3fc;
+                    border:1px solid #334155; border-radius:8px; padding:.85rem 1rem;
+                    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; line-height:1.7;
+                    resize:vertical; white-space:pre; overflow-x:auto; }
+  textarea.editor:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+  .btn-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.85rem; align-items:center; }
+  button { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:.6rem 1.15rem;
+           font-weight:700; cursor:pointer; font-size:.88rem; font-family:inherit; transition:background .15s ease; }
+  button:hover { background:#38bdf8; }
+  button.ghost { background:#24324a; color:#cbd5e1; }
+  button.ghost:hover { background:#334155; }
+  .scene.solved button.run { background:#10b981; cursor:default; }
+
+  .out { margin-top:.9rem; display:none; }
+  .out.show { display:block; }
+  .out-head { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-bottom:.35rem; }
+  .parsed { background:#060910; border:1px solid #1e293b; border-radius:8px; padding:.8rem 1rem;
+            font-family:ui-monospace,Consolas,monospace; font-size:.8rem; white-space:pre-wrap;
+            color:#cbd5e1; margin:0; }
+  .verdict { margin-top:.7rem; font-size:.9rem; padding:.7rem .9rem; border-radius:8px; }
+  .verdict.bad { background:#2a1215; border:1px solid #7f1d1d; color:#fca5a5; }
+  .verdict.good { background:#052e22; border:1px solid #10b981; color:#6ee7b7; font-weight:600; }
+  .verdict .lbl { font-weight:700; }
+
+  .hints { margin-top:.8rem; }
+  .hint { display:none; background:#0b1220; border:1px dashed #475569; border-radius:8px;
+          padding:.6rem .9rem; margin-bottom:.5rem; font-size:.88rem; color:#cbd5e1; }
+  .hint.show { display:block; }
+  .hint b { color:#94a3b8; }
+  .locked-note { padding:0 1.25rem 1.1rem; color:#64748b; font-size:.88rem; }
+
+  #finale { display:none; margin-top:1.5rem; }
+  #done-banner { display:none; margin-top:1.25rem; background:#052e22; border:1px solid #10b981;
+                 color:#6ee7b7; padding:1.1rem 1.25rem; border-radius:10px; font-weight:bold; }
+  #done-banner p { color:#a7f3d0; font-weight:normal; margin:.6rem 0 0; font-size:.9rem; }
+  .debrief { margin-top:1.5rem; }
+  .debrief li { margin-bottom:.35rem; color:#cbd5e1; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <span class="badge">Git Level 1</span>
-        <h1>Git Task 1: Basic Commit & Branching</h1>
-        <p>In this lab exercise, you will practice fundamental Git operations including repository initialization, staging files, creating commits, and managing feature branches.</p>
-        
-        <div class="step">
-            <h3>Step 1: Initialize Git Repository</h3>
-            <p>Create a new folder and initialize Git:</p>
-            <pre>mkdir devops-git-lab && cd devops-git-lab
-git init</pre>
-        </div>
+<div class="container">
+  <div class="panel">
+    <span class="badge">Git Level 1</span>
+    <h1>Git: Trying Things Without Fear</h1>
 
-        <div class="step">
-            <h3>Step 2: Create a File & Stage Changes</h3>
-            <p>Create a file named <code>README.md</code> and check status:</p>
-            <pre>echo "# DevOps Learning Lab" > README.md
-git add README.md
-git status</pre>
-        </div>
+    <h2>What is Git?</h2>
+    <p class="lede">
+      Imagine writing an essay and saving copies as you go: <em>essay.doc</em>,
+      <em>essay-final.doc</em>, <em>essay-final-REAL.doc</em>. It works, badly. You cannot
+      remember what changed between them, and you certainly cannot let a friend edit one
+      without losing track of which is which.
+    </p>
+    <p class="lede">
+      <strong>Git</strong> is the tool that does this properly. It keeps the history of a
+      folder: every time you tell it to, it takes a snapshot you can return to later. That
+      one idea buys you two things. You can always get an earlier version back. And you can
+      try something risky on the side, knowing the version that works is untouched.
+    </p>
+    <p class="lede">
+      Almost every software team on earth uses it, which is why it is the first thing anyone
+      teaches you.
+    </p>
 
-        <div class="step">
-            <h3>Step 3: Commit Changes & Create Branch</h3>
-            <p>Commit your staging changes and checkout a feature branch:</p>
-            <pre>git commit -m "feat: initial commit"
-git checkout -b feature/login-page</pre>
-        </div>
+    <h2>Your turn</h2>
+    <p class="lede">
+      Maya has a website folder with two files in it and no history at all. She wants to try
+      out a new login page — but she is not sure the idea is any good, and the site currently
+      works. She needs a way to experiment that cannot damage what is already there.
+    </p>
+    <p class="lede">
+      You will type real Git commands in the boxes below. This page runs a small copy of Git
+      and shows you what happened — what is saved, what is not, and which line of work you
+      are standing on. Nothing is marked correct unless the repository really ends up in the
+      right state.
+    </p>
 
-        <div class="verify">
-            <h2>Verification — complete every check to earn your points</h2>
-            <div id="progress-wrap">
-                <span id="progress-text">0 of 3 checks passed</span>
-                <div id="bar"><div id="fill"></div></div>
-            </div>
-
-            <div class="check-item" data-step="1">
-                <p><strong>Check 1.</strong> Which command initialises a new Git repository?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(1);}" />
-                <button type="button" onclick="checkStep(1)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-
-            <div class="check-item" data-step="2">
-                <p><strong>Check 2.</strong> Which command stages README.md for the next commit?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(2);}" />
-                <button type="button" onclick="checkStep(2)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-
-            <div class="check-item" data-step="3">
-                <p><strong>Check 3.</strong> Which command creates AND switches to a branch named feature/login-page?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(3);}" />
-                <button type="button" onclick="checkStep(3)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-            <div id="done-banner">All checks passed — your points have been awarded.</div>
-        </div>
+    <div id="status" role="status" aria-live="polite">
+      <span class="item">BRANCH <span class="val" id="s-branch">—</span></span>
+      <span class="item">COMMITS <span class="val" id="s-commits">0</span></span>
+      <span class="item">STEP <span class="val" id="s-step">0/4</span></span>
+      <div id="bar" role="img" aria-label="Progress"><div id="fill"></div></div>
     </div>
 
-    <script>
-        var TASK_ID = 1;
-        var ANSWERS = {
-            1: /^git\s+init$/i,
-            2: /^git\s+add\s+(README\.md|\.|-A|--all)$/i,
-            3: /^git\s+(checkout\s+-b|switch\s+-c)\s+feature\/login-page$/i
-        };
-        var TOTAL = Object.keys(ANSWERS).length;
-        var completed = {};
-        var reported = false;
+    <div id="scenes"></div>
 
-        function render() {
-            var count = Object.keys(completed).length;
-            document.getElementById('progress-text').textContent = count + ' of ' + TOTAL + ' checks passed';
-            document.getElementById('fill').style.width = (count / TOTAL * 100) + '%';
+    <div id="finale">
+      <div id="done-banner">
+        The working site is safe and the new page is merged — your points have been awarded.
+        <p>Maya went home at six.</p>
+      </div>
+      <div class="debrief">
+        <h2>What you learned</h2>
+        <ul>
+          <li><strong>A commit is a snapshot you can return to.</strong> Nothing is saved to history until you commit it.</li>
+          <li><strong>Staging is choosing what goes in the snapshot.</strong> <code>git add</code> selects; <code>git commit</code> saves.</li>
+          <li><strong>A branch is a separate line of work.</strong> Experiment there and the working version stays untouched.</li>
+          <li><strong>Merging brings the work back</strong> once you are happy with it.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 
-            if (count === TOTAL && !reported) {
-                reported = true;
-                document.getElementById('done-banner').style.display = 'block';
-                // Single source of truth for completion: fired only when every check passes.
-                window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
-            }
-        }
+<script>
+/* =========================================================================
+   A small Git. Every check below inspects the repository this builds —
+   which commits exist, what each one contains, which branch points where —
+   not the text you typed.
+   ========================================================================= */
+function newRepo() {
+  return {
+    initialized: false,
+    // files present in the working directory from the start
+    work: { 'index.html': 'v1', 'style.css': 'v1' },
+    staged: {},          // filename -> content, waiting for the next commit
+    commits: {},         // id -> { msg, parent, tree, id }
+    branches: {},        // name -> commit id
+    head: null,          // current branch name
+    next: 1,
+    log: []
+  };
+}
 
-        function checkStep(n) {
-            var el = document.querySelector('.check-item[data-step="' + n + '"]');
-            var feedback = el.querySelector('.feedback');
-            if (completed[n]) return;
+function headCommit(r) { return r.head && r.branches[r.head] ? r.commits[r.branches[r.head]] : null; }
+function treeOf(r) { var c = headCommit(r); return c ? c.tree : {}; }
 
-            var value = el.querySelector('input').value.trim();
-            if (!value) { feedback.textContent = 'Enter an answer first.'; feedback.className = 'feedback bad'; return; }
+// Every commit reachable from a branch tip, newest first.
+function history(r, branch) {
+  var out = [], id = r.branches[branch];
+  while (id) { var c = r.commits[id]; if (!c) break; out.push(c); id = c.parent; }
+  return out;
+}
 
-            if (!ANSWERS[n].test(value)) {
-                feedback.textContent = 'Not quite — re-read the step above and try again.';
-                feedback.className = 'feedback bad';
-                return;
-            }
+function say(r, line) { r.log.push(line); }
 
-            completed[n] = true;
-            el.classList.add('done');
-            feedback.textContent = 'Correct';
-            feedback.className = 'feedback';
-            el.querySelector('button').textContent = 'Passed';
-            el.querySelector('input').readOnly = true;
-            render();
-        }
+function run(r, raw) {
+  var line = raw.trim();
+  if (!line || line.charAt(0) === '#') return;
 
-        render();
-    </script>
+  var m;
+  if (!/^git\s/.test(line)) {
+    // Let learners create a file, since the story asks for one.
+    if ((m = /^(?:touch|echo\s+.*?>)\s*([\w./-]+)$/.exec(line))) {
+      r.work[m[1]] = 'v1';
+      say(r, '$ ' + line);
+      return;
+    }
+    say(r, '$ ' + line);
+    say(r, "  this lab only understands git commands (and touch)");
+    return;
+  }
+  say(r, '$ ' + line);
+  var args = line.replace(/^git\s+/, '');
+
+  if (/^init$/.test(args)) {
+    if (r.initialized) { say(r, '  already a repository'); return; }
+    r.initialized = true; r.head = 'main'; r.branches['main'] = null;
+    say(r, '  initialised empty repository on branch main');
+    return;
+  }
+  if (!r.initialized) { say(r, '  not a git repository — run git init first'); return; }
+
+  if ((m = /^add\s+(.+)$/.exec(args))) {
+    var what = m[1].trim();
+    var picked = (what === '.' || what === '-A' || what === '--all')
+      ? Object.keys(r.work)
+      : what.split(/\s+/);
+    var added = 0;
+    picked.forEach(function (f) {
+      if (r.work.hasOwnProperty(f)) { r.staged[f] = r.work[f]; added++; }
+      else say(r, "  pathspec '" + f + "' did not match any file");
+    });
+    if (added) say(r, '  staged ' + added + ' file(s)');
+    return;
+  }
+
+  if ((m = /^commit\s+(?:-m|--message)\s*(?:=\s*)?(["'])(.*?)\1\s*$/.exec(args)) ||
+      (m = /^commit\s+-am\s*(["'])(.*?)\1\s*$/.exec(args))) {
+    var msg = m[2];
+    if (/^commit\s+-am/.test(args)) { Object.keys(r.work).forEach(function (f) { r.staged[f] = r.work[f]; }); }
+    if (Object.keys(r.staged).length === 0) { say(r, '  nothing staged to commit'); return; }
+    if (!msg.trim()) { say(r, '  empty commit message'); return; }
+    var tree = {}; var base = treeOf(r);
+    Object.keys(base).forEach(function (f) { tree[f] = base[f]; });
+    Object.keys(r.staged).forEach(function (f) { tree[f] = r.staged[f]; });
+    var id = 'c' + (r.next++);
+    r.commits[id] = { id: id, msg: msg, parent: r.branches[r.head], tree: tree };
+    r.branches[r.head] = id;
+    r.staged = {};
+    say(r, '  [' + r.head + ' ' + id + '] ' + msg);
+    return;
+  }
+  if (/^commit\b/.test(args)) { say(r, '  this lab needs a message: git commit -m "..."'); return; }
+
+  if ((m = /^(?:checkout\s+-b|switch\s+-c)\s+([\w./-]+)$/.exec(args))) {
+    if (r.branches.hasOwnProperty(m[1])) { say(r, "  branch '" + m[1] + "' already exists"); return; }
+    r.branches[m[1]] = r.branches[r.head];
+    r.head = m[1];
+    say(r, "  created branch '" + m[1] + "' and switched to it");
+    return;
+  }
+  if ((m = /^(?:checkout|switch)\s+([\w./-]+)$/.exec(args))) {
+    if (!r.branches.hasOwnProperty(m[1])) { say(r, "  no branch named '" + m[1] + "'"); return; }
+    r.head = m[1];
+    say(r, "  switched to branch '" + m[1] + "'");
+    return;
+  }
+  if ((m = /^branch\s+([\w./-]+)$/.exec(args))) {
+    if (!r.branches.hasOwnProperty(m[1])) r.branches[m[1]] = r.branches[r.head];
+    say(r, "  created branch '" + m[1] + "' (still on " + r.head + ")");
+    return;
+  }
+  if (/^branch$/.test(args)) {
+    Object.keys(r.branches).forEach(function (b) { say(r, '  ' + (b === r.head ? '* ' : '  ') + b); });
+    return;
+  }
+
+  if ((m = /^merge\s+([\w./-]+)$/.exec(args))) {
+    var from = m[1];
+    if (!r.branches.hasOwnProperty(from)) { say(r, "  no branch named '" + from + "'"); return; }
+    var target = r.branches[r.head], source = r.branches[from];
+    if (!source) { say(r, '  nothing to merge'); return; }
+    var reach = history(r, from).map(function (c) { return c.id; });
+    if (reach.indexOf(target) !== -1) {
+      r.branches[r.head] = source;             // fast-forward
+      say(r, '  fast-forward: ' + r.head + ' now at ' + source);
+    } else {
+      var tree = {}; var a = treeOf(r), b = r.commits[source].tree;
+      Object.keys(a).forEach(function (f) { tree[f] = a[f]; });
+      Object.keys(b).forEach(function (f) { tree[f] = b[f]; });
+      var id = 'c' + (r.next++);
+      r.commits[id] = { id: id, msg: "Merge branch '" + from + "'", parent: target, tree: tree, merged: source };
+      r.branches[r.head] = id;
+      say(r, '  merged ' + from + ' into ' + r.head);
+    }
+    return;
+  }
+
+  if (/^status$/.test(args)) {
+    say(r, '  on branch ' + r.head);
+    var st = Object.keys(r.staged);
+    say(r, st.length ? '  staged: ' + st.join(', ') : '  nothing staged');
+    var untracked = Object.keys(r.work).filter(function (f) { return !treeOf(r)[f] && !r.staged[f]; });
+    if (untracked.length) say(r, '  not tracked yet: ' + untracked.join(', '));
+    return;
+  }
+  if (/^log/.test(args)) {
+    var h = history(r, r.head);
+    if (!h.length) say(r, '  no commits yet');
+    h.forEach(function (c) { say(r, '  ' + c.id + '  ' + c.msg); });
+    return;
+  }
+  say(r, '  this lab does not know that command');
+}
+
+function execute(text) {
+  var r = newRepo();
+  text.replace(/\r\n?/g, '\n').split('\n').forEach(function (l) { run(r, l); });
+  return r;
+}
+
+// A readable picture of where the repository ended up.
+function describe(r) {
+  if (!r.initialized) return 'No repository here yet.';
+  var out = 'branch you are on : ' + r.head + '\n';
+  Object.keys(r.branches).forEach(function (b) {
+    var h = history(r, b);
+    out += 'branch ' + b + (b === r.head ? ' (you are here)' : '') + ' : ' +
+           (h.length ? h.length + ' commit(s), newest "' + h[0].msg + '"' : 'no commits') + '\n';
+  });
+  var t = treeOf(r);
+  out += 'files saved on this branch : ' + (Object.keys(t).length ? Object.keys(t).join(', ') : 'none') + '\n';
+  var st = Object.keys(r.staged);
+  out += 'waiting to be saved : ' + (st.length ? st.join(', ') : 'nothing') + '\n';
+  return out;
+}
+
+var TASK_ID = 1;
+
+var SCENES = [
+{
+  id: 1,
+  title: 'Take the first snapshot',
+  story: '<p>The folder has two files in it, <code>index.html</code> and <code>style.css</code>, and no history at all. ' +
+         'If Maya breaks something now, there is nothing to go back to.</p>' +
+         '<p>Saving in Git is two steps, and the split is the point: first you <em>choose</em> which files go in ' +
+         'the snapshot, then you take it. Choosing is <code>git add</code>. Taking it is <code>git commit</code>, ' +
+         'with a short message saying what changed.</p>',
+  voice: { who: 'Priya', line: '"Start the history before you need it. Nobody has ever regretted a first commit."' },
+  brief: ['turn the folder into a repository',
+          'put both files in the snapshot',
+          'save them with any message you like'],
+  start: '# one command per line\n\n',
+  hints: ['Three commands. The first one starts the repository.',
+          'To choose every file at once, <code>git add .</code> — the dot means "everything here".',
+          '<code>git init</code>, then <code>git add .</code>, then <code>git commit -m "first commit"</code>'],
+  validate: function (r) {
+    if (!r.initialized) return { ok: false, msg: 'There is still no repository. <code>git init</code> creates one in this folder.' };
+    var h = history(r, r.head);
+    if (!h.length) {
+      return { ok: false, msg: Object.keys(r.staged).length
+        ? 'The files are chosen but not saved yet. A snapshot is only taken when you commit it.'
+        : 'Nothing has been saved. Choose the files with <code>git add</code>, then save with <code>git commit -m "..."</code>.' };
+    }
+    var t = treeOf(r);
+    if (!t['index.html'] || !t['style.css']) {
+      return { ok: false, msg: 'The snapshot is missing a file. It has ' + (Object.keys(t).join(', ') || 'nothing') +
+                               ' — it needs both index.html and style.css.' };
+    }
+    return { ok: true, log: 'first snapshot saved, both files in it' };
+  }
+},
+{
+  id: 2,
+  title: 'Step off the working version',
+  story: '<p>Now the idea. Maya could edit the site directly — and if the idea fails at 5:30 she is unpicking ' +
+         'her own changes in a hurry.</p>' +
+         '<p>Instead she starts a <strong>branch</strong>: a second line of work that begins as an exact copy ' +
+         'of what is there now. Anything she does on it leaves the original line untouched.</p>',
+  voice: { who: 'Priya', line: '"Branch first, experiment second. The order is the whole trick."' },
+  brief: ['start the repository and save the first snapshot again (the box starts empty each time)',
+          'create a branch called <code>feature/login</code>',
+          'end up standing on that branch, not on <code>main</code>'],
+  start: 'git init\ngit add .\ngit commit -m "first commit"\n\n',
+  hints: ['One command creates a branch and moves you onto it in one go.',
+          'It is <code>checkout</code> with a <code>-b</code> flag, or the newer <code>switch -c</code>.',
+          '<code>git checkout -b feature/login</code>'],
+  validate: function (r) {
+    if (!history(r, 'main').length) return { ok: false, msg: 'Keep the first three lines — the branch has to start from a saved snapshot.' };
+    if (!r.branches.hasOwnProperty('feature/login')) {
+      return { ok: false, msg: 'There is no branch called <code>feature/login</code> yet. Branches here: ' + Object.keys(r.branches).join(', ') + '.' };
+    }
+    if (r.head !== 'feature/login') {
+      return { ok: false, msg: 'The branch exists, but you are still standing on <code>' + r.head +
+                               '</code>. Creating a branch and moving onto it are two different things — <code>-b</code> does both.' };
+    }
+    if (r.branches['feature/login'] !== r.branches['main']) {
+      return { ok: false, msg: 'The branch should start as an exact copy of main. Create it straight after the first commit, before changing anything.' };
+    }
+    return { ok: true, log: 'on feature/login, starting from the same snapshot as main' };
+  }
+},
+{
+  id: 3,
+  title: 'Work on the side',
+  story: '<p>Maya writes the new page and saves it on her branch.</p>' +
+         '<p>This is the moment the branch earns its keep: the new file exists on <code>feature/login</code> ' +
+         'and does not exist on <code>main</code> at all. The working site has not changed by a single character.</p>',
+  voice: { who: 'Priya', line: '"Two lines of work, one folder. Main is still exactly what is live."' },
+  brief: ['create a file called <code>login.html</code> (use <code>touch login.html</code>)',
+          'save it on the <code>feature/login</code> branch',
+          '<code>main</code> must still have only the two original files'],
+  start: 'git init\ngit add .\ngit commit -m "first commit"\ngit checkout -b feature/login\n\n',
+  hints: ['Create the file, choose it, save it — the same add-then-commit pattern as step 1.',
+          'You can add one file by name rather than using the dot.',
+          '<code>touch login.html</code>, then <code>git add login.html</code>, then <code>git commit -m "add login page"</code>'],
+  validate: function (r) {
+    if (r.head !== 'feature/login') return { ok: false, msg: 'You need to be on <code>feature/login</code> when you save, otherwise the work lands on the wrong line.' };
+    var fh = history(r, 'feature/login'), mh = history(r, 'main');
+    if (fh.length <= mh.length) return { ok: false, msg: 'Nothing new has been saved on the branch yet. Create <code>login.html</code>, add it, then commit.' };
+    if (!r.commits[r.branches['feature/login']].tree['login.html']) {
+      return { ok: false, msg: 'A snapshot was saved, but <code>login.html</code> is not in it. Did you <code>git add login.html</code> before committing?' };
+    }
+    if (r.commits[r.branches['main']] && r.commits[r.branches['main']].tree['login.html']) {
+      return { ok: false, msg: 'The new file has ended up on <code>main</code> too. It should exist only on the branch at this point.' };
+    }
+    return { ok: true, log: 'login.html saved on the branch; main untouched' };
+  }
+},
+{
+  id: 4,
+  title: 'Bring it back',
+  story: '<p>The idea worked. Now the new page has to join the real site.</p>' +
+         '<p><strong>Merging</strong> takes the work from one branch and folds it into another. Maya moves back ' +
+         'onto <code>main</code> first — you always merge <em>into</em> the branch you are standing on — and pulls ' +
+         'the branch in.</p>',
+  voice: { who: 'Priya', line: '"Stand where you want the work to land, then merge."' },
+  brief: ['go back to <code>main</code>',
+          'merge <code>feature/login</code> into it',
+          '<code>main</code> ends up with all three files'],
+  start: 'git init\ngit add .\ngit commit -m "first commit"\ngit checkout -b feature/login\ntouch login.html\ngit add login.html\ngit commit -m "add login page"\n\n',
+  hints: ['Two commands: move, then merge.',
+          'Moving to an existing branch does not need the <code>-b</code> flag.',
+          '<code>git checkout main</code>, then <code>git merge feature/login</code>'],
+  validate: function (r) {
+    if (r.head !== 'main') return { ok: false, msg: 'You are standing on <code>' + r.head + '</code>. Move to <code>main</code> first — the merge lands on the branch you are on.' };
+    var t = treeOf(r);
+    if (!t['login.html']) return { ok: false, msg: 'main still does not have <code>login.html</code>. Merge the branch in with <code>git merge feature/login</code>.' };
+    if (!t['index.html'] || !t['style.css']) return { ok: false, msg: 'The original files have gone missing from main. Keep the earlier lines as they are.' };
+    return { ok: true, log: 'main now has all three files; the site and the new page are one line of work again' };
+  }
+}
+];
+
+/* ---------- engine ---------- */
+var solved = {}, reported = false;
+
+function buildScenes() {
+  var host = document.getElementById('scenes');
+  SCENES.forEach(function (sc, idx) {
+    var card = document.createElement('section');
+    card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+    card.id = 'scene-' + sc.id;
+
+    var head = document.createElement('div');
+    head.className = 'scene-head';
+    head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+      '<h2 class="scene-title">' + sc.title + '</h2>' +
+      '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+    head.addEventListener('click', function () {
+      if (!card.classList.contains('locked')) card.classList.toggle('open');
+    });
+    card.appendChild(head);
+
+    if (idx !== 0) {
+      var note = document.createElement('p');
+      note.className = 'locked-note';
+      note.textContent = 'Locked — finish the step above first.';
+      card.appendChild(note);
+    }
+
+    var body = document.createElement('div');
+    body.className = 'scene-body';
+    body.innerHTML = sc.story +
+      '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+      '<div class="brief"><h4>Make all of this true</h4><ul>' +
+      sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="editor-label"><span>terminal — one command per line</span><span>step ' + sc.id + ' of 4</span></div>';
+
+    var ta = document.createElement('textarea');
+    ta.className = 'editor';
+    ta.value = sc.start;
+    ta.spellcheck = false;
+    ta.setAttribute('aria-label', 'Commands for step ' + sc.id);
+    body.appendChild(ta);
+
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+    var runBtn = document.createElement('button');
+    runBtn.className = 'run'; runBtn.type = 'button'; runBtn.textContent = 'Run the commands';
+    var hintBtn = document.createElement('button');
+    hintBtn.className = 'ghost'; hintBtn.type = 'button'; hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'ghost'; resetBtn.type = 'button'; resetBtn.textContent = 'Start over';
+    row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+    body.appendChild(row);
+
+    var hints = document.createElement('div');
+    hints.className = 'hints';
+    sc.hints.forEach(function (h, hi) {
+      var el = document.createElement('div');
+      el.className = 'hint';
+      el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+      hints.appendChild(el);
+    });
+    body.appendChild(hints);
+
+    var out = document.createElement('div');
+    out.className = 'out';
+    out.innerHTML = '<div class="out-head">what Git did, and where the repository ended up</div>' +
+                    '<pre class="parsed"></pre><div class="verdict"></div>';
+    body.appendChild(out);
+
+    card.appendChild(body);
+    host.appendChild(card);
+
+    var shown = 0;
+    hintBtn.addEventListener('click', function () {
+      if (shown >= sc.hints.length) return;
+      hints.children[shown].classList.add('show');
+      shown++;
+      hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+    });
+    resetBtn.addEventListener('click', function () {
+      if (solved[sc.id]) return;
+      ta.value = sc.start; out.classList.remove('show'); ta.focus();
+    });
+    runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
+    });
+  });
+}
+
+function runScene(sc, ta, out, runBtn, card) {
+  if (solved[sc.id]) return;
+  var repo = execute(ta.value);
+  var pre = out.querySelector('.parsed');
+  var verdict = out.querySelector('.verdict');
+  out.classList.add('show');
+  pre.textContent = repo.log.join('\n') + '\n\n' + describe(repo);
+
+  document.getElementById('s-branch').textContent = repo.head || '—';
+  document.getElementById('s-commits').textContent = repo.head ? history(repo, repo.head).length : 0;
+
+  var v = sc.validate(repo);
+  if (!v.ok) {
+    verdict.className = 'verdict bad';
+    verdict.innerHTML = '<span class="lbl">✗ Not yet — </span>' + v.msg;
+    return;
+  }
+  verdict.className = 'verdict good';
+  verdict.innerHTML = '<span class="lbl">✓ Done. </span>' + v.log;
+  solveScene(sc, card, runBtn, ta);
+}
+
+function solveScene(sc, card, runBtn, ta) {
+  solved[sc.id] = true;
+  card.classList.remove('active');
+  card.classList.add('solved', 'collapsible');
+  card.querySelector('.scene-state').textContent = 'done';
+  runBtn.textContent = 'Done';
+  ta.readOnly = true;
+
+  var count = Object.keys(solved).length;
+  document.getElementById('s-step').textContent = count + '/' + SCENES.length;
+  document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+
+  if (count === SCENES.length) { finish(); return; }
+
+  card.classList.remove('open');
+  var next = SCENES[SCENES.indexOf(sc) + 1];
+  var nextCard = document.getElementById('scene-' + next.id);
+  nextCard.classList.remove('locked');
+  nextCard.classList.add('active', 'open', 'collapsible');
+  nextCard.querySelector('.scene-state').textContent = 'active';
+  var note = nextCard.querySelector('.locked-note');
+  if (note) note.parentNode.removeChild(note);
+  nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+  // Fired only after every step's validator passed against the simulated repository.
+  if (!reported) {
+    reported = true;
+    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  }
+  var finale = document.getElementById('finale');
+  finale.style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+buildScenes();
+</script>
 </body>
 </html>

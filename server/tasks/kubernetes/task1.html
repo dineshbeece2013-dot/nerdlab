@@ -1,186 +1,848 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kubernetes Task 1: Deploy Pods & Services</title>
-    <style>
-        body { font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 2rem; margin: 0; }
-        .container { max-width: 800px; margin: 0 auto; background: #1e293b; padding: 2rem; border-radius: 12px; border: 1px solid #334155; }
-        h1 { color: #3b82f6; }
-        pre { background: #090d16; color: #bfdbfe; padding: 1rem; border-radius: 8px; overflow-x: auto; }
-        .step { margin-bottom: 1.5rem; border-left: 4px solid #3b82f6; padding-left: 1rem; }
-        .btn-complete { background: #10b981; color: white; padding: 0.75rem 1.5rem; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Task 1: Many Copies, Kept Alive</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; color:#f8fafc;
+         padding:2rem 1.5rem 4rem; margin:0; line-height:1.6; }
+  .container { max-width:900px; margin:0 auto; }
+  .panel { background:#1e293b; padding:2rem; border-radius:12px; border:1px solid #334155;
+           box-shadow:0 10px 25px rgba(0,0,0,.5); }
+  h1 { color:#38bdf8; margin:.6rem 0 .4rem; font-size:1.75rem; }
+  h2 { color:#38bdf8; font-size:1.1rem; }
+  .badge { display:inline-block; background:#0284c7; color:#fff; padding:.25rem .75rem;
+           border-radius:9999px; font-size:.875rem; font-weight:600; }
+  .lede { color:#cbd5e1; }
+  code { background:#0b1220; padding:.1rem .35rem; border-radius:4px; color:#a5f3fc; font-size:.92em; }
+  pre { background:#090d16; color:#a5f3fc; padding:1rem; border-radius:8px; overflow-x:auto;
+        border:1px solid #1e293b; font-size:.85rem; margin:.75rem 0 0; }
 
-        .verify {
-            margin-top: 2rem;
-            border-top: 2px solid #334155;
-            padding-top: 1.5rem;
-        }
-        .verify h2 { color: #38bdf8; font-size: 1.1rem; }
-        #progress-wrap { margin-bottom: 1.25rem; font-weight: 600; color: #cbd5e1; }
-        #bar { height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; margin-top: 0.5rem; border: 1px solid #334155; }
-        #fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5e9, #10b981); transition: width 0.35s ease; }
-        .check-item {
-            background: #16213a;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1rem;
-        }
-        .check-item.done { border-color: #10b981; background: #0d2620; }
-        .check-item p { margin: 0 0 0.6rem; color: #e2e8f0; }
-        .check-item input {
-            background: #090d16;
-            border: 1px solid #334155;
-            color: #a5f3fc;
-            border-radius: 8px;
-            padding: 0.6rem 0.8rem;
-            width: 100%;
-            max-width: 460px;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-        .check-item button {
-            margin-left: 0.5rem;
-            background: #0ea5e9;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 0.6rem 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .check-item button:hover { background: #38bdf8; }
-        .check-item.done button { background: #10b981; cursor: default; }
-        .feedback { display: block; margin-top: 0.5rem; font-size: 0.85rem; color: #94a3b8; min-height: 1.2em; }
-        .check-item.done .feedback { color: #10b981; font-weight: 600; }
-        .feedback.bad { color: #f87171; }
-        #done-banner {
-            display: none;
-            margin-top: 1.5rem;
-            background: #052e22;
-            border: 1px solid #10b981;
-            color: #6ee7b7;
-            padding: 1rem 1.25rem;
-            border-radius: 10px;
-            font-weight: bold;
-        }
-    </style>
+  #status { position:sticky; top:0; z-index:20; margin:1.25rem 0; padding:.85rem 1.1rem;
+            background:#16213a; border:1px solid #334155; border-radius:12px; display:flex;
+            flex-wrap:wrap; gap:.75rem 1.5rem; align-items:center;
+            font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
+  #status .item { display:flex; align-items:center; gap:.45rem; color:#94a3b8; }
+  #status .val { color:#e2e8f0; font-weight:700; }
+  #bar { flex:1 1 160px; min-width:140px; height:8px; background:#0f172a; border-radius:999px;
+         overflow:hidden; border:1px solid #334155; }
+  #fill { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#10b981); transition:width .45s ease; }
+
+  .scene { border:1px solid #334155; border-radius:12px; background:#1a2437; margin-bottom:1.1rem; overflow:hidden; }
+  .scene.locked { opacity:.55; }
+  .scene.active { border-color:#38bdf8; box-shadow:0 0 0 1px rgba(56,189,248,.25); }
+  .scene.solved { border-color:#10b981; background:#101f1c; }
+  .scene-head { display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; }
+  .scene.solved .scene-head, .scene.collapsible .scene-head { cursor:pointer; }
+  .scene-num { flex:none; width:1.9rem; height:1.9rem; border-radius:8px; background:#0b1220;
+               border:1px solid #334155; color:#94a3b8; display:flex; align-items:center;
+               justify-content:center; font-weight:700; font-size:.85rem; }
+  .scene.active .scene-num { background:#0284c7; border-color:#38bdf8; color:#fff; }
+  .scene.solved .scene-num { background:#065f46; border-color:#10b981; color:#d1fae5; }
+  .scene-title { font-weight:700; color:#f1f5f9; flex:1; }
+  .scene-state { font-size:.75rem; font-family:ui-monospace,Consolas,monospace; color:#64748b;
+                 text-transform:uppercase; letter-spacing:.04em; }
+  .scene.solved .scene-state { color:#34d399; }
+  .scene-body { padding:0 1.25rem 1.35rem; display:none; }
+  .scene.open .scene-body { display:block; }
+  .scene-body p { color:#cbd5e1; }
+
+  .voice { border-left:3px solid #c084fc; background:#1b1630; padding:.65rem .9rem;
+           border-radius:0 8px 8px 0; margin:.9rem 0; color:#e9d5ff; font-size:.92rem; }
+  .voice strong { color:#c084fc; }
+  .brief { background:#16213a; border:1px solid #334155; border-left:4px solid #f59e0b;
+           border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:.9rem 0; font-size:.92rem; color:#e2e8f0; }
+  .brief h4 { margin:0 0 .35rem; color:#fbbf24; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; }
+  .brief ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  .brief li { margin-bottom:.2rem; }
+
+  .editor-label { display:flex; justify-content:space-between; align-items:baseline;
+                  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-top:1rem; }
+  textarea.editor { width:100%; min-height:120px; background:#060910; color:#a5f3fc;
+                    border:1px solid #334155; border-radius:8px; padding:.85rem 1rem;
+                    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; line-height:1.7;
+                    resize:vertical; white-space:pre; overflow-x:auto; }
+  textarea.editor:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+  .btn-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.85rem; align-items:center; }
+  button { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:.6rem 1.15rem;
+           font-weight:700; cursor:pointer; font-size:.88rem; font-family:inherit; transition:background .15s ease; }
+  button:hover { background:#38bdf8; }
+  button.ghost { background:#24324a; color:#cbd5e1; }
+  button.ghost:hover { background:#334155; }
+  .scene.solved button.run { background:#10b981; cursor:default; }
+
+  .out { margin-top:.9rem; display:none; }
+  .out.show { display:block; }
+  .out-head { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-bottom:.35rem; }
+  .parsed { background:#060910; border:1px solid #1e293b; border-radius:8px; padding:.8rem 1rem;
+            font-family:ui-monospace,Consolas,monospace; font-size:.8rem; white-space:pre-wrap;
+            color:#cbd5e1; margin:0; }
+  .verdict { margin-top:.7rem; font-size:.9rem; padding:.7rem .9rem; border-radius:8px; }
+  .verdict.bad { background:#2a1215; border:1px solid #7f1d1d; color:#fca5a5; }
+  .verdict.good { background:#052e22; border:1px solid #10b981; color:#6ee7b7; font-weight:600; }
+  .verdict .lbl { font-weight:700; }
+
+  .hints { margin-top:.8rem; }
+  .hint { display:none; background:#0b1220; border:1px dashed #475569; border-radius:8px;
+          padding:.6rem .9rem; margin-bottom:.5rem; font-size:.88rem; color:#cbd5e1; }
+  .hint.show { display:block; }
+  .hint b { color:#94a3b8; }
+  .locked-note { padding:0 1.25rem 1.1rem; color:#64748b; font-size:.88rem; }
+
+  #finale { display:none; margin-top:1.5rem; }
+  #done-banner { display:none; margin-top:1.25rem; background:#052e22; border:1px solid #10b981;
+                 color:#6ee7b7; padding:1.1rem 1.25rem; border-radius:10px; font-weight:bold; }
+  #done-banner p { color:#a7f3d0; font-weight:normal; margin:.6rem 0 0; font-size:.9rem; }
+  .debrief { margin-top:1.5rem; }
+  .debrief li { margin-bottom:.35rem; color:#cbd5e1; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>Kubernetes Task 1: Deploy Pods & Services</h1>
-        <p>In this lab exercise, create a Kubernetes Deployment manifest and expose it via NodePort Service.</p>
-        
-        <div class="step">
-            <h3>Step 1: Create deployment.yaml</h3>
-            <pre>apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: nginx-deployment
-spec:
-  replicas: 3
-  selector:
-    matchLabels:
-      app: nginx
-  template:
-    metadata:
-      labels:
-        app: nginx
-    spec:
-      containers:
-      - name: nginx
-        image: nginx:1.21
-        ports:
-        - containerPort: 80</pre>
-        </div>
+<div class="container">
+  <div class="panel">
+    <span class="badge">Kubernetes Level 1</span>
+    <h1>Kubernetes: Many Copies, Kept Alive</h1>
 
-        <div class="step">
-            <h3>Step 2: Apply Manifest</h3>
-            <pre>kubectl apply -f deployment.yaml
-kubectl get pods</pre>
-        </div>
+    <h2>What is Kubernetes?</h2>
+    <p class="lede">
+      One copy of an app on one machine is simple, and fragile. If the machine reboots the app
+      is gone. If twice as many people arrive, it is slow. So real systems run several copies
+      across several machines — and now somebody has to start them, notice when one dies,
+      replace it, and share incoming visitors between the survivors.
+    </p>
+    <p class="lede">
+      <strong>Kubernetes</strong> is the program that does that somebody's job. You give it a
+      file describing what you want — "three copies of this app, reachable on port 80" — and
+      it keeps reality matching. A copy crashes at 3 a.m., Kubernetes starts another one. It
+      does not ask, and it does not wait for you.
+    </p>
+    <p class="lede">
+      You describe the destination. Kubernetes handles the driving.
+    </p>
 
-        <div class="verify">
-            <h2>Verification — complete every check to earn your points</h2>
-            <div id="progress-wrap">
-                <span id="progress-text">0 of 3 checks passed</span>
-                <div id="bar"><div id="fill"></div></div>
-            </div>
+    <h2>Your turn</h2>
+    <p class="lede">
+      The checkout app currently runs as a single copy that Dev restarts by hand whenever it
+      falls over. A campaign next month is expected to triple the traffic. Maya is moving it
+      to Kubernetes so it survives both the traffic and the 3 a.m. crashes.
+    </p>
+    <p class="lede">
+      These files are written in YAML — the settings format from the YAML labs, so indentation
+      matters. This page reads what you write the way Kubernetes does, works out what would
+      actually run, and shows you the result. Nothing is marked correct unless the cluster
+      would really end up in the right state.
+    </p>
 
-            <div class="check-item" data-step="1">
-                <p><strong>Check 1.</strong> Which kind of Kubernetes object does deployment.yaml define?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(1);}" />
-                <button type="button" onclick="checkStep(1)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-
-            <div class="check-item" data-step="2">
-                <p><strong>Check 2.</strong> Which command applies deployment.yaml to the cluster?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(2);}" />
-                <button type="button" onclick="checkStep(2)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-
-            <div class="check-item" data-step="3">
-                <p><strong>Check 3.</strong> Which command lists the running pods?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(3);}" />
-                <button type="button" onclick="checkStep(3)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-            <div id="done-banner">All checks passed — your points have been awarded.</div>
-        </div>
+    <div id="status" role="status" aria-live="polite">
+      <span class="item">RUNNING COPIES <span class="val" id="s-branch">0</span></span>
+      <span class="item">REACHABLE <span class="val" id="s-commits">no</span></span>
+      <span class="item">STEP <span class="val" id="s-step">0/4</span></span>
+      <div id="bar" role="img" aria-label="Progress"><div id="fill"></div></div>
     </div>
 
-    <script>
-        var TASK_ID = 4;
-        var ANSWERS = {
-            1: /^Deployment$/i,
-            2: /^kubectl\s+apply\s+-f\s+deployment\.yaml$/i,
-            3: /^kubectl\s+get\s+pods$/i
-        };
-        var TOTAL = Object.keys(ANSWERS).length;
-        var completed = {};
-        var reported = false;
+    <div id="scenes"></div>
 
-        function render() {
-            var count = Object.keys(completed).length;
-            document.getElementById('progress-text').textContent = count + ' of ' + TOTAL + ' checks passed';
-            document.getElementById('fill').style.width = (count / TOTAL * 100) + '%';
+    <div id="finale">
+      <div id="done-banner">
+        Three copies running, reachable, and only sent traffic when ready — your points have been awarded.
+        <p>Dev can sleep through the next 3 a.m. crash.</p>
+      </div>
+      <div class="debrief">
+        <h2>What you learned</h2>
+        <ul>
+          <li><strong>A Deployment says how many copies should exist.</strong> Kubernetes keeps that number true, replacing any copy that dies.</li>
+          <li><strong>Labels are how things find each other.</strong> If the selector does not match the labels, nothing is connected — and nothing tells you.</li>
+          <li><strong>A Service is one stable address</strong> in front of copies that come and go.</li>
+          <li><strong>Running is not ready.</strong> A readiness probe stops traffic arriving before the app can answer it.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 
-            if (count === TOTAL && !reported) {
-                reported = true;
-                document.getElementById('done-banner').style.display = 'block';
-                // Single source of truth for completion: fired only when every check passes.
-                window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+<script>
+
+/* =========================================================================
+   Reads the manifests with the same YAML parser used by the YAML labs, then
+   works out what the cluster would actually do with them. Every check below
+   inspects that outcome, not the text you typed.
+   ========================================================================= */
+function yamlError(line, msg) { return { line: line, msg: msg }; }
+
+function stripComment(s) {
+    var out = '', q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { out += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; out += c; continue; }
+        if (c === '#' && (i === 0 || /\s/.test(s.charAt(i - 1)))) break;
+        out += c;
+    }
+    return out;
+}
+
+function unquote(s) {
+    if (s.length > 1 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+        return s.slice(1, -1).replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
+    }
+    if (s.length > 1 && s.charAt(0) === "'" && s.charAt(s.length - 1) === "'") {
+        return s.slice(1, -1).replace(/''/g, "'");
+    }
+    return s;
+}
+
+function splitTop(s, sep) {
+    var parts = [], depth = 0, q = null, cur = '';
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { cur += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; cur += c; continue; }
+        if (c === '[' || c === '{') depth++;
+        if (c === ']' || c === '}') depth--;
+        if (c === sep && depth === 0) { parts.push(cur); cur = ''; continue; }
+        cur += c;
+    }
+    if (cur.trim() !== '' || parts.length) parts.push(cur);
+    return parts;
+}
+
+function parseScalar(s, line) {
+    s = s.trim();
+    if (s === '') return null;
+    if ((s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') ||
+        (s.charAt(0) === "'" && s.charAt(s.length - 1) === "'")) return unquote(s);
+    if (s.charAt(0) === '[' && s.charAt(s.length - 1) === ']') {
+        var inner = s.slice(1, -1).trim();
+        if (inner === '') return [];
+        return splitTop(inner, ',').map(function (p) { return parseScalar(p, line); });
+    }
+    if (s.charAt(0) === '{' && s.charAt(s.length - 1) === '}') {
+        var body = s.slice(1, -1).trim(), obj = {};
+        if (body === '') return obj;
+        splitTop(body, ',').forEach(function (pair) {
+            var kv = splitKey(pair.trim(), line);
+            obj[kv.key] = parseScalar(kv.rest, line);
+        });
+        return obj;
+    }
+    if (/^(null|~)$/i.test(s)) return null;
+    if (/^(true|yes|on)$/i.test(s)) return true;
+    if (/^(false|no|off)$/i.test(s)) return false;
+    if (/^[-+]?\d+$/.test(s)) return parseInt(s, 10);
+    if (/^[-+]?(\d+\.\d*|\.\d+|\d+)([eE][-+]?\d+)?$/.test(s) && /[.eE]/.test(s)) return parseFloat(s);
+    return s;
+}
+
+function splitKey(s, line) {
+    var q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; continue; }
+        if (c === ':' && (i + 1 >= s.length || s.charAt(i + 1) === ' ')) {
+            return { key: unquote(s.slice(0, i).trim()), rest: s.slice(i + 1).trim() };
+        }
+    }
+    throw yamlError(line, 'line ' + line + ' is not a "name: value" pair. YAML needs a colon and then a space between the name and its value.');
+}
+
+function isKeyValue(s) {
+    try { splitKey(s, 0); return true; } catch (e) { return false; }
+}
+
+function peekLine(ctx) {
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        var s = stripComment(raw).replace(/\s+$/, '');
+        if (s.trim() === '') { ctx.i++; continue; }
+        var indent = s.match(/^ */)[0].length;
+        return { indent: indent, content: s.slice(indent), line: ctx.offset + ctx.i + 1 };
+    }
+    return null;
+}
+
+function parseBlockScalar(ctx, indent, ind) {
+    var literal = ind.charAt(0) === '|';
+    var chomp = ind.length > 1 ? ind.charAt(1) : '';
+    var body = [], blockIndent = null;
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        if (raw.trim() === '') { body.push(''); ctx.i++; continue; }
+        var ind2 = raw.match(/^ */)[0].length;
+        if (ind2 <= indent) break;
+        if (blockIndent === null) blockIndent = ind2;
+        body.push(raw.slice(Math.min(blockIndent, ind2)));
+        ctx.i++;
+    }
+    while (body.length && body[body.length - 1] === '') body.pop();
+    var out;
+    if (literal) {
+        out = body.join('\n');
+    } else {
+        out = '';
+        for (var k = 0; k < body.length; k++) {
+            if (body[k] === '') { out += '\n'; continue; }
+            if (out !== '' && out.charAt(out.length - 1) !== '\n') out += ' ';
+            out += body[k];
+        }
+    }
+    if (chomp !== '-' && out !== '') out += '\n';
+    return out;
+}
+
+function parseValue(ctx, indent, rest, line) {
+    var anchor = null;
+    var m = /^&([A-Za-z0-9_\-]+)\s*/.exec(rest);
+    if (m) { anchor = m[1]; rest = rest.slice(m[0].length).trim(); }
+    var val;
+    if (rest === '') {
+        // A block sequence may sit at its parent key's own indentation.
+        var nxt = peekLine(ctx);
+        if (nxt && nxt.indent === indent && /^-(\s|$)/.test(nxt.content)) {
+            val = parseSeq(ctx, indent);
+        } else {
+            val = parseNode(ctx, indent + 1);
+        }
+    } else if (/^[|>][-+]?$/.test(rest)) {
+        val = parseBlockScalar(ctx, indent, rest);
+    } else if (/^\*[A-Za-z0-9_\-]+$/.test(rest)) {
+        var name = rest.slice(1);
+        if (!(name in ctx.anchors)) {
+            throw yamlError(line, 'line ' + line + ' points at *' + name +
+                ', but nothing above it in this part of the file was labelled &' + name + '.');
+        }
+        val = ctx.anchors[name];
+    } else {
+        val = parseScalar(rest, line);
+    }
+    if (anchor) ctx.anchors[anchor] = val;
+    return val;
+}
+
+function parseMap(ctx, indent) {
+    var map = {}, explicit = {}, merges = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' is pushed too far to the right. It does not line up with anything above it. Inside a list item, the keys line up with the first key after the dash.');
+        if (/^-(\s|$)/.test(p.content)) throw yamlError(p.line, 'line ' + p.line + ' starts with a dash, so YAML reads it as a list item. A "name: value" pair was expected here instead.');
+        var kv = splitKey(p.content, p.line);
+        ctx.i++;
+        var value = parseValue(ctx, p.indent, kv.rest, p.line);
+        if (kv.key === '<<') { merges.push(value); }
+        else { map[kv.key] = value; explicit[kv.key] = true; }
+    }
+    for (var a = 0; a < merges.length; a++) {
+        var src = merges[a];
+        var list = Array.isArray(src) ? src : [src];
+        for (var b = 0; b < list.length; b++) {
+            var o = list[b];
+            if (!o || typeof o !== 'object') continue;
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k) && !explicit[k]) map[k] = o[k];
+        }
+    }
+    return map;
+}
+
+function parseSeq(ctx, indent) {
+    var arr = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' starts further to the right than the list item above it.');
+        // A key at the sequence's own indentation ends the sequence; whoever
+        // called us decides whether that key is legal there.
+        if (!/^-(\s|$)/.test(p.content)) break;
+        var after = p.content.slice(1);
+        var lead = after.match(/^ */)[0].length;
+        var content = after.trim();
+        ctx.i++;
+        if (content === '') {
+            arr.push(parseNode(ctx, indent + 1));
+        } else if (isKeyValue(content)) {
+            var itemIndent = indent + 1 + lead;
+            var pad = new Array(itemIndent + 1).join(' ');
+            ctx.lines[ctx.i - 1] = pad + content;
+            ctx.i--;
+            arr.push(parseMap(ctx, itemIndent));
+        } else {
+            arr.push(parseScalar(content, p.line));
+        }
+    }
+    return arr;
+}
+
+function parseNode(ctx, indent) {
+    var p = peekLine(ctx);
+    if (!p || p.indent < indent) return null;
+    if (/^-(\s|$)/.test(p.content)) return parseSeq(ctx, p.indent);
+    return parseMap(ctx, p.indent);
+}
+
+function parseYaml(text) {
+    var all = text.replace(/\r\n?/g, '\n').split('\n');
+    for (var i = 0; i < all.length; i++) {
+        if (/^ *\t/.test(all[i])) {
+            return { ok: false, error: yamlError(i + 1, 'line ' + (i + 1) + ' starts with a TAB character. YAML only allows real spaces at the start of a line. A Tab there stops the file being read at all — it is not just untidy.') };
+        }
+    }
+    var chunks = [], cur = [], start = 0;
+    for (i = 0; i < all.length; i++) {
+        if (/^---\s*(#.*)?$/.test(all[i]) || /^\.\.\.\s*$/.test(all[i])) {
+            chunks.push({ lines: cur, offset: start });
+            cur = []; start = i + 1; continue;
+        }
+        cur.push(all[i]);
+    }
+    chunks.push({ lines: cur, offset: start });
+
+    var docs = [];
+    try {
+        for (var c = 0; c < chunks.length; c++) {
+            var blank = chunks[c].lines.every(function (l) { return stripComment(l).trim() === ''; });
+            if (blank) continue;
+            var ctx = { lines: chunks[c].lines.slice(), offset: chunks[c].offset, i: 0, anchors: {} };
+            var doc = parseNode(ctx, 0);
+            var leftover = peekLine(ctx);
+            if (leftover) throw yamlError(leftover.line, 'line ' + leftover.line + ' does not belong to anything above it. Check how far in it starts.');
+            docs.push(doc);
+        }
+    } catch (e) {
+        if (e && e.msg) return { ok: false, error: e };
+        return { ok: false, error: yamlError(0, 'something in this file could not be read: ' + e) };
+    }
+    if (!docs.length) return { ok: false, error: yamlError(1, 'there is nothing in the file yet — only blank lines and comments. Write your first line, then press the button again.') };
+    return { ok: true, docs: docs, data: docs[0] };
+}
+
+/* ---------- structure rendering: show learners what YAML actually produced ---------- */
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function typeName(v) {
+    if (v === null) return 'null';
+    if (Array.isArray(v)) return 'list';
+    if (typeof v === 'object') return 'map';
+    if (typeof v === 'number') return Number.isInteger(v) ? 'int' : 'float';
+    return typeof v;
+}
+function renderStructure(v, indent) {
+    indent = indent || '';
+    var out = '';
+    if (Array.isArray(v)) {
+        if (!v.length) return indent + '(empty list)\n';
+        v.forEach(function (item) {
+            if (item && typeof item === 'object') {
+                out += indent + '-\n' + renderStructure(item, indent + '    ');
+            } else {
+                out += indent + '- ' + scalarLine(item) + '\n';
+            }
+        });
+        return out;
+    }
+    if (v && typeof v === 'object') {
+        for (var k in v) {
+            if (!Object.prototype.hasOwnProperty.call(v, k)) continue;
+            var val = v[k];
+            if (val && typeof val === 'object') {
+                out += indent + k + ':  [' + typeName(val) + ']\n' + renderStructure(val, indent + '  ');
+            } else {
+                out += indent + k + ': ' + scalarLine(val) + '\n';
             }
         }
+        return out;
+    }
+    return indent + scalarLine(v) + '\n';
+}
+function scalarLine(v) {
+    var shown;
+    if (typeof v === 'string') shown = JSON.stringify(v);
+    else shown = String(v);
+    if (shown.length > 70) shown = shown.slice(0, 67) + '..."';
+    return shown + '   [' + typeName(v) + ']';
+}
+function deepEq(a, b) {
+    if (a === b) return true;
+    if (typeof a !== typeof b) return false;
+    if (a === null || b === null) return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (typeof a !== 'object') return false;
+    var ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (var i = 0; i < ka.length; i++) {
+        if (!Object.prototype.hasOwnProperty.call(b, ka[i])) return false;
+        if (!deepEq(a[ka[i]], b[ka[i]])) return false;
+    }
+    return true;
+}
 
-        function checkStep(n) {
-            var el = document.querySelector('.check-item[data-step="' + n + '"]');
-            var feedback = el.querySelector('.feedback');
-            if (completed[n]) return;
 
-            var value = el.querySelector('input').value.trim();
-            if (!value) { feedback.textContent = 'Enter an answer first.'; feedback.className = 'feedback bad'; return; }
+function get(obj, path) {
+  var cur = obj;
+  for (var i = 0; i < path.length; i++) {
+    if (cur === null || typeof cur !== 'object') return undefined;
+    cur = cur[path[i]];
+  }
+  return cur;
+}
 
-            if (!ANSWERS[n].test(value)) {
-                feedback.textContent = 'Not quite — re-read the step above and try again.';
-                feedback.className = 'feedback bad';
-                return;
-            }
+// Work out what would be running, and whether the pieces actually connect.
+function cluster(text) {
+  var res = parseYaml(text);
+  var out = { ok: res.ok, error: res.error, docs: res.ok ? res.docs : [], notes: [], pods: 0, reachable: false };
+  if (!res.ok) return out;
 
-            completed[n] = true;
-            el.classList.add('done');
-            feedback.textContent = 'Correct';
-            feedback.className = 'feedback';
-            el.querySelector('button').textContent = 'Passed';
-            el.querySelector('input').readOnly = true;
-            render();
-        }
+  var dep = out.docs.filter(function (d) { return d && d.kind === 'Deployment'; })[0];
+  var svc = out.docs.filter(function (d) { return d && d.kind === 'Service'; })[0];
+  out.dep = dep; out.svc = svc;
 
-        render();
-    </script>
+  if (dep) {
+    var replicas = get(dep, ['spec', 'replicas']);
+    var podLabels = get(dep, ['spec', 'template', 'metadata', 'labels']) || {};
+    var selector = get(dep, ['spec', 'selector', 'matchLabels']) || {};
+    var containers = get(dep, ['spec', 'template', 'spec', 'containers']) || [];
+    out.replicas = replicas;
+    out.podLabels = podLabels;
+    out.selector = selector;
+    out.containers = containers;
+
+    var selKeys = Object.keys(selector);
+    var matches = selKeys.length > 0 && selKeys.every(function (k) { return String(podLabels[k]) === String(selector[k]); });
+    out.selectorMatches = matches;
+
+    if (!selKeys.length) out.notes.push('the Deployment has no selector, so it does not know which copies are its own');
+    else if (!matches) out.notes.push('the selector ' + JSON.stringify(selector) + ' does not match the copy labels ' +
+                                      JSON.stringify(podLabels) + ' — Kubernetes would refuse this Deployment');
+    else if (typeof replicas === 'number') out.pods = replicas;
+
+    if (out.pods && !containers.length) { out.notes.push('no container is described, so there is nothing to run'); out.pods = 0; }
+
+    var c0 = containers[0] || {};
+    out.probe = c0.readinessProbe;
+    out.containerPort = get(c0, ['ports', 0, 'containerPort']);
+  } else {
+    out.notes.push('no Deployment, so nothing would be running');
+  }
+
+  if (svc) {
+    var svcSel = get(svc, ['spec', 'selector']) || {};
+    var keys = Object.keys(svcSel);
+    var hits = keys.length > 0 && keys.every(function (k) { return String((out.podLabels || {})[k]) === String(svcSel[k]); });
+    out.svcSelector = svcSel;
+    out.svcMatches = hits;
+    out.port = get(svc, ['spec', 'ports', 0, 'port']);
+    out.targetPort = get(svc, ['spec', 'ports', 0, 'targetPort']);
+    if (!keys.length) out.notes.push('the Service selects nothing, so it has no copies behind it');
+    else if (!hits) out.notes.push('the Service looks for ' + JSON.stringify(svcSel) + ' but the copies are labelled ' +
+                                   JSON.stringify(out.podLabels || {}) + ' — it would have no one to send traffic to');
+    out.reachable = !!(hits && out.pods > 0);
+  }
+  return out;
+}
+
+function describeCluster(c) {
+  if (!c.ok) return 'Could not read the file. ' + c.error.msg;
+  var out = 'kinds found : ' + (c.docs.map(function (d) { return d && d.kind ? d.kind : '(no kind)'; }).join(', ') || 'none') + '\n';
+  if (c.dep) {
+    out += 'wanted copies : ' + (c.replicas === undefined ? '(not set)' : c.replicas) + '\n';
+    out += 'copy labels   : ' + JSON.stringify(c.podLabels || {}) + '\n';
+    out += 'selector      : ' + JSON.stringify(c.selector || {}) + '  ' + (c.selectorMatches ? '(matches)' : '(does NOT match)') + '\n';
+    if (c.containers && c.containers.length) {
+      out += 'container     : ' + (c.containers[0].name || '(unnamed)') + ' running ' + (c.containers[0].image || '(no image)') + '\n';
+      if (c.containerPort !== undefined) out += 'listens on    : ' + c.containerPort + '\n';
+      out += 'readiness     : ' + (c.probe ? 'checked before traffic is sent' : 'not checked — traffic arrives the moment it starts') + '\n';
+    }
+  }
+  if (c.svc) {
+    out += 'service       : port ' + c.port + ' -> ' + c.targetPort + ', looking for ' + JSON.stringify(c.svcSelector || {}) +
+           '  ' + (c.svcMatches ? '(finds the copies)' : '(finds nothing)') + '\n';
+  }
+  out += '\nwould actually be running : ' + c.pods + ' copy/copies\n';
+  out += 'reachable from outside    : ' + (c.reachable ? 'yes' : 'no') + '\n';
+  if (c.notes.length) out += '\nproblems:\n  ' + c.notes.join('\n  ') + '\n';
+  return out;
+}
+
+var TASK_ID = 4;
+
+var SCENES = [
+{
+  id: 1,
+  title: 'Ask for three copies',
+  story: '<p>You do not start apps in Kubernetes. You write down how many should exist, and it makes that true.</p>' +
+         '<p>The object that does this is a <strong>Deployment</strong>. Every Kubernetes file starts the same ' +
+         'way: <code>apiVersion</code> and <code>kind</code> say what sort of thing this is, <code>metadata</code> ' +
+         'names it, and <code>spec</code> describes what you want.</p>' +
+         '<p>Inside the spec, <code>template</code> is the recipe for one copy — and Kubernetes stamps out as ' +
+         'many as <code>replicas</code> asks for.</p>',
+  voice: { who: 'Maya', line: '"I am not starting three things. I am saying three should exist."' },
+  brief: ['<code>kind</code> is <code>Deployment</code>, named <code>checkout</code>',
+          '<code>spec.replicas</code> is <code>3</code>',
+          'one container named <code>web</code>, running the image <code>nerdlab/checkout:1.0</code>',
+          'the copy labels and the selector both say <code>app: checkout</code>'],
+  start: 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: checkout\nspec:\n  replicas: 1\n  selector:\n    matchLabels:\n      app: checkout\n  template:\n    metadata:\n      labels:\n        app: checkout\n    spec:\n      containers:\n        - name: web\n          image: nerdlab/checkout:0.9\n',
+  hints: ['Two values need changing, and both are already in the file.',
+          'One is the number of copies. The other is the version at the end of the image name.',
+          '<code>replicas: 3</code> and <code>image: nerdlab/checkout:1.0</code>'],
+  validate: function (c) {
+    if (!c.ok) return { ok: false, msg: c.error.msg };
+    if (!c.dep) return { ok: false, msg: 'There is no <code>Deployment</code> in the file.' };
+    if (get(c.dep, ['metadata', 'name']) !== 'checkout') return { ok: false, msg: 'The Deployment should be named <code>checkout</code>.' };
+    if (c.replicas !== 3) return { ok: false, msg: 'It asks for <code>' + c.replicas + '</code> copy/copies. It should ask for 3.' };
+    if (!c.containers.length) return { ok: false, msg: 'No container is described, so there is nothing to run.' };
+    if (c.containers[0].name !== 'web') return { ok: false, msg: 'The container should be named <code>web</code>.' };
+    if (c.containers[0].image !== 'nerdlab/checkout:1.0') return { ok: false, msg: 'The image should be <code>nerdlab/checkout:1.0</code>; yours is <code>' + c.containers[0].image + '</code>.' };
+    if (!c.selectorMatches) return { ok: false, msg: 'The selector and the copy labels do not match, so Kubernetes would reject this.' };
+    if (c.pods !== 3) return { ok: false, msg: 'This would leave ' + c.pods + ' copies running, not 3.' };
+    return { ok: true, log: '3 copies of checkout:1.0 would be running' };
+  }
+},
+{
+  id: 2,
+  title: 'The mismatch that fixes nothing',
+  story: '<p>Dev edited the file to rename the app and changed the label in one place but not the other.</p>' +
+         '<p>Those two places matter. <code>template.metadata.labels</code> is the sticker put on every copy. ' +
+         '<code>spec.selector.matchLabels</code> is how the Deployment recognises which copies belong to it. ' +
+         'If they disagree, the Deployment cannot find its own copies — so it would never know whether the ' +
+         'right number are running.</p>' +
+         '<p>Kubernetes catches this one and refuses. The mismatch you will meet later, in the Service, is the ' +
+         'silent version.</p>',
+  voice: { who: 'Priya', line: '"Labels are string matching. Nothing is clever here — the two sides are equal or they are not."' },
+  brief: ['both places use the same label',
+          'use <code>app: checkout</code> in both',
+          'still three copies of <code>nerdlab/checkout:1.0</code>'],
+  start: 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: checkout\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: checkout-service\n  template:\n    metadata:\n      labels:\n        app: checkout\n    spec:\n      containers:\n        - name: web\n          image: nerdlab/checkout:1.0\n',
+  hints: ['Look at the result box: it prints both sides so you can compare them.',
+          'One says <code>checkout-service</code>, the other says <code>checkout</code>.',
+          'Change <code>matchLabels</code> to <code>app: checkout</code> so both agree.'],
+  validate: function (c) {
+    if (!c.ok) return { ok: false, msg: c.error.msg };
+    if (!c.dep) return { ok: false, msg: 'The Deployment has gone from the file.' };
+    if (!c.selectorMatches) return { ok: false, msg: 'They still disagree: selector ' + JSON.stringify(c.selector) + ' versus labels ' + JSON.stringify(c.podLabels) + '.' };
+    if (String(c.podLabels.app) !== 'checkout') return { ok: false, msg: 'They match each other, but the label should be <code>app: checkout</code> — the Service later on will look for exactly that.' };
+    if (c.pods !== 3) return { ok: false, msg: 'This would leave ' + c.pods + ' copies running, not 3.' };
+    return { ok: true, log: 'selector and labels agree; the Deployment owns its 3 copies' };
+  }
+},
+{
+  id: 3,
+  title: 'One address in front of many copies',
+  story: '<p>Three copies are running, each with its own internal address, and each one disappears the moment ' +
+         'it is replaced. Nothing outside can rely on those addresses.</p>' +
+         '<p>A <strong>Service</strong> is one fixed address that forwards to whichever copies exist right now. ' +
+         'It finds them by label — the same string matching as before, except here a mismatch is not an error. ' +
+         'The Service simply has nobody behind it, and every visitor gets a connection refused.</p>' +
+         '<p>Two ports are involved: <code>port</code> is what the Service listens on, <code>targetPort</code> is ' +
+         'the port inside the container.</p>',
+  voice: { who: 'Priya', line: '"This one fails quietly. The Service looks perfectly healthy with nothing behind it."' },
+  brief: ['keep the Deployment as it is, then add a second document after <code>---</code>',
+          '<code>kind: Service</code> named <code>checkout</code>',
+          'it selects <code>app: checkout</code>',
+          'it listens on port <code>80</code> and forwards to <code>8080</code> in the container'],
+  start: 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: checkout\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: checkout\n  template:\n    metadata:\n      labels:\n        app: checkout\n    spec:\n      containers:\n        - name: web\n          image: nerdlab/checkout:1.0\n          ports:\n            - containerPort: 8080\n',
+  hints: ['Add <code>---</code> on its own line at the bottom, then start the second document.',
+          'A Service needs <code>apiVersion: v1</code>, a kind, a name, and a spec with <code>selector</code> and <code>ports</code>.',
+          'Under <code>spec:</code> put <code>selector:</code> with <code>app: checkout</code>, then <code>ports:</code> with a list item holding <code>port: 80</code> and <code>targetPort: 8080</code>.'],
+  validate: function (c) {
+    if (!c.ok) return { ok: false, msg: c.error.msg };
+    if (!c.dep) return { ok: false, msg: 'The Deployment has gone. Keep it and add the Service after a <code>---</code> line.' };
+    if (!c.svc) return { ok: false, msg: 'There is no <code>Service</code> yet. Add <code>---</code> and then a second document.' };
+    if (get(c.svc, ['metadata', 'name']) !== 'checkout') return { ok: false, msg: 'Name the Service <code>checkout</code>.' };
+    if (!c.svcSelector || !Object.keys(c.svcSelector).length) return { ok: false, msg: 'The Service has no <code>selector</code>, so it has no copies behind it.' };
+    if (!c.svcMatches) return { ok: false, msg: 'The Service looks for ' + JSON.stringify(c.svcSelector) + ' but the copies are labelled ' + JSON.stringify(c.podLabels) + '. Nothing would receive traffic — and nothing would report an error.' };
+    if (c.port !== 80) return { ok: false, msg: 'The Service should listen on port <code>80</code>; yours says <code>' + c.port + '</code>.' };
+    if (c.targetPort !== 8080) return { ok: false, msg: 'It should forward to <code>8080</code> inside the container; yours says <code>' + c.targetPort + '</code>.' };
+    if (!c.reachable) return { ok: false, msg: 'Still not reachable — check the Deployment still produces 3 running copies.' };
+    return { ok: true, log: 'one address on port 80, forwarding to 3 copies on 8080' };
+  }
+},
+{
+  id: 4,
+  title: 'Running is not ready',
+  story: '<p>The move goes live and a few visitors get errors for the first half minute.</p>' +
+         '<p>Nothing crashed. The app takes about twenty seconds to connect to its database before it can ' +
+         'answer anything — but Kubernetes only saw that the program had <em>started</em>, so it began sending ' +
+         'customers straight there.</p>' +
+         '<p>A <strong>readiness probe</strong> is a question Kubernetes asks the app, over and over: can you ' +
+         'serve someone yet? Traffic waits for the first yes.</p>',
+  voice: { who: 'Maya', line: '"It was awake. It just was not ready."' },
+  brief: ['keep both documents as they are',
+          'add a <code>readinessProbe</code> to the container',
+          'it asks for the path <code>/healthz</code> on port <code>8080</code>',
+          'it waits <code>5</code> seconds before the first question, then asks every <code>5</code>'],
+  start: 'apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: checkout\nspec:\n  replicas: 3\n  selector:\n    matchLabels:\n      app: checkout\n  template:\n    metadata:\n      labels:\n        app: checkout\n    spec:\n      containers:\n        - name: web\n          image: nerdlab/checkout:1.0\n          ports:\n            - containerPort: 8080\n---\napiVersion: v1\nkind: Service\nmetadata:\n  name: checkout\nspec:\n  selector:\n    app: checkout\n  ports:\n    - port: 80\n      targetPort: 8080\n',
+  hints: ['The probe goes inside the container, at the same indentation as <code>image</code> and <code>ports</code>.',
+          'It has a <code>httpGet</code> section holding <code>path</code> and <code>port</code>, plus two timing settings.',
+          '<code>readinessProbe:</code> then indented <code>httpGet:</code> with <code>path: /healthz</code> and <code>port: 8080</code>, then <code>initialDelaySeconds: 5</code> and <code>periodSeconds: 5</code>.'],
+  validate: function (c) {
+    if (!c.ok) return { ok: false, msg: c.error.msg };
+    if (!c.dep || !c.svc) return { ok: false, msg: 'Both documents must still be there — the Deployment and the Service.' };
+    if (!c.reachable) return { ok: false, msg: 'The Service and Deployment are no longer connected. Check the labels and the ports.' };
+    if (!c.probe) return { ok: false, msg: 'There is no <code>readinessProbe</code> on the container yet, so traffic still arrives the instant the app starts.' };
+    var hg = c.probe.httpGet;
+    if (!hg) return { ok: false, msg: 'The probe needs an <code>httpGet</code> section saying what to ask for.' };
+    if (hg.path !== '/healthz') return { ok: false, msg: 'The probe should ask for <code>/healthz</code>; yours asks for <code>' + hg.path + '</code>.' };
+    if (Number(hg.port) !== 8080) return { ok: false, msg: 'The probe should ask on port <code>8080</code>, the port inside the container; yours says <code>' + hg.port + '</code>.' };
+    if (Number(c.probe.initialDelaySeconds) !== 5) return { ok: false, msg: 'Set <code>initialDelaySeconds: 5</code> so the first question waits five seconds.' };
+    if (Number(c.probe.periodSeconds) !== 5) return { ok: false, msg: 'Set <code>periodSeconds: 5</code> so it asks every five seconds.' };
+    return { ok: true, log: 'traffic now waits until a copy says it is ready' };
+  }
+}
+];
+
+/* ---------- topic glue ---------- */
+function runScene(sc, ta, out, runBtn, card) {
+  if (solved[sc.id]) return;
+  var c = cluster(ta.value);
+  var pre = out.querySelector('.parsed');
+  var verdict = out.querySelector('.verdict');
+  out.classList.add('show');
+  pre.textContent = describeCluster(c);
+
+  document.getElementById('s-branch').textContent = c.pods || 0;
+  document.getElementById('s-commits').textContent = c.reachable ? 'yes' : 'no';
+
+  var v = sc.validate(c);
+  if (!v.ok) {
+    verdict.className = 'verdict bad';
+    verdict.innerHTML = '<span class="lbl">\u2717 Not yet \u2014 </span>' + v.msg;
+    return;
+  }
+  verdict.className = 'verdict good';
+  verdict.innerHTML = '<span class="lbl">\u2713 Applied. </span>' + v.log;
+  solveScene(sc, card, runBtn, ta);
+}
+
+/* ---------- engine ---------- */
+var solved = {}, reported = false;
+
+function buildScenes() {
+  var host = document.getElementById('scenes');
+  SCENES.forEach(function (sc, idx) {
+    var card = document.createElement('section');
+    card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+    card.id = 'scene-' + sc.id;
+
+    var head = document.createElement('div');
+    head.className = 'scene-head';
+    head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+      '<h2 class="scene-title">' + sc.title + '</h2>' +
+      '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+    head.addEventListener('click', function () {
+      if (!card.classList.contains('locked')) card.classList.toggle('open');
+    });
+    card.appendChild(head);
+
+    if (idx !== 0) {
+      var note = document.createElement('p');
+      note.className = 'locked-note';
+      note.textContent = 'Locked — finish the step above first.';
+      card.appendChild(note);
+    }
+
+    var body = document.createElement('div');
+    body.className = 'scene-body';
+    body.innerHTML = sc.story +
+      '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+      '<div class="brief"><h4>Make all of this true</h4><ul>' +
+      sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="editor-label"><span>manifest.yaml — spaces only, no Tab key</span><span>step ' + sc.id + ' of 4</span></div>';
+
+    var ta = document.createElement('textarea');
+    ta.className = 'editor'; ta.style.minHeight = '260px';
+    ta.value = sc.start;
+    ta.spellcheck = false;
+    ta.setAttribute('aria-label', 'Kubernetes manifest for step ' + sc.id);
+    body.appendChild(ta);
+
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+    var runBtn = document.createElement('button');
+    runBtn.className = 'run'; runBtn.type = 'button'; runBtn.textContent = 'Apply to the cluster';
+    var hintBtn = document.createElement('button');
+    hintBtn.className = 'ghost'; hintBtn.type = 'button'; hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'ghost'; resetBtn.type = 'button'; resetBtn.textContent = 'Start over';
+    row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+    body.appendChild(row);
+
+    var hints = document.createElement('div');
+    hints.className = 'hints';
+    sc.hints.forEach(function (h, hi) {
+      var el = document.createElement('div');
+      el.className = 'hint';
+      el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+      hints.appendChild(el);
+    });
+    body.appendChild(hints);
+
+    var out = document.createElement('div');
+    out.className = 'out';
+    out.innerHTML = '<div class="out-head">what the cluster would actually do with this</div>' +
+                    '<pre class="parsed"></pre><div class="verdict"></div>';
+    body.appendChild(out);
+
+    card.appendChild(body);
+    host.appendChild(card);
+
+    var shown = 0;
+    hintBtn.addEventListener('click', function () {
+      if (shown >= sc.hints.length) return;
+      hints.children[shown].classList.add('show');
+      shown++;
+      hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+    });
+    resetBtn.addEventListener('click', function () {
+      if (solved[sc.id]) return;
+      ta.value = sc.start; out.classList.remove('show'); ta.focus();
+    });
+    runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
+    });
+  });
+}
+
+function solveScene(sc, card, runBtn, ta) {
+  solved[sc.id] = true;
+  card.classList.remove('active');
+  card.classList.add('solved', 'collapsible');
+  card.querySelector('.scene-state').textContent = 'done';
+  runBtn.textContent = 'Done';
+  ta.readOnly = true;
+
+  var count = Object.keys(solved).length;
+  document.getElementById('s-step').textContent = count + '/' + SCENES.length;
+  document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+
+  if (count === SCENES.length) { finish(); return; }
+
+  card.classList.remove('open');
+  var next = SCENES[SCENES.indexOf(sc) + 1];
+  var nextCard = document.getElementById('scene-' + next.id);
+  nextCard.classList.remove('locked');
+  nextCard.classList.add('active', 'open', 'collapsible');
+  nextCard.querySelector('.scene-state').textContent = 'active';
+  var note = nextCard.querySelector('.locked-note');
+  if (note) note.parentNode.removeChild(note);
+  nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+  // Fired only after every step's validator passed against the simulated repository.
+  if (!reported) {
+    reported = true;
+    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  }
+  var finale = document.getElementById('finale');
+  finale.style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+buildScenes();
+</script>
 </body>
 </html>

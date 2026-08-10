@@ -1,11 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { useTheme } from '../../context/ThemeContext';
 import {
   Terminal,
-  Sun,
-  Moon,
   LogOut,
   User,
   LayoutDashboard,
@@ -18,7 +15,6 @@ import {
 
 const Navbar = () => {
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -102,15 +98,6 @@ const Navbar = () => {
 
           {/* Right Action Icons & User Menu */}
           <div className="hidden md:flex items-center space-x-3">
-            {/* Theme Toggle Button */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors border border-slate-800"
-              title="Toggle Dark/Light Mode"
-            >
-              {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5 text-indigo-400" />}
-            </button>
-
             {isAuthenticated ? (
               <div className="flex items-center space-x-3 border-l border-slate-800 pl-3">
                 <Link
@@ -155,12 +142,6 @@ const Navbar = () => {
 
           {/* Mobile Menu Button */}
           <div className="md:hidden flex items-center space-x-2">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"
-            >
-              {theme === 'dark' ? <Sun className="w-5 h-5 text-amber-400" /> : <Moon className="w-5 h-5" />}
-            </button>
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800"

@@ -1,175 +1,647 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Terraform Task 1: Provision Web Server</title>
-    <style>
-        body { font-family: sans-serif; background-color: #0f172a; color: #f8fafc; padding: 2rem; margin: 0; }
-        .container { max-width: 800px; margin: 0 auto; background: #1e293b; padding: 2rem; border-radius: 12px; border: 1px solid #334155; }
-        h1 { color: #a855f7; }
-        pre { background: #090d16; color: #e9d5ff; padding: 1rem; border-radius: 8px; overflow-x: auto; }
-        .step { margin-bottom: 1.5rem; border-left: 4px solid #a855f7; padding-left: 1rem; }
-        .btn-complete { background: #10b981; color: white; padding: 0.75rem 1.5rem; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Terraform Task 1: Infrastructure You Can Rebuild</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; color:#f8fafc;
+         padding:2rem 1.5rem 4rem; margin:0; line-height:1.6; }
+  .container { max-width:900px; margin:0 auto; }
+  .panel { background:#1e293b; padding:2rem; border-radius:12px; border:1px solid #334155;
+           box-shadow:0 10px 25px rgba(0,0,0,.5); }
+  h1 { color:#38bdf8; margin:.6rem 0 .4rem; font-size:1.75rem; }
+  h2 { color:#38bdf8; font-size:1.1rem; }
+  .badge { display:inline-block; background:#0284c7; color:#fff; padding:.25rem .75rem;
+           border-radius:9999px; font-size:.875rem; font-weight:600; }
+  .lede { color:#cbd5e1; }
+  code { background:#0b1220; padding:.1rem .35rem; border-radius:4px; color:#a5f3fc; font-size:.92em; }
+  pre { background:#090d16; color:#a5f3fc; padding:1rem; border-radius:8px; overflow-x:auto;
+        border:1px solid #1e293b; font-size:.85rem; margin:.75rem 0 0; }
 
-        .verify {
-            margin-top: 2rem;
-            border-top: 2px solid #334155;
-            padding-top: 1.5rem;
-        }
-        .verify h2 { color: #38bdf8; font-size: 1.1rem; }
-        #progress-wrap { margin-bottom: 1.25rem; font-weight: 600; color: #cbd5e1; }
-        #bar { height: 8px; background: #0f172a; border-radius: 999px; overflow: hidden; margin-top: 0.5rem; border: 1px solid #334155; }
-        #fill { height: 100%; width: 0%; background: linear-gradient(90deg, #0ea5e9, #10b981); transition: width 0.35s ease; }
-        .check-item {
-            background: #16213a;
-            border: 1px solid #334155;
-            border-radius: 10px;
-            padding: 1rem 1.25rem;
-            margin-bottom: 1rem;
-        }
-        .check-item.done { border-color: #10b981; background: #0d2620; }
-        .check-item p { margin: 0 0 0.6rem; color: #e2e8f0; }
-        .check-item input {
-            background: #090d16;
-            border: 1px solid #334155;
-            color: #a5f3fc;
-            border-radius: 8px;
-            padding: 0.6rem 0.8rem;
-            width: 100%;
-            max-width: 460px;
-            font-family: monospace;
-            font-size: 0.9rem;
-        }
-        .check-item button {
-            margin-left: 0.5rem;
-            background: #0ea5e9;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            padding: 0.6rem 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .check-item button:hover { background: #38bdf8; }
-        .check-item.done button { background: #10b981; cursor: default; }
-        .feedback { display: block; margin-top: 0.5rem; font-size: 0.85rem; color: #94a3b8; min-height: 1.2em; }
-        .check-item.done .feedback { color: #10b981; font-weight: 600; }
-        .feedback.bad { color: #f87171; }
-        #done-banner {
-            display: none;
-            margin-top: 1.5rem;
-            background: #052e22;
-            border: 1px solid #10b981;
-            color: #6ee7b7;
-            padding: 1rem 1.25rem;
-            border-radius: 10px;
-            font-weight: bold;
-        }
-    </style>
+  #status { position:sticky; top:0; z-index:20; margin:1.25rem 0; padding:.85rem 1.1rem;
+            background:#16213a; border:1px solid #334155; border-radius:12px; display:flex;
+            flex-wrap:wrap; gap:.75rem 1.5rem; align-items:center;
+            font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
+  #status .item { display:flex; align-items:center; gap:.45rem; color:#94a3b8; }
+  #status .val { color:#e2e8f0; font-weight:700; }
+  #bar { flex:1 1 160px; min-width:140px; height:8px; background:#0f172a; border-radius:999px;
+         overflow:hidden; border:1px solid #334155; }
+  #fill { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#10b981); transition:width .45s ease; }
+
+  .scene { border:1px solid #334155; border-radius:12px; background:#1a2437; margin-bottom:1.1rem; overflow:hidden; }
+  .scene.locked { opacity:.55; }
+  .scene.active { border-color:#38bdf8; box-shadow:0 0 0 1px rgba(56,189,248,.25); }
+  .scene.solved { border-color:#10b981; background:#101f1c; }
+  .scene-head { display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; }
+  .scene.solved .scene-head, .scene.collapsible .scene-head { cursor:pointer; }
+  .scene-num { flex:none; width:1.9rem; height:1.9rem; border-radius:8px; background:#0b1220;
+               border:1px solid #334155; color:#94a3b8; display:flex; align-items:center;
+               justify-content:center; font-weight:700; font-size:.85rem; }
+  .scene.active .scene-num { background:#0284c7; border-color:#38bdf8; color:#fff; }
+  .scene.solved .scene-num { background:#065f46; border-color:#10b981; color:#d1fae5; }
+  .scene-title { font-weight:700; color:#f1f5f9; flex:1; }
+  .scene-state { font-size:.75rem; font-family:ui-monospace,Consolas,monospace; color:#64748b;
+                 text-transform:uppercase; letter-spacing:.04em; }
+  .scene.solved .scene-state { color:#34d399; }
+  .scene-body { padding:0 1.25rem 1.35rem; display:none; }
+  .scene.open .scene-body { display:block; }
+  .scene-body p { color:#cbd5e1; }
+
+  .voice { border-left:3px solid #c084fc; background:#1b1630; padding:.65rem .9rem;
+           border-radius:0 8px 8px 0; margin:.9rem 0; color:#e9d5ff; font-size:.92rem; }
+  .voice strong { color:#c084fc; }
+  .brief { background:#16213a; border:1px solid #334155; border-left:4px solid #f59e0b;
+           border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:.9rem 0; font-size:.92rem; color:#e2e8f0; }
+  .brief h4 { margin:0 0 .35rem; color:#fbbf24; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; }
+  .brief ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  .brief li { margin-bottom:.2rem; }
+
+  .editor-label { display:flex; justify-content:space-between; align-items:baseline;
+                  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-top:1rem; }
+  textarea.editor { width:100%; min-height:120px; background:#060910; color:#a5f3fc;
+                    border:1px solid #334155; border-radius:8px; padding:.85rem 1rem;
+                    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; line-height:1.7;
+                    resize:vertical; white-space:pre; overflow-x:auto; }
+  textarea.editor:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+  .btn-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.85rem; align-items:center; }
+  button { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:.6rem 1.15rem;
+           font-weight:700; cursor:pointer; font-size:.88rem; font-family:inherit; transition:background .15s ease; }
+  button:hover { background:#38bdf8; }
+  button.ghost { background:#24324a; color:#cbd5e1; }
+  button.ghost:hover { background:#334155; }
+  .scene.solved button.run { background:#10b981; cursor:default; }
+
+  .out { margin-top:.9rem; display:none; }
+  .out.show { display:block; }
+  .out-head { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-bottom:.35rem; }
+  .parsed { background:#060910; border:1px solid #1e293b; border-radius:8px; padding:.8rem 1rem;
+            font-family:ui-monospace,Consolas,monospace; font-size:.8rem; white-space:pre-wrap;
+            color:#cbd5e1; margin:0; }
+  .verdict { margin-top:.7rem; font-size:.9rem; padding:.7rem .9rem; border-radius:8px; }
+  .verdict.bad { background:#2a1215; border:1px solid #7f1d1d; color:#fca5a5; }
+  .verdict.good { background:#052e22; border:1px solid #10b981; color:#6ee7b7; font-weight:600; }
+  .verdict .lbl { font-weight:700; }
+
+  .hints { margin-top:.8rem; }
+  .hint { display:none; background:#0b1220; border:1px dashed #475569; border-radius:8px;
+          padding:.6rem .9rem; margin-bottom:.5rem; font-size:.88rem; color:#cbd5e1; }
+  .hint.show { display:block; }
+  .hint b { color:#94a3b8; }
+  .locked-note { padding:0 1.25rem 1.1rem; color:#64748b; font-size:.88rem; }
+
+  #finale { display:none; margin-top:1.5rem; }
+  #done-banner { display:none; margin-top:1.25rem; background:#052e22; border:1px solid #10b981;
+                 color:#6ee7b7; padding:1.1rem 1.25rem; border-radius:10px; font-weight:bold; }
+  #done-banner p { color:#a7f3d0; font-weight:normal; margin:.6rem 0 0; font-size:.9rem; }
+  .debrief { margin-top:1.5rem; }
+  .debrief li { margin-bottom:.35rem; color:#cbd5e1; }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>Terraform Task 1: Infrastructure as Code</h1>
-        <p>In this exercise, write HCL syntax to provision a local Docker container provider via Terraform.</p>
-        
-        <div class="step">
-            <h3>Step 1: Write main.tf</h3>
-            <pre>terraform {
-  required_providers {
-    docker = {
-      source  = "kreuzwerker/docker"
-      version = "~> 3.0.1"
-    }
-  }
-}</pre>
-        </div>
+<div class="container">
+  <div class="panel">
+    <span class="badge">Terraform Level 1</span>
+    <h1>Terraform: Infrastructure You Can Rebuild</h1>
 
-        <div class="step">
-            <h3>Step 2: Init and Apply</h3>
-            <pre>terraform init
-terraform apply -auto-approve</pre>
-        </div>
+    <h2>What is Terraform?</h2>
+    <p class="lede">
+      Servers are usually created by clicking. Someone opens a cloud provider's website,
+      picks a size, ticks some boxes, presses Create. It works, and it takes five minutes.
+    </p>
+    <p class="lede">
+      The trouble arrives months later. Nobody remembers which boxes were ticked. There is no
+      list of what exists. If the server is lost, or a second identical one is needed for
+      testing, somebody is reconstructing it from memory.
+    </p>
+    <p class="lede">
+      <strong>Terraform</strong> replaces the clicking with a file. You write down what should
+      exist — three servers of this size, with these names — and Terraform makes reality match
+      it. Run it again and it changes nothing, because reality already matches. The file
+      becomes the record: readable, reviewable, and repeatable.
+    </p>
 
-        <div class="verify">
-            <h2>Verification — complete every check to earn your points</h2>
-            <div id="progress-wrap">
-                <span id="progress-text">0 of 3 checks passed</span>
-                <div id="bar"><div id="fill"></div></div>
-            </div>
+    <h2>Your turn</h2>
+    <p class="lede">
+      Emma set up the company's servers by hand before she left. They work. Nobody knows how
+      they were made, what size they are, or how to make another one. Maya's job is to write
+      them down properly, so the next person is reading a file instead of guessing.
+    </p>
+    <p class="lede">
+      You will write real Terraform configuration below. This page reads it, works out a plan
+      the way Terraform does, applies it to a pretend cloud, and shows you what exists
+      afterwards. Nothing is marked correct unless the resulting infrastructure is right.
+    </p>
 
-            <div class="check-item" data-step="1">
-                <p><strong>Check 1.</strong> Which command initialises the Terraform working directory?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(1);}" />
-                <button type="button" onclick="checkStep(1)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-
-            <div class="check-item" data-step="2">
-                <p><strong>Check 2.</strong> Which command applies the plan without an interactive approval prompt?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(2);}" />
-                <button type="button" onclick="checkStep(2)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-
-            <div class="check-item" data-step="3">
-                <p><strong>Check 3.</strong> Which command shows the execution plan without applying it?</p>
-                <input type="text" placeholder="type your answer" onkeydown="if(event.key==='Enter'){event.preventDefault();checkStep(3);}" />
-                <button type="button" onclick="checkStep(3)">Verify</button>
-                <span class="feedback"></span>
-            </div>
-            <div id="done-banner">All checks passed — your points have been awarded.</div>
-        </div>
+    <div id="status" role="status" aria-live="polite">
+      <span class="item">RESOURCES <span class="val" id="s-branch">0</span></span>
+      <span class="item">LAST RUN <span class="val" id="s-commits">—</span></span>
+      <span class="item">STEP <span class="val" id="s-step">0/4</span></span>
+      <div id="bar" role="img" aria-label="Progress"><div id="fill"></div></div>
     </div>
 
-    <script>
-        var TASK_ID = 3;
-        var ANSWERS = {
-            1: /^terraform\s+init$/i,
-            2: /^terraform\s+apply\s+-auto-approve$/i,
-            3: /^terraform\s+plan$/i
-        };
-        var TOTAL = Object.keys(ANSWERS).length;
-        var completed = {};
-        var reported = false;
+    <div id="scenes"></div>
 
-        function render() {
-            var count = Object.keys(completed).length;
-            document.getElementById('progress-text').textContent = count + ' of ' + TOTAL + ' checks passed';
-            document.getElementById('fill').style.width = (count / TOTAL * 100) + '%';
+    <div id="finale">
+      <div id="done-banner">
+        The whole setup is written down and rebuildable — your points have been awarded.
+        <p>The next person reads a file instead of guessing.</p>
+      </div>
+      <div class="debrief">
+        <h2>What you learned</h2>
+        <ul>
+          <li><strong>You describe the result, not the steps.</strong> Terraform works out what to create, change or destroy.</li>
+          <li><strong>Running it twice changes nothing.</strong> If reality already matches the file, there is no work to do.</li>
+          <li><strong>Variables remove copy-paste.</strong> One value, named once, used everywhere.</li>
+          <li><strong>Terraform remembers what it made.</strong> That record is how it tells "create a new one" from "change the existing one".</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
 
-            if (count === TOTAL && !reported) {
-                reported = true;
-                document.getElementById('done-banner').style.display = 'block';
-                // Single source of truth for completion: fired only when every check passes.
-                window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
-            }
-        }
+<script>
 
-        function checkStep(n) {
-            var el = document.querySelector('.check-item[data-step="' + n + '"]');
-            var feedback = el.querySelector('.feedback');
-            if (completed[n]) return;
+/* =========================================================================
+   A small Terraform. It reads the configuration into blocks, resolves
+   variables, works out a plan against the previous state, and applies it.
+   Every check inspects that resulting state, not the text you typed.
+   ========================================================================= */
+function stripComments(text) {
+  return text.replace(/\r\n?/g, '\n')
+             .split('\n')
+             .map(function (l) { return l.replace(/(^|\s)(#|\/\/).*$/, ''); })
+             .join('\n');
+}
 
-            var value = el.querySelector('input').value.trim();
-            if (!value) { feedback.textContent = 'Enter an answer first.'; feedback.className = 'feedback bad'; return; }
+// Parses: block "type" "name" { key = value ... }  with nested blocks one level deep.
+function parseHCL(text) {
+  var src = stripComments(text);
+  var out = { blocks: [], errors: [] };
+  var i = 0;
 
-            if (!ANSWERS[n].test(value)) {
-                feedback.textContent = 'Not quite — re-read the step above and try again.';
-                feedback.className = 'feedback bad';
-                return;
-            }
+  function skipWs() { while (i < src.length && /\s/.test(src[i])) i++; }
 
-            completed[n] = true;
-            el.classList.add('done');
-            feedback.textContent = 'Correct';
-            feedback.className = 'feedback';
-            el.querySelector('button').textContent = 'Passed';
-            el.querySelector('input').readOnly = true;
-            render();
-        }
+  function readWord() {
+    var m = /^[A-Za-z_][A-Za-z0-9_-]*/.exec(src.slice(i));
+    if (!m) return null;
+    i += m[0].length; return m[0];
+  }
+  function readString() {
+    if (src[i] !== '"') return null;
+    var j = i + 1, s = '';
+    while (j < src.length && src[j] !== '"') { s += src[j]; j++; }
+    if (src[j] !== '"') { out.errors.push('a quoted name is missing its closing quote'); return null; }
+    i = j + 1; return s;
+  }
+  function readValue() {
+    skipWs();
+    if (src[i] === '"') {
+      var raw = readString();
+      if (raw === null) return null;
+      return { kind: /\$\{/.test(raw) ? 'interp' : 'string', value: raw };
+    }
+    var m = /^(-?\d+(?:\.\d+)?)/.exec(src.slice(i));
+    if (m) { i += m[0].length; return { kind: 'number', value: parseFloat(m[1]) }; }
+    m = /^(true|false)\b/.exec(src.slice(i));
+    if (m) { i += m[0].length; return { kind: 'bool', value: m[1] === 'true' }; }
+    m = /^(var|local|each|count)\.[A-Za-z0-9_.\[\]"]+/.exec(src.slice(i));
+    if (m) { i += m[0].length; return { kind: 'ref', value: m[0] }; }
+    m = /^\[([^\]]*)\]/.exec(src.slice(i));
+    if (m) {
+      i += m[0].length;
+      var items = m[1].split(',').map(function (s) { return s.trim().replace(/^"|"$/g, ''); }).filter(function (s) { return s; });
+      return { kind: 'list', value: items };
+    }
+    m = /^[A-Za-z0-9_.-]+/.exec(src.slice(i));
+    if (m) { i += m[0].length; return { kind: 'word', value: m[0] }; }
+    return null;
+  }
 
-        render();
-    </script>
+  function readBody() {
+    var body = { attrs: {}, blocks: [] };
+    skipWs();
+    if (src[i] !== '{') { out.errors.push('expected an opening { for a block'); return body; }
+    i++;
+    while (true) {
+      skipWs();
+      if (i >= src.length) { out.errors.push('a block is missing its closing }'); break; }
+      if (src[i] === '}') { i++; break; }
+      var save = i;
+      var key = readWord();
+      if (!key) { out.errors.push('could not read a setting name near: ' + src.slice(i, i + 24).replace(/\n/g, ' ')); i = save + 1; continue; }
+      skipWs();
+      if (src[i] === '=') {
+        i++;
+        var v = readValue();
+        if (v === null) { out.errors.push('no value given for "' + key + '"'); continue; }
+        body.attrs[key] = v;
+      } else if (src[i] === '{') {
+        var inner = readBody();
+        body.blocks.push({ type: key, labels: [], body: inner });
+      } else {
+        out.errors.push('"' + key + '" needs an = and a value');
+      }
+    }
+    return body;
+  }
+
+  while (true) {
+    skipWs();
+    if (i >= src.length) break;
+    var type = readWord();
+    if (!type) { out.errors.push('could not read a block near: ' + src.slice(i, i + 24).replace(/\n/g, ' ')); break; }
+    var labels = [];
+    while (true) { skipWs(); if (src[i] !== '"') break; var l = readString(); if (l === null) break; labels.push(l); }
+    var body = readBody();
+    out.blocks.push({ type: type, labels: labels, body: body });
+  }
+  return out;
+}
+
+function blocksOf(cfg, type) { return cfg.blocks.filter(function (b) { return b.type === type; }); }
+
+function resolve(cfg, v, ctx) {
+  if (!v) return undefined;
+  if (v.kind === 'ref') {
+    var m = /^var\.([A-Za-z0-9_-]+)/.exec(v.value);
+    if (m) {
+      var decl = blocksOf(cfg, 'variable').filter(function (b) { return b.labels[0] === m[1]; })[0];
+      if (!decl) return { missingVar: m[1] };
+      var d = decl.body.attrs['default'];
+      return d ? d.value : { missingDefault: m[1] };
+    }
+    if (/^count\.index/.test(v.value)) return ctx && ctx.index !== undefined ? ctx.index : 0;
+    return v.value;
+  }
+  if (v.kind === 'interp') {
+    return v.value.replace(/\$\{([^}]+)\}/g, function (_, expr) {
+      var t = expr.trim();
+      if (/^count\.index$/.test(t)) return String(ctx && ctx.index !== undefined ? ctx.index : 0);
+      var mm = /^var\.([A-Za-z0-9_-]+)$/.exec(t);
+      if (mm) {
+        var decl = blocksOf(cfg, 'variable').filter(function (b) { return b.labels[0] === mm[1]; })[0];
+        if (decl && decl.body.attrs['default']) return String(decl.body.attrs['default'].value);
+        return '<unset var ' + mm[1] + '>';
+      }
+      return '<' + t + '>';
+    });
+  }
+  return v.value;
+}
+
+// Expand resource blocks into the instances that would actually exist.
+function planResources(cfg) {
+  var instances = [], problems = [];
+  blocksOf(cfg, 'resource').forEach(function (b) {
+    if (b.labels.length < 2) { problems.push('a resource needs a type and a name, like resource "nerdlab_server" "web"'); return; }
+    var type = b.labels[0], name = b.labels[1];
+    var countAttr = b.body.attrs['count'];
+    var n = 1;
+    if (countAttr) {
+      var c = resolve(cfg, countAttr, null);
+      if (typeof c === 'object') { problems.push('count refers to a variable with no default'); n = 1; }
+      else n = Math.max(0, parseInt(c, 10) || 0);
+    }
+    for (var k = 0; k < n; k++) {
+      var attrs = {};
+      Object.keys(b.body.attrs).forEach(function (key) {
+        if (key === 'count') return;
+        var val = resolve(cfg, b.body.attrs[key], { index: k });
+        if (val && val.missingVar) { problems.push('there is no variable called "' + val.missingVar + '"'); val = undefined; }
+        else if (val && val.missingDefault) { problems.push('variable "' + val.missingDefault + '" has no default value, so nothing can use it'); val = undefined; }
+        attrs[key] = val;
+      });
+      instances.push({ type: type, name: name + (countAttr ? '[' + k + ']' : ''), base: name, attrs: attrs });
+    }
+  });
+  return { instances: instances, problems: problems };
+}
+
+// Apply twice: the second run is what proves the config describes a result, not steps.
+function terraform(text) {
+  var cfg = parseHCL(text);
+  var plan = planResources(cfg);
+  var stateA = plan.instances;
+  var planB = planResources(parseHCL(text));      // same config, run again
+  var changes = 0;
+  planB.instances.forEach(function (want, idx) {
+    var have = stateA[idx];
+    if (!have || have.type !== want.type || have.name !== want.name) { changes++; return; }
+    Object.keys(want.attrs).forEach(function (k) { if (String(have.attrs[k]) !== String(want.attrs[k])) changes++; });
+  });
+  return { cfg: cfg, plan: plan, state: stateA, secondRunChanges: changes };
+}
+
+function describeTf(tf) {
+  if (tf.cfg.errors.length) return 'Terraform could not read the file:\n  ' + tf.cfg.errors.join('\n  ');
+  if (!tf.cfg.blocks.length) return 'The file is empty.';
+  var out = 'plan: ' + tf.state.length + ' to create\n\n';
+  tf.state.forEach(function (r) {
+    out += '  + ' + r.type + '.' + r.name + '\n';
+    Object.keys(r.attrs).forEach(function (k) {
+      out += '      ' + k + ' = ' + (r.attrs[k] === undefined ? '(unknown)' : JSON.stringify(r.attrs[k])) + '\n';
+    });
+  });
+  if (tf.plan.problems.length) out += '\nproblems:\n  ' + tf.plan.problems.join('\n  ') + '\n';
+  out += '\nafter apply, running it a second time: ' +
+         (tf.secondRunChanges === 0 ? 'no changes — reality already matches the file' : tf.secondRunChanges + ' change(s) still pending') + '\n';
+  return out;
+}
+
+var TASK_ID = 3;
+
+var SCENES = [
+{
+  id: 1,
+  title: 'Write down one server',
+  story: '<p>Everything in Terraform is a <strong>block</strong>, and they all look the same: a keyword, ' +
+         'some names in quotes, then settings inside curly brackets.</p>' +
+         '<p>A <code>resource</code> block says "this thing should exist". It takes two names: what kind of ' +
+         'thing it is, and a label you choose so you can refer to it later.</p>' +
+         '<pre>resource "nerdlab_server" "web" {\n  name = "web01"\n  size = "small"\n}</pre>' +
+         '<p>Note what is missing: no instructions, no order, no steps. You are describing the finished result.</p>',
+  voice: { who: 'Priya', line: '"You are writing a shopping list, not a recipe."' },
+  brief: ['one <code>nerdlab_server</code> resource labelled <code>web</code>',
+          'its <code>name</code> is <code>web01</code>',
+          'its <code>size</code> is <code>small</code>'],
+  start: '# describe the server here\n\n',
+  hints: ['Copy the shape from the example above — keyword, two names in quotes, curly brackets.',
+          'Inside the brackets, each setting is <code>key = "value"</code>, one per line.',
+          '<code>resource "nerdlab_server" "web" {</code> then <code>name = "web01"</code> and <code>size = "small"</code>, then <code>}</code>'],
+  validate: function (tf) {
+    if (tf.cfg.errors.length) return { ok: false, msg: 'Terraform could not read the file: ' + tf.cfg.errors[0] };
+    var rs = blocksOf(tf.cfg, 'resource');
+    if (!rs.length) return { ok: false, msg: 'There is no <code>resource</code> block yet, so nothing would be created.' };
+    if (tf.state.length !== 1) return { ok: false, msg: 'This would create ' + tf.state.length + ' things. It should create exactly one for now.' };
+    var r = tf.state[0];
+    if (r.type !== 'nerdlab_server') return { ok: false, msg: 'The kind of thing should be <code>nerdlab_server</code>, not <code>' + r.type + '</code>.' };
+    if (r.base !== 'web') return { ok: false, msg: 'Label it <code>web</code> — that is the name you will use to refer to it. Yours is <code>' + r.base + '</code>.' };
+    if (r.attrs.name !== 'web01') return { ok: false, msg: 'The <code>name</code> should be <code>web01</code>. Right now it is <code>' + JSON.stringify(r.attrs.name) + '</code>.' };
+    if (r.attrs.size !== 'small') return { ok: false, msg: 'The <code>size</code> should be <code>small</code>. Right now it is <code>' + JSON.stringify(r.attrs.size) + '</code>.' };
+    return { ok: true, log: 'one server described; Terraform would create it' };
+  }
+},
+{
+  id: 2,
+  title: 'Run it again, change nothing',
+  story: '<p>Maya applies the file. The server is created. Then, nervous, she runs it a second time — and ' +
+         'Terraform reports <em>no changes</em>.</p>' +
+         '<p>That is the whole idea. Terraform keeps a record of what it made. Before doing anything it compares ' +
+         'the file against that record: if they already agree, there is no work to do. A script that ran twice ' +
+         'would have made two servers.</p>' +
+         '<p>Now the setup grows. Emma left a database server too, and it is a bigger machine.</p>',
+  voice: { who: 'Maya', line: '"So I can run it whenever I like, and it only acts when something is actually different."' },
+  brief: ['keep the <code>web</code> server exactly as it is',
+          'add a second resource labelled <code>db</code>',
+          'its <code>name</code> is <code>db01</code> and its <code>size</code> is <code>large</code>',
+          'running the file twice must still report no changes'],
+  start: 'resource "nerdlab_server" "web" {\n  name = "web01"\n  size = "small"\n}\n\n',
+  hints: ['A second block, the same shape as the first, underneath it.',
+          'The label in the second pair of quotes has to be different — that is how Terraform tells them apart.',
+          '<code>resource "nerdlab_server" "db" {</code>, <code>name = "db01"</code>, <code>size = "large"</code>, <code>}</code>'],
+  validate: function (tf) {
+    if (tf.cfg.errors.length) return { ok: false, msg: 'Terraform could not read the file: ' + tf.cfg.errors[0] };
+    if (tf.state.length !== 2) return { ok: false, msg: 'This describes ' + tf.state.length + ' server(s). There should be two: the web one and the database one.' };
+    var byName = {};
+    tf.state.forEach(function (r) { byName[r.base] = r; });
+    if (!byName.web) return { ok: false, msg: 'The <code>web</code> server has gone. Keep the first block as it was.' };
+    if (!byName.db) return { ok: false, msg: 'There is no resource labelled <code>db</code>. Labels here: ' + Object.keys(byName).join(', ') + '.' };
+    if (byName.db.attrs.name !== 'db01') return { ok: false, msg: 'The database server\'s <code>name</code> should be <code>db01</code>.' };
+    if (byName.db.attrs.size !== 'large') return { ok: false, msg: 'The database server should be <code>large</code>, not <code>' + JSON.stringify(byName.db.attrs.size) + '</code>.' };
+    if (tf.secondRunChanges !== 0) return { ok: false, msg: 'Running the file a second time still wants to change ' + tf.secondRunChanges + ' thing(s), which should never happen for an unchanged file.' };
+    return { ok: true, log: 'two servers described; a second run reports no changes' };
+  }
+},
+{
+  id: 3,
+  title: 'Stop repeating yourself',
+  story: '<p>Both blocks now say <code>nerdlab</code> in their names, and both will need the same environment ' +
+         'label. When the company renames the project, someone has to find every copy.</p>' +
+         '<p>A <strong>variable</strong> is a value named once and used everywhere. You declare it with a ' +
+         '<code>variable</code> block and a default, then refer to it as <code>var.something</code>.</p>' +
+         '<pre>variable "env" {\n  default = "prod"\n}</pre>' +
+         '<p>To put a variable inside a longer piece of text, wrap it in <code>${ }</code> — for example ' +
+         '<code>name = "web-${var.env}"</code> becomes <code>web-prod</code>.</p>',
+  voice: { who: 'Priya', line: '"One place to change it is the difference between a rename and an afternoon."' },
+  brief: ['declare a variable called <code>env</code> with the default <code>prod</code>',
+          'the web server\u2019s name becomes <code>web01-prod</code>, built from the variable',
+          'the database server\u2019s name becomes <code>db01-prod</code>, the same way',
+          'sizes stay <code>small</code> and <code>large</code>'],
+  start: 'resource "nerdlab_server" "web" {\n  name = "web01"\n  size = "small"\n}\n\nresource "nerdlab_server" "db" {\n  name = "db01"\n  size = "large"\n}\n',
+  hints: ['Add the <code>variable</code> block first, anywhere in the file.',
+          'Then change the two names so they end with the variable instead of the literal word.',
+          '<code>name = "web01-${var.env}"</code> and <code>name = "db01-${var.env}"</code>'],
+  validate: function (tf) {
+    if (tf.cfg.errors.length) return { ok: false, msg: 'Terraform could not read the file: ' + tf.cfg.errors[0] };
+    var vars = blocksOf(tf.cfg, 'variable');
+    var env = vars.filter(function (b) { return b.labels[0] === 'env'; })[0];
+    if (!env) return { ok: false, msg: 'There is no <code>variable "env"</code> block yet.' };
+    if (!env.body.attrs['default']) return { ok: false, msg: 'The variable has no <code>default</code>, so nothing can use it without being asked for a value.' };
+    if (env.body.attrs['default'].value !== 'prod') return { ok: false, msg: 'The default should be <code>prod</code>, not <code>' + JSON.stringify(env.body.attrs['default'].value) + '</code>.' };
+    if (tf.plan.problems.length) return { ok: false, msg: tf.plan.problems[0] };
+    var byName = {};
+    tf.state.forEach(function (r) { byName[r.base] = r; });
+    if (!byName.web || !byName.db) return { ok: false, msg: 'Both servers must still be described.' };
+    if (byName.web.attrs.name !== 'web01-prod') return { ok: false, msg: 'The web server\'s name works out to <code>' + JSON.stringify(byName.web.attrs.name) + '</code>. It should come out as <code>web01-prod</code>.' };
+    if (byName.db.attrs.name !== 'db01-prod') return { ok: false, msg: 'The database server\'s name works out to <code>' + JSON.stringify(byName.db.attrs.name) + '</code>. It should come out as <code>db01-prod</code>.' };
+    var usesVar = /var\.env/.test(JSON.stringify(tf.cfg.blocks));
+    if (!usesVar) return { ok: false, msg: 'The names are right but they are typed out by hand. Build them from <code>${var.env}</code> so there is one place to change.' };
+    if (byName.web.attrs.size !== 'small' || byName.db.attrs.size !== 'large') return { ok: false, msg: 'Keep the sizes as they were: small for web, large for the database.' };
+    return { ok: true, log: 'one variable, used in both names; renaming the environment is now a one-line change' };
+  }
+},
+{
+  id: 4,
+  title: 'Three of the same thing',
+  story: '<p>Traffic is growing and the team wants three web servers instead of one. Copying the block three ' +
+         'times would work, and would then need editing three times forever.</p>' +
+         '<p><code>count</code> tells Terraform to make several copies of one block. Inside it, ' +
+         '<code>count.index</code> is the number of the copy — starting at 0, as counting usually does in ' +
+         'programming — so each one can have its own name.</p>',
+  voice: { who: 'Maya', line: '"One block, three servers, and still one place to edit."' },
+  brief: ['the web block makes <strong>three</strong> servers',
+          'their names are <code>web-0-prod</code>, <code>web-1-prod</code> and <code>web-2-prod</code>',
+          'they are all <code>small</code>',
+          'the database server stays exactly as it is — one, large'],
+  start: 'variable "env" {\n  default = "prod"\n}\n\nresource "nerdlab_server" "web" {\n  name = "web01-${var.env}"\n  size = "small"\n}\n\nresource "nerdlab_server" "db" {\n  name = "db01-${var.env}"\n  size = "large"\n}\n',
+  hints: ['Add one line inside the web block. It is a setting like any other.',
+          '<code>count = 3</code> makes three. Then the name has to differ per copy, or all three would be identical.',
+          '<code>count = 3</code> and <code>name = "web-${count.index}-${var.env}"</code>'],
+  validate: function (tf) {
+    if (tf.cfg.errors.length) return { ok: false, msg: 'Terraform could not read the file: ' + tf.cfg.errors[0] };
+    if (tf.plan.problems.length) return { ok: false, msg: tf.plan.problems[0] };
+    var webs = tf.state.filter(function (r) { return r.base === 'web'; });
+    var dbs = tf.state.filter(function (r) { return r.base === 'db'; });
+    if (webs.length !== 3) return { ok: false, msg: 'This describes ' + webs.length + ' web server(s). It should describe three — add <code>count</code> rather than copying the block.' };
+    if (dbs.length !== 1) return { ok: false, msg: 'There should still be exactly one database server; this describes ' + dbs.length + '.' };
+    var want = ['web-0-prod', 'web-1-prod', 'web-2-prod'];
+    var got = webs.map(function (r) { return r.attrs.name; });
+    var same = got.filter(function (n, i, a) { return a.indexOf(n) !== i; });
+    if (same.length) return { ok: false, msg: 'All three copies have the same name (<code>' + got[0] + '</code>). Use <code>${count.index}</code> so each copy differs.' };
+    for (var i = 0; i < 3; i++) {
+      if (got[i] !== want[i]) return { ok: false, msg: 'Copy ' + i + ' is called <code>' + got[i] + '</code>; it should be <code>' + want[i] + '</code>.' };
+    }
+    if (webs.some(function (r) { return r.attrs.size !== 'small'; })) return { ok: false, msg: 'The web servers should all be <code>small</code>.' };
+    if (dbs[0].attrs.size !== 'large' || dbs[0].attrs.name !== 'db01-prod') return { ok: false, msg: 'Leave the database server alone — <code>db01-prod</code>, large.' };
+    if (tf.secondRunChanges !== 0) return { ok: false, msg: 'A second run still wants to change something, which should not happen for an unchanged file.' };
+    return { ok: true, log: 'four servers from two blocks; a second run reports no changes' };
+  }
+}
+];
+
+/* ---------- topic glue ---------- */
+function runScene(sc, ta, out, runBtn, card) {
+  if (solved[sc.id]) return;
+  var tf = terraform(ta.value);
+  var pre = out.querySelector('.parsed');
+  var verdict = out.querySelector('.verdict');
+  out.classList.add('show');
+  pre.textContent = describeTf(tf);
+
+  document.getElementById('s-branch').textContent = tf.state.length;
+  document.getElementById('s-commits').textContent = tf.cfg.errors.length ? 'error' : (tf.secondRunChanges === 0 ? 'no changes' : 'pending');
+
+  var v = sc.validate(tf);
+  if (!v.ok) {
+    verdict.className = 'verdict bad';
+    verdict.innerHTML = '<span class="lbl">\u2717 Not yet \u2014 </span>' + v.msg;
+    return;
+  }
+  verdict.className = 'verdict good';
+  verdict.innerHTML = '<span class="lbl">\u2713 Applied. </span>' + v.log;
+  solveScene(sc, card, runBtn, ta);
+}
+
+/* ---------- engine ---------- */
+var solved = {}, reported = false;
+
+function buildScenes() {
+  var host = document.getElementById('scenes');
+  SCENES.forEach(function (sc, idx) {
+    var card = document.createElement('section');
+    card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+    card.id = 'scene-' + sc.id;
+
+    var head = document.createElement('div');
+    head.className = 'scene-head';
+    head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+      '<h2 class="scene-title">' + sc.title + '</h2>' +
+      '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+    head.addEventListener('click', function () {
+      if (!card.classList.contains('locked')) card.classList.toggle('open');
+    });
+    card.appendChild(head);
+
+    if (idx !== 0) {
+      var note = document.createElement('p');
+      note.className = 'locked-note';
+      note.textContent = 'Locked — finish the step above first.';
+      card.appendChild(note);
+    }
+
+    var body = document.createElement('div');
+    body.className = 'scene-body';
+    body.innerHTML = sc.story +
+      '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+      '<div class="brief"><h4>Make all of this true</h4><ul>' +
+      sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="editor-label"><span>main.tf</span><span>step ' + sc.id + ' of 4</span></div>';
+
+    var ta = document.createElement('textarea');
+    ta.className = 'editor';
+    ta.value = sc.start;
+    ta.spellcheck = false;
+    ta.setAttribute('aria-label', 'Terraform configuration for step ' + sc.id);
+    body.appendChild(ta);
+
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+    var runBtn = document.createElement('button');
+    runBtn.className = 'run'; runBtn.type = 'button'; runBtn.textContent = 'Plan and apply';
+    var hintBtn = document.createElement('button');
+    hintBtn.className = 'ghost'; hintBtn.type = 'button'; hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'ghost'; resetBtn.type = 'button'; resetBtn.textContent = 'Start over';
+    row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+    body.appendChild(row);
+
+    var hints = document.createElement('div');
+    hints.className = 'hints';
+    sc.hints.forEach(function (h, hi) {
+      var el = document.createElement('div');
+      el.className = 'hint';
+      el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+      hints.appendChild(el);
+    });
+    body.appendChild(hints);
+
+    var out = document.createElement('div');
+    out.className = 'out';
+    out.innerHTML = '<div class="out-head">what Terraform would do, and what exists afterwards</div>' +
+                    '<pre class="parsed"></pre><div class="verdict"></div>';
+    body.appendChild(out);
+
+    card.appendChild(body);
+    host.appendChild(card);
+
+    var shown = 0;
+    hintBtn.addEventListener('click', function () {
+      if (shown >= sc.hints.length) return;
+      hints.children[shown].classList.add('show');
+      shown++;
+      hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+    });
+    resetBtn.addEventListener('click', function () {
+      if (solved[sc.id]) return;
+      ta.value = sc.start; out.classList.remove('show'); ta.focus();
+    });
+    runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
+    });
+  });
+}
+
+function solveScene(sc, card, runBtn, ta) {
+  solved[sc.id] = true;
+  card.classList.remove('active');
+  card.classList.add('solved', 'collapsible');
+  card.querySelector('.scene-state').textContent = 'done';
+  runBtn.textContent = 'Done';
+  ta.readOnly = true;
+
+  var count = Object.keys(solved).length;
+  document.getElementById('s-step').textContent = count + '/' + SCENES.length;
+  document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+
+  if (count === SCENES.length) { finish(); return; }
+
+  card.classList.remove('open');
+  var next = SCENES[SCENES.indexOf(sc) + 1];
+  var nextCard = document.getElementById('scene-' + next.id);
+  nextCard.classList.remove('locked');
+  nextCard.classList.add('active', 'open', 'collapsible');
+  nextCard.querySelector('.scene-state').textContent = 'active';
+  var note = nextCard.querySelector('.locked-note');
+  if (note) note.parentNode.removeChild(note);
+  nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+  // Fired only after every step's validator passed against the simulated repository.
+  if (!reported) {
+    reported = true;
+    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  }
+  var finale = document.getElementById('finale');
+  finale.style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+buildScenes();
+</script>
 </body>
 </html>
