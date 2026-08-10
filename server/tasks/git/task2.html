@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Git Task 2: Undoing Things Safely</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; color:#f8fafc;
+         padding:2rem 1.5rem 4rem; margin:0; line-height:1.6; }
+  .container { max-width:900px; margin:0 auto; }
+  .panel { background:#1e293b; padding:2rem; border-radius:12px; border:1px solid #334155;
+           box-shadow:0 10px 25px rgba(0,0,0,.5); }
+  h1 { color:#38bdf8; margin:.6rem 0 .4rem; font-size:1.75rem; }
+  h2 { color:#38bdf8; font-size:1.1rem; }
+  .badge { display:inline-block; background:#0284c7; color:#fff; padding:.25rem .75rem;
+           border-radius:9999px; font-size:.875rem; font-weight:600; }
+  .lede { color:#cbd5e1; }
+  code { background:#0b1220; padding:.1rem .35rem; border-radius:4px; color:#a5f3fc; font-size:.92em; }
+  pre { background:#090d16; color:#a5f3fc; padding:1rem; border-radius:8px; overflow-x:auto;
+        border:1px solid #1e293b; font-size:.85rem; margin:.75rem 0 0; }
+
+  #status { position:sticky; top:0; z-index:20; margin:1.25rem 0; padding:.85rem 1.1rem;
+            background:#16213a; border:1px solid #334155; border-radius:12px; display:flex;
+            flex-wrap:wrap; gap:.75rem 1.5rem; align-items:center;
+            font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
+  #status .item { display:flex; align-items:center; gap:.45rem; color:#94a3b8; }
+  #status .val { color:#e2e8f0; font-weight:700; }
+  #bar { flex:1 1 160px; min-width:140px; height:8px; background:#0f172a; border-radius:999px;
+         overflow:hidden; border:1px solid #334155; }
+  #fill { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#10b981); transition:width .45s ease; }
+
+  .scene { border:1px solid #334155; border-radius:12px; background:#1a2437; margin-bottom:1.1rem; overflow:hidden; }
+  .scene.locked { opacity:.55; }
+  .scene.active { border-color:#38bdf8; box-shadow:0 0 0 1px rgba(56,189,248,.25); }
+  .scene.solved { border-color:#10b981; background:#101f1c; }
+  .scene-head { display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; }
+  .scene.solved .scene-head, .scene.collapsible .scene-head { cursor:pointer; }
+  .scene-num { flex:none; width:1.9rem; height:1.9rem; border-radius:8px; background:#0b1220;
+               border:1px solid #334155; color:#94a3b8; display:flex; align-items:center;
+               justify-content:center; font-weight:700; font-size:.85rem; }
+  .scene.active .scene-num { background:#0284c7; border-color:#38bdf8; color:#fff; }
+  .scene.solved .scene-num { background:#065f46; border-color:#10b981; color:#d1fae5; }
+  .scene-title { font-weight:700; color:#f1f5f9; flex:1; }
+  .scene-state { font-size:.75rem; font-family:ui-monospace,Consolas,monospace; color:#64748b;
+                 text-transform:uppercase; letter-spacing:.04em; }
+  .scene.solved .scene-state { color:#34d399; }
+  .scene-body { padding:0 1.25rem 1.35rem; display:none; }
+  .scene.open .scene-body { display:block; }
+  .scene-body p { color:#cbd5e1; }
+
+  .voice { border-left:3px solid #c084fc; background:#1b1630; padding:.65rem .9rem;
+           border-radius:0 8px 8px 0; margin:.9rem 0; color:#e9d5ff; font-size:.92rem; }
+  .voice strong { color:#c084fc; }
+  .brief { background:#16213a; border:1px solid #334155; border-left:4px solid #f59e0b;
+           border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:.9rem 0; font-size:.92rem; color:#e2e8f0; }
+  .brief h4 { margin:0 0 .35rem; color:#fbbf24; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; }
+  .brief ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  .brief li { margin-bottom:.2rem; }
+
+  .editor-label { display:flex; justify-content:space-between; align-items:baseline;
+                  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-top:1rem; }
+  textarea.editor { width:100%; min-height:120px; background:#060910; color:#a5f3fc;
+                    border:1px solid #334155; border-radius:8px; padding:.85rem 1rem;
+                    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; line-height:1.7;
+                    resize:vertical; white-space:pre; overflow-x:auto; }
+  textarea.editor:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+  .btn-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.85rem; align-items:center; }
+  button { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:.6rem 1.15rem;
+           font-weight:700; cursor:pointer; font-size:.88rem; font-family:inherit; transition:background .15s ease; }
+  button:hover { background:#38bdf8; }
+  button.ghost { background:#24324a; color:#cbd5e1; }
+  button.ghost:hover { background:#334155; }
+  .scene.solved button.run { background:#10b981; cursor:default; }
+
+  .out { margin-top:.9rem; display:none; }
+  .out.show { display:block; }
+  .out-head { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-bottom:.35rem; }
+  .parsed { background:#060910; border:1px solid #1e293b; border-radius:8px; padding:.8rem 1rem;
+            font-family:ui-monospace,Consolas,monospace; font-size:.8rem; white-space:pre-wrap;
+            color:#cbd5e1; margin:0; }
+  .verdict { margin-top:.7rem; font-size:.9rem; padding:.7rem .9rem; border-radius:8px; }
+  .verdict.bad { background:#2a1215; border:1px solid #7f1d1d; color:#fca5a5; }
+  .verdict.good { background:#052e22; border:1px solid #10b981; color:#6ee7b7; font-weight:600; }
+  .verdict .lbl { font-weight:700; }
+
+  .hints { margin-top:.8rem; }
+  .hint { display:none; background:#0b1220; border:1px dashed #475569; border-radius:8px;
+          padding:.6rem .9rem; margin-bottom:.5rem; font-size:.88rem; color:#cbd5e1; }
+  .hint.show { display:block; }
+  .hint b { color:#94a3b8; }
+  .locked-note { padding:0 1.25rem 1.1rem; color:#64748b; font-size:.88rem; }
+
+  #finale { display:none; margin-top:1.5rem; }
+  #done-banner { display:none; margin-top:1.25rem; background:#052e22; border:1px solid #10b981;
+                 color:#6ee7b7; padding:1.1rem 1.25rem; border-radius:10px; font-weight:bold; }
+  #done-banner p { color:#a7f3d0; font-weight:normal; margin:.6rem 0 0; font-size:.9rem; }
+  .debrief { margin-top:1.5rem; }
+  .debrief li { margin-bottom:.35rem; color:#cbd5e1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="panel">
+    <span class="badge">Git Level 2</span>
+    <h1>Git: Undoing Things Safely</h1>
+
+    <h2>Why this is worth learning properly</h2>
+    <p class="lede">
+      Most people learn Git well enough to save their work, then freeze the first time they need
+      to take something back. They copy the folder "just in case", paste code into a chat window,
+      and hope.
+    </p>
+    <p class="lede">
+      Git has three different undos, and picking the wrong one is how work actually gets lost.
+      They differ in one thing: <strong>how much they destroy.</strong> One throws away an edit
+      you have not saved. One removes a save but keeps the work. One adds a new save that cancels
+      an old one, changing nothing about the past.
+    </p>
+
+    <h2>Your turn</h2>
+    <p class="lede">
+      The repository below already has some history: three commits, and a file Maya has just
+      edited badly. You will undo three different mistakes, each needing a different tool — and
+      the last one has already been shared with the team, which rules out two of the three.
+    </p>
+    <div id="status" role="status" aria-live="polite">
+      <span class="item">BRANCH <span class="val" id="s-branch">—</span></span>
+      <span class="item">COMMITS <span class="val" id="s-commits">0</span></span>
+      <span class="item">STEP <span class="val" id="s-step">0/3</span></span>
+      <div id="bar" role="img" aria-label="Progress"><div id="fill"></div></div>
+    </div>
+    <div id="scenes"></div>
+    <div id="finale"><div id="done-banner">Done — your points have been awarded.</div></div>
+  </div>
+</div>
+
+<script>
+
+/* =========================================================================
+   The repository simulator. Commands are executed against a real model —
+   commits, branches, a working tree and a staging area — and every check
+   inspects that model, never the text you typed.
+   ========================================================================= */
+function newRepo(seed) {
+  var r = {
+    initialized: false,
+    work: {},            // working tree: filename -> content
+    staged: {},
+    commits: {},         // id -> { id, msg, parent, tree, revertOf }
+    branches: {},
+    head: null,
+    next: 1,
+    log: [],
+    conflicts: null      // { file, ours, theirs, from } while a merge is unresolved
+  };
+  if (seed) seed(r);
+  return r;
+}
+
+function headCommit(r) { return r.head && r.branches[r.head] ? r.commits[r.branches[r.head]] : null; }
+function treeOf(r) { var c = headCommit(r); return c ? c.tree : {}; }
+function history(r, branch) {
+  var out = [], id = r.branches[branch];
+  while (id) { var c = r.commits[id]; if (!c) break; out.push(c); id = c.parent; }
+  return out;
+}
+function say(r, line) { r.log.push(line); }
+function copy(o) { var n = {}; Object.keys(o).forEach(function (k) { n[k] = o[k]; }); return n; }
+
+// Resolve HEAD, HEAD~1, HEAD~2 or a commit id to a commit.
+function resolveRef(r, ref) {
+  if (!ref) return null;
+  var m = /^HEAD(?:~(\d+))?$/.exec(ref);
+  if (m) {
+    var back = m[1] ? parseInt(m[1], 10) : 0;
+    var h = history(r, r.head);
+    return h[back] || null;
+  }
+  return r.commits[ref] || null;
+}
+
+function commitNow(r, msg, extra) {
+  var tree = copy(treeOf(r));
+  Object.keys(r.staged).forEach(function (f) {
+    if (r.staged[f] === null) delete tree[f]; else tree[f] = r.staged[f];
+  });
+  var id = 'c' + (r.next++);
+  r.commits[id] = { id: id, msg: msg, parent: r.branches[r.head], tree: tree };
+  if (extra) Object.keys(extra).forEach(function (k) { r.commits[id][k] = extra[k]; });
+  r.branches[r.head] = id;
+  r.staged = {};
+  return id;
+}
+
+function run(r, raw) {
+  var line = raw.trim();
+  if (!line || line.charAt(0) === '#') return;
+  var m;
+
+  // Editing a file, so a lab can teach undoing an edit.
+  if ((m = /^edit\s+([\w./-]+)\s+"(.*)"$/.exec(line)) || (m = /^edit\s+([\w./-]+)\s+(.+)$/.exec(line))) {
+    say(r, '$ ' + line);
+    r.work[m[1]] = m[2];
+    say(r, '  ' + m[1] + ' now contains: ' + m[2]);
+    return;
+  }
+  if ((m = /^(?:touch)\s+([\w./-]+)$/.exec(line))) {
+    say(r, '$ ' + line); r.work[m[1]] = 'new file'; return;
+  }
+  if (!/^git\s/.test(line)) {
+    say(r, '$ ' + line);
+    say(r, '  this lab understands git commands, plus: edit <file> "text"');
+    return;
+  }
+
+  say(r, '$ ' + line);
+  var args = line.replace(/^git\s+/, '');
+
+  if (/^init$/.test(args)) {
+    if (r.initialized) { say(r, '  already a repository'); return; }
+    r.initialized = true; r.head = 'main'; r.branches['main'] = null;
+    say(r, '  initialised empty repository on branch main');
+    return;
+  }
+  if (!r.initialized) { say(r, '  not a git repository'); return; }
+
+  if (r.conflicts && !/^(add|commit|status|merge --abort)/.test(args)) {
+    say(r, '  you are in the middle of a conflicted merge — resolve it first');
+    return;
+  }
+
+  if ((m = /^add\s+(.+)$/.exec(args))) {
+    var what = m[1].trim();
+    var picked = (what === '.' || what === '-A' || what === '--all') ? Object.keys(r.work) : what.split(/\s+/);
+    var n = 0;
+    picked.forEach(function (f) {
+      if (r.work.hasOwnProperty(f)) { r.staged[f] = r.work[f]; n++; }
+      else say(r, "  pathspec '" + f + "' did not match any file");
+    });
+    if (n) say(r, '  staged ' + n + ' file(s)');
+    if (r.conflicts && r.staged.hasOwnProperty(r.conflicts.file)) {
+      say(r, '  conflict in ' + r.conflicts.file + ' marked as resolved');
+      r.conflictResolvedContent = r.staged[r.conflicts.file];
+    }
+    return;
+  }
+
+  if ((m = /^commit\s+(?:-m|--message)\s*(?:=\s*)?(["'])(.*?)\1\s*$/.exec(args))) {
+    var msg = m[2];
+    if (r.conflicts) {
+      if (!r.staged.hasOwnProperty(r.conflicts.file)) { say(r, '  the conflicted file is not staged yet'); return; }
+      var merged = commitNow(r, msg, { merged: r.branches[r.conflicts.from] });
+      say(r, '  [' + r.head + ' ' + merged + '] ' + msg + '  (merge resolved)');
+      r.conflicts = null;
+      return;
+    }
+    if (!Object.keys(r.staged).length) { say(r, '  nothing staged to commit'); return; }
+    var id = commitNow(r, msg);
+    say(r, '  [' + r.head + ' ' + id + '] ' + msg);
+    return;
+  }
+
+  if ((m = /^(?:checkout\s+-b|switch\s+-c)\s+([\w./-]+)$/.exec(args))) {
+    if (r.branches.hasOwnProperty(m[1])) { say(r, "  branch '" + m[1] + "' exists"); return; }
+    r.branches[m[1]] = r.branches[r.head]; r.head = m[1];
+    say(r, "  created and switched to '" + m[1] + "'");
+    return;
+  }
+  if ((m = /^(?:checkout|switch)\s+([\w./-]+)$/.exec(args))) {
+    if (!r.branches.hasOwnProperty(m[1])) { say(r, "  no branch named '" + m[1] + "'"); return; }
+    r.head = m[1];
+    var t = treeOf(r);
+    r.work = copy(t);
+    say(r, "  switched to '" + m[1] + "'");
+    return;
+  }
+
+  // ----- undo family -----
+  if ((m = /^restore\s+([\w./-]+)$/.exec(args)) || (m = /^checkout\s+--\s+([\w./-]+)$/.exec(args))) {
+    var f = m[1], t2 = treeOf(r);
+    if (!t2.hasOwnProperty(f)) { say(r, '  ' + f + ' is not in the last commit, nothing to restore to'); return; }
+    r.work[f] = t2[f];
+    say(r, '  ' + f + ' restored to the last committed version');
+    return;
+  }
+  if ((m = /^reset\s+(--soft|--mixed|--hard)?\s*(\S+)?$/.exec(args))) {
+    var mode = m[1] || '--mixed', ref = m[2] || 'HEAD';
+    var target = resolveRef(r, ref);
+    if (!target && ref !== 'HEAD') { say(r, '  cannot resolve ' + ref); return; }
+    r.branches[r.head] = target ? target.id : null;
+    if (mode === '--hard') { r.work = copy(target ? target.tree : {}); r.staged = {}; say(r, '  moved ' + r.head + ' to ' + ref + ' and threw away the changes'); }
+    else if (mode === '--soft') { say(r, '  moved ' + r.head + ' to ' + ref + '; the changes are still staged'); r.staged = copy(r.staged); }
+    else { r.staged = {}; say(r, '  moved ' + r.head + ' to ' + ref + '; the changes are back in the working files'); }
+    return;
+  }
+  if ((m = /^revert\s+(?:--no-edit\s+)?(\S+)$/.exec(args))) {
+    var bad = resolveRef(r, m[1]);
+    if (!bad) { say(r, '  cannot resolve ' + m[1] + ''); return; }
+    var before = bad.parent ? r.commits[bad.parent].tree : {};
+    var tree = copy(treeOf(r));
+    // Undo only the files this commit actually CHANGED. Touching every file
+    // it contained would roll back later commits too, which is the exact
+    // difference between revert and reset.
+    Object.keys(bad.tree).forEach(function (f) {
+      if (before[f] === bad.tree[f]) return;           // unchanged by this commit
+      if (before.hasOwnProperty(f)) tree[f] = before[f]; else delete tree[f];
+    });
+    var id2 = 'c' + (r.next++);
+    r.commits[id2] = { id: id2, msg: 'Revert "' + bad.msg + '"', parent: r.branches[r.head], tree: tree, revertOf: bad.id };
+    r.branches[r.head] = id2;
+    r.work = copy(tree);
+    say(r, '  [' + r.head + ' ' + id2 + '] Revert "' + bad.msg + '"');
+    say(r, '  the old commit is still in the history; a new one undoes it');
+    return;
+  }
+
+  if ((m = /^merge\s+([\w./-]+)$/.exec(args))) {
+    var from = m[1];
+    if (!r.branches.hasOwnProperty(from)) { say(r, "  no branch named '" + from + "'"); return; }
+    var target = r.branches[r.head], source = r.branches[from];
+    if (!source) { say(r, '  nothing to merge'); return; }
+    var reach = history(r, from).map(function (c) { return c.id; });
+    if (reach.indexOf(target) !== -1) {
+      r.branches[r.head] = source; r.work = copy(r.commits[source].tree);
+      say(r, '  fast-forward: ' + r.head + ' now at ' + source);
+      return;
+    }
+    // find the shared starting point, then look for a file both sides changed
+    var mine = history(r, r.head).map(function (c) { return c.id; });
+    var baseId = reach.filter(function (id) { return mine.indexOf(id) !== -1; })[0];
+    var base = baseId ? r.commits[baseId].tree : {};
+    var ours = treeOf(r), theirs = r.commits[source].tree;
+    var clash = Object.keys(theirs).filter(function (f) {
+      return ours[f] !== undefined && ours[f] !== theirs[f] &&
+             base[f] !== undefined && ours[f] !== base[f] && theirs[f] !== base[f];
+    })[0];
+    if (clash) {
+      r.conflicts = { file: clash, ours: ours[clash], theirs: theirs[clash], from: from };
+      r.work[clash] = '<<<<<<< HEAD\n' + ours[clash] + '\n=======\n' + theirs[clash] + '\n>>>>>>> ' + from;
+      say(r, '  CONFLICT: both branches changed ' + clash);
+      say(r, '  Git has written both versions into the file, marked with <<<<<<< and >>>>>>>');
+      say(r, '  edit it to the version you want, stage it, then commit');
+      return;
+    }
+    var tree3 = copy(ours);
+    Object.keys(theirs).forEach(function (f) { if (theirs[f] !== base[f]) tree3[f] = theirs[f]; });
+    var id3 = 'c' + (r.next++);
+    r.commits[id3] = { id: id3, msg: "Merge branch '" + from + "'", parent: target, tree: tree3, merged: source };
+    r.branches[r.head] = id3; r.work = copy(tree3);
+    say(r, '  merged ' + from + ' into ' + r.head);
+    return;
+  }
+  if (/^merge --abort$/.test(args)) {
+    if (!r.conflicts) { say(r, '  no merge in progress'); return; }
+    r.work = copy(treeOf(r)); r.conflicts = null;
+    say(r, '  merge abandoned, back to where you were');
+    return;
+  }
+
+  if (/^status$/.test(args)) {
+    say(r, '  on branch ' + r.head);
+    if (r.conflicts) say(r, '  UNRESOLVED: ' + r.conflicts.file);
+    var t4 = treeOf(r);
+    var changed = Object.keys(r.work).filter(function (f) { return r.work[f] !== t4[f]; });
+    say(r, changed.length ? '  changed but not staged: ' + changed.join(', ') : '  nothing changed');
+    var st = Object.keys(r.staged);
+    if (st.length) say(r, '  staged: ' + st.join(', '));
+    return;
+  }
+  if (/^log/.test(args)) {
+    var h = history(r, r.head);
+    if (!h.length) say(r, '  no commits yet');
+    h.forEach(function (c) { say(r, '  ' + c.id + '  ' + c.msg); });
+    return;
+  }
+  say(r, '  this lab does not know that command');
+}
+
+function execute(text, seed) {
+  var r = newRepo(seed);
+  text.replace(/\r\n?/g, '\n').split('\n').forEach(function (l) { run(r, l); });
+  return r;
+}
+
+function describe(r) {
+  if (!r.initialized) return 'No repository here yet.';
+  var out = 'branch you are on : ' + r.head + '\n';
+  Object.keys(r.branches).forEach(function (b) {
+    var h = history(r, b);
+    out += 'branch ' + b + (b === r.head ? ' (you are here)' : '') + ' : ' +
+           (h.length ? h.length + ' commit(s), newest "' + h[0].msg + '"' : 'no commits') + '\n';
+  });
+  var t = treeOf(r);
+  out += '\nlast committed version of each file:\n';
+  Object.keys(t).forEach(function (f) { out += '  ' + f + ' = ' + JSON.stringify(t[f]) + '\n'; });
+  if (!Object.keys(t).length) out += '  (nothing committed)\n';
+  var changed = Object.keys(r.work).filter(function (f) { return r.work[f] !== t[f]; });
+  out += '\nworking files that differ from that: ' + (changed.length ? '' : 'none') + '\n';
+  changed.forEach(function (f) { out += '  ' + f + ' = ' + JSON.stringify(r.work[f]) + '\n'; });
+  if (r.conflicts) out += '\nUNRESOLVED CONFLICT in ' + r.conflicts.file + '\n';
+  return out;
+}
+
+
+/* The repository each step starts from: three commits already made. */
+function SEED(r) {
+  r.initialized = true; r.head = 'main'; r.branches['main'] = null;
+  r.work = { 'index.html': 'homepage v1', 'prices.txt': '10, 20, 30' };
+  r.staged = { 'index.html': 'homepage v1', 'prices.txt': '10, 20, 30' };
+  commitNow(r, 'first version of the site');
+  r.work['prices.txt'] = '10, 20, 30, 40'; r.staged = { 'prices.txt': '10, 20, 30, 40' };
+  commitNow(r, 'add the fourth price');
+  r.work['index.html'] = 'homepage v2'; r.staged = { 'index.html': 'homepage v2' };
+  commitNow(r, 'new homepage text');
+  r.log = [];
+}
+
+var TASK_ID = 12;
+
+
+var SCENES = [
+{
+  id: 1,
+  title: 'Throw away an edit you have not saved',
+  story: '<p>Maya opens <code>prices.txt</code>, deletes half of it by accident, and has not committed anything.</p>' +
+         '<p>This is the safest undo there is, because the good version is already saved in the last commit. ' +
+         '<code>git restore</code> copies that saved version back over the file you have ruined.</p>' +
+         '<p>Nothing in the history changes — you are only fixing the working copy.</p>',
+  voice: { who: 'Priya', line: '"If it was committed, it is not lost. That is the whole reason we commit."' },
+  brief: ['run the <code>edit</code> line as given, so the file really is broken',
+          'put <code>prices.txt</code> back to its last saved version',
+          'leave the history alone — still three commits'],
+  start: 'edit prices.txt "oops"\n',
+  hints: ['One extra command, after the edit.',
+          'It is the opposite of saving: you want the committed version back in the working file.',
+          '<code>git restore prices.txt</code>'],
+  validate: function (r) {
+    if (r.work['prices.txt'] === 'oops') return { ok: false, msg: 'The file is still ruined. Put the last saved version back.' };
+    if (r.work['prices.txt'] !== '10, 20, 30, 40') return { ok: false, msg: 'The working file says <code>' + r.work['prices.txt'] + '</code>. The last commit had <code>10, 20, 30, 40</code>.' };
+    if (history(r, 'main').length !== 3) return { ok: false, msg: 'The history should still have exactly 3 commits — this undo does not touch history.' };
+    return { ok: true, log: 'file back to its saved version, history untouched' };
+  }
+},
+{
+  id: 2,
+  title: 'Take back a commit you have not shared',
+  story: '<p>Maya commits the new homepage text, then realises it was the wrong wording. The commit is ' +
+         'still only on her own machine — nobody else has it.</p>' +
+         '<p><code>git reset</code> moves the branch back to an earlier commit. With <code>--mixed</code> ' +
+         '(the default) the changes come back into your working files, so nothing is lost — you simply have ' +
+         'not committed them yet.</p>' +
+         '<p><code>HEAD~1</code> means "one commit before where I am now".</p>',
+  voice: { who: 'Priya', line: '"Reset rewrites your history. Fine while it is yours alone, rude once it is shared."' },
+  brief: ['move the branch back one commit',
+          'end with 2 commits, not 3',
+          'the homepage text must still be in the working file — undo the commit, not the work'],
+  start: '# the three commits are already here — check with: git log\n',
+  hints: ['One command. It needs a target: how far back to move.',
+          'The default mode keeps your changes in the working files.',
+          '<code>git reset HEAD~1</code>'],
+  validate: function (r) {
+    var h = history(r, 'main');
+    if (h.length === 3) return { ok: false, msg: 'Still 3 commits. The branch has not moved back yet.' };
+    if (h.length !== 2) return { ok: false, msg: 'There are now ' + h.length + ' commits. It should be 2 — one step back, not more.' };
+    if (r.work['index.html'] !== 'homepage v2') return { ok: false, msg: 'The commit is gone and so is the work — <code>--hard</code> throws the changes away. Use the default, which keeps them in your files.' };
+    return { ok: true, log: 'commit taken back, the wording is still in the working file' };
+  }
+},
+{
+  id: 3,
+  title: 'Undo something everyone already has',
+  story: '<p>The fourth price was wrong, and that commit was pushed days ago. Everyone has it.</p>' +
+         '<p>Reset is now the wrong tool: it rewrites history, and rewriting history other people already ' +
+         'have gives them a repository that disagrees with yours.</p>' +
+         '<p><code>git revert</code> does the opposite. It leaves the bad commit exactly where it is and ' +
+         'adds a <em>new</em> commit that undoes its changes. The history grows instead of changing, so ' +
+         'everybody stays in agreement.</p>',
+  voice: { who: 'Priya', line: '"Shared history is public record. You do not edit it, you publish a correction."' },
+  brief: ['undo the commit that added the fourth price',
+          'the history must grow to 4 commits, not shrink',
+          '<code>prices.txt</code> ends up back at <code>10, 20, 30</code>',
+          'the original bad commit is still in the log'],
+  start: '# find the commit id first if you like: git log\n',
+  hints: ['Not reset. The other one — the one that adds a commit rather than removing one.',
+          'It takes the id of the commit to undo. <code>git log</code> shows the ids.',
+          'The commit that added the price is <code>c2</code>, so: <code>git revert c2</code>'],
+  validate: function (r) {
+    var h = history(r, 'main');
+    if (h.length < 4) return { ok: false, msg: 'The history has ' + h.length + ' commits. Reverting adds one — it should be 4.' };
+    if (h.length > 4) return { ok: false, msg: 'There are ' + h.length + ' commits; only one revert is needed.' };
+    if (!h[0].revertOf) return { ok: false, msg: 'The newest commit is not a revert. Use <code>git revert</code> so the original stays in the history.' };
+    if (!h.some(function (c) { return c.id === 'c2'; })) return { ok: false, msg: 'The original commit has disappeared from the history — that is what revert is designed to avoid.' };
+    var t = treeOf(r);
+    if (t['prices.txt'] !== '10, 20, 30') return { ok: false, msg: 'The file now reads <code>' + t['prices.txt'] + '</code>; reverting that commit should leave <code>10, 20, 30</code>.' };
+    if (t['index.html'] !== 'homepage v2') return { ok: false, msg: 'The homepage change was undone too. A revert undoes one commit, not everything after it.' };
+    return { ok: true, log: 'bad change undone, history intact, everyone still agrees' };
+  }
+}
+];
+
+/* ---------- engine ---------- */
+var solved = {}, reported = false;
+
+function buildScenes() {
+  var host = document.getElementById('scenes');
+  SCENES.forEach(function (sc, idx) {
+    var card = document.createElement('section');
+    card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+    card.id = 'scene-' + sc.id;
+
+    var head = document.createElement('div');
+    head.className = 'scene-head';
+    head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+      '<h2 class="scene-title">' + sc.title + '</h2>' +
+      '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+    head.addEventListener('click', function () {
+      if (!card.classList.contains('locked')) card.classList.toggle('open');
+    });
+    card.appendChild(head);
+
+    if (idx !== 0) {
+      var note = document.createElement('p');
+      note.className = 'locked-note';
+      note.textContent = 'Locked — finish the step above first.';
+      card.appendChild(note);
+    }
+
+    var body = document.createElement('div');
+    body.className = 'scene-body';
+    body.innerHTML = sc.story +
+      '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+      '<div class="brief"><h4>Make all of this true</h4><ul>' +
+      sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="editor-label"><span>terminal — one command per line</span><span>step ' + sc.id + ' of 4</span></div>';
+
+    var ta = document.createElement('textarea');
+    ta.className = 'editor';
+    ta.value = sc.start;
+    ta.spellcheck = false;
+    ta.setAttribute('aria-label', 'Commands for step ' + sc.id);
+    body.appendChild(ta);
+
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+    var runBtn = document.createElement('button');
+    runBtn.className = 'run'; runBtn.type = 'button'; runBtn.textContent = 'Run the commands';
+    var hintBtn = document.createElement('button');
+    hintBtn.className = 'ghost'; hintBtn.type = 'button'; hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'ghost'; resetBtn.type = 'button'; resetBtn.textContent = 'Start over';
+    row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+    body.appendChild(row);
+
+    var hints = document.createElement('div');
+    hints.className = 'hints';
+    sc.hints.forEach(function (h, hi) {
+      var el = document.createElement('div');
+      el.className = 'hint';
+      el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+      hints.appendChild(el);
+    });
+    body.appendChild(hints);
+
+    var out = document.createElement('div');
+    out.className = 'out';
+    out.innerHTML = '<div class="out-head">what Git did, and where the repository ended up</div>' +
+                    '<pre class="parsed"></pre><div class="verdict"></div>';
+    body.appendChild(out);
+
+    card.appendChild(body);
+    host.appendChild(card);
+
+    var shown = 0;
+    hintBtn.addEventListener('click', function () {
+      if (shown >= sc.hints.length) return;
+      hints.children[shown].classList.add('show');
+      shown++;
+      hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+    });
+    resetBtn.addEventListener('click', function () {
+      if (solved[sc.id]) return;
+      ta.value = sc.start; out.classList.remove('show'); ta.focus();
+    });
+    runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
+    });
+  });
+}
+
+function runScene(sc, ta, out, runBtn, card) {
+  if (solved[sc.id]) return;
+  var repo = execute(ta.value, SEED);
+  var pre = out.querySelector('.parsed');
+  var verdict = out.querySelector('.verdict');
+  out.classList.add('show');
+  pre.textContent = repo.log.join('\n') + '\n\n' + describe(repo);
+
+  document.getElementById('s-branch').textContent = repo.head || '—';
+  document.getElementById('s-commits').textContent = repo.head ? history(repo, repo.head).length : 0;
+
+  var v = sc.validate(repo);
+  if (!v.ok) {
+    verdict.className = 'verdict bad';
+    verdict.innerHTML = '<span class="lbl">✗ Not yet — </span>' + v.msg;
+    return;
+  }
+  verdict.className = 'verdict good';
+  verdict.innerHTML = '<span class="lbl">✓ Done. </span>' + v.log;
+  solveScene(sc, card, runBtn, ta);
+}
+
+function solveScene(sc, card, runBtn, ta) {
+  solved[sc.id] = true;
+  card.classList.remove('active');
+  card.classList.add('solved', 'collapsible');
+  card.querySelector('.scene-state').textContent = 'done';
+  runBtn.textContent = 'Done';
+  ta.readOnly = true;
+
+  var count = Object.keys(solved).length;
+  document.getElementById('s-step').textContent = count + '/' + SCENES.length;
+  document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+
+  if (count === SCENES.length) { finish(); return; }
+
+  card.classList.remove('open');
+  var next = SCENES[SCENES.indexOf(sc) + 1];
+  var nextCard = document.getElementById('scene-' + next.id);
+  nextCard.classList.remove('locked');
+  nextCard.classList.add('active', 'open', 'collapsible');
+  nextCard.querySelector('.scene-state').textContent = 'active';
+  var note = nextCard.querySelector('.locked-note');
+  if (note) note.parentNode.removeChild(note);
+  nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+  // Fired only after every step's validator passed against the simulated repository.
+  if (!reported) {
+    reported = true;
+    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  }
+  var finale = document.getElementById('finale');
+  finale.style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+buildScenes();
+</script>
+</body>
+</html>
