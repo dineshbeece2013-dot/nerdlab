@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YAML Task 3: YAML in the Wild</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; color:#f8fafc;
+         padding:2rem 1.5rem 4rem; margin:0; line-height:1.6; }
+  .container { max-width:900px; margin:0 auto; }
+  .panel { background:#1e293b; padding:2rem; border-radius:12px; border:1px solid #334155;
+           box-shadow:0 10px 25px rgba(0,0,0,.5); }
+  h1 { color:#38bdf8; margin:.6rem 0 .4rem; font-size:1.75rem; }
+  h2 { color:#38bdf8; font-size:1.1rem; }
+  .badge { display:inline-block; background:#0284c7; color:#fff; padding:.25rem .75rem;
+           border-radius:9999px; font-size:.875rem; font-weight:600; }
+  .lede { color:#cbd5e1; }
+  code { background:#0b1220; padding:.1rem .35rem; border-radius:4px; color:#a5f3fc; font-size:.92em; }
+  pre { background:#090d16; color:#a5f3fc; padding:1rem; border-radius:8px; overflow-x:auto;
+        border:1px solid #1e293b; font-size:.85rem; margin:.75rem 0 0; }
+
+  #status { position:sticky; top:0; z-index:20; margin:1.25rem 0; padding:.85rem 1.1rem;
+            background:#16213a; border:1px solid #334155; border-radius:12px; display:flex;
+            flex-wrap:wrap; gap:.75rem 1.5rem; align-items:center;
+            font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
+  #status .item { display:flex; align-items:center; gap:.45rem; color:#94a3b8; }
+  #status .val { color:#e2e8f0; font-weight:700; }
+  #bar { flex:1 1 160px; min-width:140px; height:8px; background:#0f172a; border-radius:999px;
+         overflow:hidden; border:1px solid #334155; }
+  #fill { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#10b981); transition:width .45s ease; }
+
+  .scene { border:1px solid #334155; border-radius:12px; background:#1a2437; margin-bottom:1.1rem; overflow:hidden; }
+  .scene.locked { opacity:.55; }
+  .scene.active { border-color:#38bdf8; box-shadow:0 0 0 1px rgba(56,189,248,.25); }
+  .scene.solved { border-color:#10b981; background:#101f1c; }
+  .scene-head { display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; }
+  .scene.solved .scene-head, .scene.collapsible .scene-head { cursor:pointer; }
+  .scene-num { flex:none; width:1.9rem; height:1.9rem; border-radius:8px; background:#0b1220;
+               border:1px solid #334155; color:#94a3b8; display:flex; align-items:center;
+               justify-content:center; font-weight:700; font-size:.85rem; }
+  .scene.active .scene-num { background:#0284c7; border-color:#38bdf8; color:#fff; }
+  .scene.solved .scene-num { background:#065f46; border-color:#10b981; color:#d1fae5; }
+  .scene-title { font-weight:700; color:#f1f5f9; flex:1; }
+  .scene-state { font-size:.75rem; font-family:ui-monospace,Consolas,monospace; color:#64748b;
+                 text-transform:uppercase; letter-spacing:.04em; }
+  .scene.solved .scene-state { color:#34d399; }
+  .scene-body { padding:0 1.25rem 1.35rem; display:none; }
+  .scene.open .scene-body { display:block; }
+  .scene-body p { color:#cbd5e1; }
+
+  .voice { border-left:3px solid #c084fc; background:#1b1630; padding:.65rem .9rem;
+           border-radius:0 8px 8px 0; margin:.9rem 0; color:#e9d5ff; font-size:.92rem; }
+  .voice strong { color:#c084fc; }
+  .brief { background:#16213a; border:1px solid #334155; border-left:4px solid #f59e0b;
+           border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:.9rem 0; font-size:.92rem; color:#e2e8f0; }
+  .brief h4 { margin:0 0 .35rem; color:#fbbf24; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; }
+  .brief ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  .brief li { margin-bottom:.2rem; }
+
+  .editor-label { display:flex; justify-content:space-between; align-items:baseline;
+                  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-top:1rem; }
+  textarea.editor { width:100%; min-height:120px; background:#060910; color:#a5f3fc;
+                    border:1px solid #334155; border-radius:8px; padding:.85rem 1rem;
+                    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; line-height:1.7;
+                    resize:vertical; white-space:pre; overflow-x:auto; }
+  textarea.editor:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+  .btn-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.85rem; align-items:center; }
+  button { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:.6rem 1.15rem;
+           font-weight:700; cursor:pointer; font-size:.88rem; font-family:inherit; transition:background .15s ease; }
+  button:hover { background:#38bdf8; }
+  button.ghost { background:#24324a; color:#cbd5e1; }
+  button.ghost:hover { background:#334155; }
+  .scene.solved button.run { background:#10b981; cursor:default; }
+
+  .out { margin-top:.9rem; display:none; }
+  .out.show { display:block; }
+  .out-head { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-bottom:.35rem; }
+  .parsed { background:#060910; border:1px solid #1e293b; border-radius:8px; padding:.8rem 1rem;
+            font-family:ui-monospace,Consolas,monospace; font-size:.8rem; white-space:pre-wrap;
+            color:#cbd5e1; margin:0; }
+  .verdict { margin-top:.7rem; font-size:.9rem; padding:.7rem .9rem; border-radius:8px; }
+  .verdict.bad { background:#2a1215; border:1px solid #7f1d1d; color:#fca5a5; }
+  .verdict.good { background:#052e22; border:1px solid #10b981; color:#6ee7b7; font-weight:600; }
+  .verdict .lbl { font-weight:700; }
+
+  .hints { margin-top:.8rem; }
+  .hint { display:none; background:#0b1220; border:1px dashed #475569; border-radius:8px;
+          padding:.6rem .9rem; margin-bottom:.5rem; font-size:.88rem; color:#cbd5e1; }
+  .hint.show { display:block; }
+  .hint b { color:#94a3b8; }
+  .locked-note { padding:0 1.25rem 1.1rem; color:#64748b; font-size:.88rem; }
+
+  #finale { display:none; margin-top:1.5rem; }
+  #done-banner { display:none; margin-top:1.25rem; background:#052e22; border:1px solid #10b981;
+                 color:#6ee7b7; padding:1.1rem 1.25rem; border-radius:10px; font-weight:bold; }
+  #done-banner p { color:#a7f3d0; font-weight:normal; margin:.6rem 0 0; font-size:.9rem; }
+  .debrief { margin-top:1.5rem; }
+  .debrief li { margin-bottom:.35rem; color:#cbd5e1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="panel">
+    <span class="badge">YAML Level 3</span>
+    <h1>YAML in the Wild: A Build Pipeline</h1>
+
+    <h2>Where the shapes you learned actually turn up</h2>
+    <p class="lede">
+      You can write names and values, lists, and settings inside settings. Real files combine all
+      three at once, several levels deep, and that is a different skill from knowing each piece.
+    </p>
+    <p class="lede">
+      The file you will build here is a <strong>CI workflow</strong> — the instructions a service
+      like GitHub Actions follows every time somebody changes the code: check out the code, run
+      the tests, and if they pass, deploy. It is one of the most common YAML files in the world,
+      and it is nothing but lists of settings inside settings.
+    </p>
+    <p class="lede">
+      One old friend also reappears. YAML's habit of turning words into true or false is not
+      limited to values — it can happen to a <em>key</em>, and this file has exactly the key it
+      happens to.
+    </p>
+
+    <h2>Your turn</h2>
+    <p class="lede">
+      Build the workflow a piece at a time. This page reads it the way the CI system would and
+      shows you which jobs it found, what each step does, and what order they would run in.
+    </p>
+    <div id="status" role="status" aria-live="polite">
+      <span class="item">JOBS <span class="val" id="s-branch">0</span></span>
+      <span class="item">FILE <span class="val" id="s-commits">—</span></span>
+      <span class="item">STEP <span class="val" id="s-step">0/3</span></span>
+      <div id="bar" role="img" aria-label="Progress"><div id="fill"></div></div>
+    </div>
+    <div id="scenes"></div>
+    <div id="finale"><div id="done-banner">Done — your points have been awarded.</div></div>
+  </div>
+</div>
+
+<script>
+function yamlError(line, msg) { return { line: line, msg: msg }; }
+
+function stripComment(s) {
+    var out = '', q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { out += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; out += c; continue; }
+        if (c === '#' && (i === 0 || /\s/.test(s.charAt(i - 1)))) break;
+        out += c;
+    }
+    return out;
+}
+
+function unquote(s) {
+    if (s.length > 1 && s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') {
+        return s.slice(1, -1).replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\"/g, '"');
+    }
+    if (s.length > 1 && s.charAt(0) === "'" && s.charAt(s.length - 1) === "'") {
+        return s.slice(1, -1).replace(/''/g, "'");
+    }
+    return s;
+}
+
+function splitTop(s, sep) {
+    var parts = [], depth = 0, q = null, cur = '';
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { cur += c; if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; cur += c; continue; }
+        if (c === '[' || c === '{') depth++;
+        if (c === ']' || c === '}') depth--;
+        if (c === sep && depth === 0) { parts.push(cur); cur = ''; continue; }
+        cur += c;
+    }
+    if (cur.trim() !== '' || parts.length) parts.push(cur);
+    return parts;
+}
+
+function parseScalar(s, line) {
+    s = s.trim();
+    if (s === '') return null;
+    if ((s.charAt(0) === '"' && s.charAt(s.length - 1) === '"') ||
+        (s.charAt(0) === "'" && s.charAt(s.length - 1) === "'")) return unquote(s);
+    if (s.charAt(0) === '[' && s.charAt(s.length - 1) === ']') {
+        var inner = s.slice(1, -1).trim();
+        if (inner === '') return [];
+        return splitTop(inner, ',').map(function (p) { return parseScalar(p, line); });
+    }
+    if (s.charAt(0) === '{' && s.charAt(s.length - 1) === '}') {
+        var body = s.slice(1, -1).trim(), obj = {};
+        if (body === '') return obj;
+        splitTop(body, ',').forEach(function (pair) {
+            var kv = splitKey(pair.trim(), line);
+            obj[kv.key] = parseScalar(kv.rest, line);
+        });
+        return obj;
+    }
+    if (/^(null|~)$/i.test(s)) return null;
+    if (/^(true|yes|on)$/i.test(s)) return true;
+    if (/^(false|no|off)$/i.test(s)) return false;
+    if (/^[-+]?\d+$/.test(s)) return parseInt(s, 10);
+    if (/^[-+]?(\d+\.\d*|\.\d+|\d+)([eE][-+]?\d+)?$/.test(s) && /[.eE]/.test(s)) return parseFloat(s);
+    return s;
+}
+
+
+// A bare on/off/yes/no used as a KEY becomes a boolean too, exactly as it does
+// as a value. Quoting the key is what keeps it a word.
+function coerceKey(raw) {
+  var t = String(raw).trim();
+  var quoted = (t.charAt(0) === '"' && t.charAt(t.length - 1) === '"') ||
+               (t.charAt(0) === "'" && t.charAt(t.length - 1) === "'");
+  if (quoted) return unquote(t);
+  if (/^(true|yes|on)$/i.test(t)) return 'true';
+  if (/^(false|no|off)$/i.test(t)) return 'false';
+  return t;
+}
+function splitKey(s, line) {
+    var q = null;
+    for (var i = 0; i < s.length; i++) {
+        var c = s.charAt(i);
+        if (q) { if (c === q) q = null; continue; }
+        if (c === '"' || c === "'") { q = c; continue; }
+        if (c === ':' && (i + 1 >= s.length || s.charAt(i + 1) === ' ')) {
+            return { key: coerceKey(s.slice(0, i)), rest: s.slice(i + 1).trim() };
+        }
+    }
+    throw yamlError(line, 'line ' + line + ' is not a "name: value" pair. YAML needs a colon and then a space between the name and its value.');
+}
+
+function isKeyValue(s) {
+    try { splitKey(s, 0); return true; } catch (e) { return false; }
+}
+
+function peekLine(ctx) {
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        var s = stripComment(raw).replace(/\s+$/, '');
+        if (s.trim() === '') { ctx.i++; continue; }
+        var indent = s.match(/^ */)[0].length;
+        return { indent: indent, content: s.slice(indent), line: ctx.offset + ctx.i + 1 };
+    }
+    return null;
+}
+
+function parseBlockScalar(ctx, indent, ind) {
+    var literal = ind.charAt(0) === '|';
+    var chomp = ind.length > 1 ? ind.charAt(1) : '';
+    var body = [], blockIndent = null;
+    while (ctx.i < ctx.lines.length) {
+        var raw = ctx.lines[ctx.i];
+        if (raw.trim() === '') { body.push(''); ctx.i++; continue; }
+        var ind2 = raw.match(/^ */)[0].length;
+        if (ind2 <= indent) break;
+        if (blockIndent === null) blockIndent = ind2;
+        body.push(raw.slice(Math.min(blockIndent, ind2)));
+        ctx.i++;
+    }
+    while (body.length && body[body.length - 1] === '') body.pop();
+    var out;
+    if (literal) {
+        out = body.join('\n');
+    } else {
+        out = '';
+        for (var k = 0; k < body.length; k++) {
+            if (body[k] === '') { out += '\n'; continue; }
+            if (out !== '' && out.charAt(out.length - 1) !== '\n') out += ' ';
+            out += body[k];
+        }
+    }
+    if (chomp !== '-' && out !== '') out += '\n';
+    return out;
+}
+
+function parseValue(ctx, indent, rest, line) {
+    var anchor = null;
+    var m = /^&([A-Za-z0-9_\-]+)\s*/.exec(rest);
+    if (m) { anchor = m[1]; rest = rest.slice(m[0].length).trim(); }
+    var val;
+    if (rest === '') {
+        // A block sequence may sit at its parent key's own indentation.
+        var nxt = peekLine(ctx);
+        if (nxt && nxt.indent === indent && /^-(\s|$)/.test(nxt.content)) {
+            val = parseSeq(ctx, indent);
+        } else {
+            val = parseNode(ctx, indent + 1);
+        }
+    } else if (/^[|>][-+]?$/.test(rest)) {
+        val = parseBlockScalar(ctx, indent, rest);
+    } else if (/^\*[A-Za-z0-9_\-]+$/.test(rest)) {
+        var name = rest.slice(1);
+        if (!(name in ctx.anchors)) {
+            throw yamlError(line, 'line ' + line + ' points at *' + name +
+                ', but nothing above it in this part of the file was labelled &' + name + '.');
+        }
+        val = ctx.anchors[name];
+    } else {
+        val = parseScalar(rest, line);
+    }
+    if (anchor) ctx.anchors[anchor] = val;
+    return val;
+}
+
+function parseMap(ctx, indent) {
+    var map = {}, explicit = {}, merges = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' is pushed too far to the right. It does not line up with anything above it. Inside a list item, the keys line up with the first key after the dash.');
+        if (/^-(\s|$)/.test(p.content)) throw yamlError(p.line, 'line ' + p.line + ' starts with a dash, so YAML reads it as a list item. A "name: value" pair was expected here instead.');
+        var kv = splitKey(p.content, p.line);
+        ctx.i++;
+        var value = parseValue(ctx, p.indent, kv.rest, p.line);
+        if (kv.key === '<<') { merges.push(value); }
+        else { map[kv.key] = value; explicit[kv.key] = true; }
+    }
+    for (var a = 0; a < merges.length; a++) {
+        var src = merges[a];
+        var list = Array.isArray(src) ? src : [src];
+        for (var b = 0; b < list.length; b++) {
+            var o = list[b];
+            if (!o || typeof o !== 'object') continue;
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k) && !explicit[k]) map[k] = o[k];
+        }
+    }
+    return map;
+}
+
+function parseSeq(ctx, indent) {
+    var arr = [];
+    while (true) {
+        var p = peekLine(ctx);
+        if (!p || p.indent < indent) break;
+        if (p.indent > indent) throw yamlError(p.line, 'line ' + p.line + ' starts further to the right than the list item above it.');
+        // A key at the sequence's own indentation ends the sequence; whoever
+        // called us decides whether that key is legal there.
+        if (!/^-(\s|$)/.test(p.content)) break;
+        var after = p.content.slice(1);
+        var lead = after.match(/^ */)[0].length;
+        var content = after.trim();
+        ctx.i++;
+        if (content === '') {
+            arr.push(parseNode(ctx, indent + 1));
+        } else if (isKeyValue(content)) {
+            var itemIndent = indent + 1 + lead;
+            var pad = new Array(itemIndent + 1).join(' ');
+            ctx.lines[ctx.i - 1] = pad + content;
+            ctx.i--;
+            arr.push(parseMap(ctx, itemIndent));
+        } else {
+            arr.push(parseScalar(content, p.line));
+        }
+    }
+    return arr;
+}
+
+function parseNode(ctx, indent) {
+    var p = peekLine(ctx);
+    if (!p || p.indent < indent) return null;
+    if (/^-(\s|$)/.test(p.content)) return parseSeq(ctx, p.indent);
+    return parseMap(ctx, p.indent);
+}
+
+function parseYaml(text) {
+    var all = text.replace(/\r\n?/g, '\n').split('\n');
+    for (var i = 0; i < all.length; i++) {
+        if (/^ *\t/.test(all[i])) {
+            return { ok: false, error: yamlError(i + 1, 'line ' + (i + 1) + ' starts with a TAB character. YAML only allows real spaces at the start of a line. A Tab there stops the file being read at all — it is not just untidy.') };
+        }
+    }
+    var chunks = [], cur = [], start = 0;
+    for (i = 0; i < all.length; i++) {
+        if (/^---\s*(#.*)?$/.test(all[i]) || /^\.\.\.\s*$/.test(all[i])) {
+            chunks.push({ lines: cur, offset: start });
+            cur = []; start = i + 1; continue;
+        }
+        cur.push(all[i]);
+    }
+    chunks.push({ lines: cur, offset: start });
+
+    var docs = [];
+    try {
+        for (var c = 0; c < chunks.length; c++) {
+            var blank = chunks[c].lines.every(function (l) { return stripComment(l).trim() === ''; });
+            if (blank) continue;
+            var ctx = { lines: chunks[c].lines.slice(), offset: chunks[c].offset, i: 0, anchors: {} };
+            var doc = parseNode(ctx, 0);
+            var leftover = peekLine(ctx);
+            if (leftover) throw yamlError(leftover.line, 'line ' + leftover.line + ' does not belong to anything above it. Check how far in it starts.');
+            docs.push(doc);
+        }
+    } catch (e) {
+        if (e && e.msg) return { ok: false, error: e };
+        return { ok: false, error: yamlError(0, 'something in this file could not be read: ' + e) };
+    }
+    if (!docs.length) return { ok: false, error: yamlError(1, 'there is nothing in the file yet — only blank lines and comments. Write your first line, then press the button again.') };
+    return { ok: true, docs: docs, data: docs[0] };
+}
+
+/* ---------- structure rendering: show learners what YAML actually produced ---------- */
+function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+function typeName(v) {
+    if (v === null) return 'null';
+    if (Array.isArray(v)) return 'list';
+    if (typeof v === 'object') return 'map';
+    if (typeof v === 'number') return Number.isInteger(v) ? 'int' : 'float';
+    return typeof v;
+}
+function renderStructure(v, indent) {
+    indent = indent || '';
+    var out = '';
+    if (Array.isArray(v)) {
+        if (!v.length) return indent + '(empty list)\n';
+        v.forEach(function (item) {
+            if (item && typeof item === 'object') {
+                out += indent + '-\n' + renderStructure(item, indent + '    ');
+            } else {
+                out += indent + '- ' + scalarLine(item) + '\n';
+            }
+        });
+        return out;
+    }
+    if (v && typeof v === 'object') {
+        for (var k in v) {
+            if (!Object.prototype.hasOwnProperty.call(v, k)) continue;
+            var val = v[k];
+            if (val && typeof val === 'object') {
+                out += indent + k + ':  [' + typeName(val) + ']\n' + renderStructure(val, indent + '  ');
+            } else {
+                out += indent + k + ': ' + scalarLine(val) + '\n';
+            }
+        }
+        return out;
+    }
+    return indent + scalarLine(v) + '\n';
+}
+function scalarLine(v) {
+    var shown;
+    if (typeof v === 'string') shown = JSON.stringify(v);
+    else shown = String(v);
+    if (shown.length > 70) shown = shown.slice(0, 67) + '..."';
+    return shown + '   [' + typeName(v) + ']';
+}
+function deepEq(a, b) {
+    if (a === b) return true;
+    if (typeof a !== typeof b) return false;
+    if (a === null || b === null) return false;
+    if (Array.isArray(a) !== Array.isArray(b)) return false;
+    if (typeof a !== 'object') return false;
+    var ka = Object.keys(a), kb = Object.keys(b);
+    if (ka.length !== kb.length) return false;
+    for (var i = 0; i < ka.length; i++) {
+        if (!Object.prototype.hasOwnProperty.call(b, ka[i])) return false;
+        if (!deepEq(a[ka[i]], b[ka[i]])) return false;
+    }
+    return true;
+}
+
+
+/* =========================================================================
+   Reads the workflow with the same YAML parser as the other YAML labs, then
+   works out what the CI system would actually do with it: which jobs run,
+   in what order, and what each step is. Every check reads that, not the
+   text you typed.
+   ========================================================================= */
+function get(obj, path) {
+  var cur = obj;
+  for (var i = 0; i < path.length; i++) {
+    if (cur === null || typeof cur !== 'object') return undefined;
+    cur = cur[path[i]];
+  }
+  return cur;
+}
+
+function workflow(text) {
+  var res = parseYaml(text);
+  var out = { ok: res.ok, error: res.error, notes: [], jobs: [] };
+  if (!res.ok) return out;
+  var doc = res.docs[0] || {};
+  out.doc = doc;
+  out.name = doc.name;
+
+  // `on` is the trigger. Note the classic trap: unquoted `on` is a boolean in
+  // YAML 1.1, so some parsers see the key `true` instead of `on`.
+  out.trigger = doc.on !== undefined ? doc.on : doc[true];
+  if (doc.on === undefined && doc[true] !== undefined) {
+    out.onBecameBoolean = true;
+    out.notes.push('the key `on` was read as the boolean true — YAML treats a bare on/off/yes/no as true or false');
+  }
+
+  var jobs = doc.jobs;
+  if (!jobs || typeof jobs !== 'object' || Array.isArray(jobs)) {
+    out.notes.push('there is no `jobs` section, so nothing would run');
+    return out;
+  }
+  Object.keys(jobs).forEach(function (key) {
+    var j = jobs[key] || {};
+    var steps = j.steps;
+    var job = { id: key, runsOn: j['runs-on'], needs: j.needs, steps: [] };
+    if (!Array.isArray(steps)) {
+      out.notes.push('job "' + key + '" has no list of steps — steps must be a list, each item starting with a dash');
+    } else {
+      steps.forEach(function (s, i) {
+        if (s === null || typeof s !== 'object' || Array.isArray(s)) {
+          out.notes.push('step ' + (i + 1) + ' of "' + key + '" is not a set of settings — check the indentation under the dash');
+          job.steps.push({ bad: true });
+          return;
+        }
+        job.steps.push({ name: s.name, uses: s.uses, run: s.run });
+        if (!s.uses && !s.run) out.notes.push('step ' + (i + 1) + ' of "' + key + '" neither runs a command nor uses an action, so it does nothing');
+      });
+    }
+    if (!job.runsOn) out.notes.push('job "' + key + '" does not say which machine to run on');
+    out.jobs.push(job);
+  });
+
+  // resolve order from `needs`
+  var byId = {};
+  out.jobs.forEach(function (j) { byId[j.id] = j; });
+  out.order = [];
+  var placed = {};
+  var guard = 0;
+  while (out.order.length < out.jobs.length && guard++ < 20) {
+    out.jobs.forEach(function (j) {
+      if (placed[j.id]) return;
+      var need = j.needs ? (Array.isArray(j.needs) ? j.needs : [j.needs]) : [];
+      var ready = need.every(function (n) { return placed[n]; });
+      var unknown = need.filter(function (n) { return !byId[n]; });
+      if (unknown.length) { out.notes.push('job "' + j.id + '" waits for "' + unknown.join(', ') + '", which does not exist'); placed[j.id] = true; return; }
+      if (ready) { out.order.push(j.id); placed[j.id] = true; }
+    });
+  }
+  out.parallel = out.jobs.filter(function (j) { return !j.needs; }).length;
+  return out;
+}
+
+function describeWorkflow(w) {
+  if (!w.ok) return 'Could not read the file. ' + w.error.msg;
+  var out = 'workflow name : ' + (w.name === undefined ? '(not set)' : JSON.stringify(w.name)) + '\n';
+  out += 'trigger       : ' + (w.trigger === undefined ? '(not set)' : JSON.stringify(w.trigger)) +
+         (w.onBecameBoolean ? '   <- read from the key `true`, not `on`' : '') + '\n';
+  out += '\njobs the CI system would run:\n';
+  if (!w.jobs.length) out += '  (none)\n';
+  w.jobs.forEach(function (j) {
+    out += '  ' + j.id + '  on ' + (j.runsOn || '(no machine)') +
+           (j.needs ? '  after: ' + (Array.isArray(j.needs) ? j.needs.join(', ') : j.needs) : '  (starts immediately)') + '\n';
+    if (!j.steps.length) out += '      (no steps)\n';
+    j.steps.forEach(function (s, i) {
+      if (s.bad) { out += '      ' + (i + 1) + '. (unreadable step)\n'; return; }
+      out += '      ' + (i + 1) + '. ' + (s.name || '(unnamed)') + ' — ' +
+             (s.uses ? 'uses ' + s.uses : s.run ? 'runs: ' + s.run : 'does nothing') + '\n';
+    });
+  });
+  if (w.order && w.order.length) out += '\norder: ' + w.order.join(' -> ') + '\n';
+  if (w.notes.length) out += '\nproblems:\n  ' + w.notes.join('\n  ') + '\n';
+  return out;
+}
+
+var TASK_ID = 19;
+
+var SCENES = [
+{
+  id: 1,
+  title: 'A list of things, each with settings',
+  story: '<p>You have written names, values, lists and nesting. A real settings file combines them in ' +
+         'one shape that trips up almost everyone: <strong>a list whose items are themselves sets of ' +
+         'settings</strong>.</p>' +
+         '<pre>steps:\n  - name: say hello\n    run: echo hi\n  - name: say bye\n    run: echo bye</pre>' +
+         '<p>The dash starts an item. Everything belonging to that item lines up with the first key ' +
+         'after the dash — so <code>run</code> sits under <code>name</code>, not under the dash.</p>' +
+         '<p>Two items, each with two settings. Get that alignment wrong and you get one item with four ' +
+         'settings, or a parse error.</p>',
+  voice: { who: 'Priya', line: '"A dash makes an item. What lines up under the first key belongs to it."' },
+  brief: ['name the workflow <code>build</code>',
+          'one job called <code>test</code>, running on <code>ubuntu-latest</code>',
+          'two steps: one named <code>checkout</code> that uses <code>actions/checkout@v4</code>,',
+          'and one named <code>run tests</code> that runs <code>npm test</code>'],
+  start: 'name: build\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n',
+  hints: ['Two list items under <code>steps:</code>, each starting with a dash and a space.',
+          'The second setting of an item lines up with the first — not with the dash.',
+          '<code>  - name: checkout</code> then <code>    uses: actions/checkout@v4</code>, then the second item the same way with <code>run: npm test</code>.'],
+  validate: function (w) {
+    if (!w.ok) return { ok: false, msg: w.error.msg };
+    if (w.name !== 'build') return { ok: false, msg: 'The workflow name should be <code>build</code>.' };
+    if (!w.jobs.length) return { ok: false, msg: 'There is no job yet. Keep the <code>jobs:</code> section.' };
+    var j = w.jobs.filter(function (x) { return x.id === 'test'; })[0];
+    if (!j) return { ok: false, msg: 'There is no job called <code>test</code>. Jobs found: ' + w.jobs.map(function (x) { return x.id; }).join(', ') + '.' };
+    if (j.runsOn !== 'ubuntu-latest') return { ok: false, msg: 'The job should run on <code>ubuntu-latest</code>; it says <code>' + j.runsOn + '</code>.' };
+    if (j.steps.length !== 2) return { ok: false, msg: 'The job has ' + j.steps.length + ' step(s); it needs 2. If you got 1, the second item\u2019s settings are probably indented under the first.' };
+    if (j.steps.some(function (s) { return s.bad; })) return { ok: false, msg: 'One step could not be read as a set of settings — check what lines up under each dash.' };
+    if (j.steps[0].name !== 'checkout' || j.steps[0].uses !== 'actions/checkout@v4')
+      return { ok: false, msg: 'Step 1 should be named <code>checkout</code> and use <code>actions/checkout@v4</code>.' };
+    if (j.steps[1].name !== 'run tests' || j.steps[1].run !== 'npm test')
+      return { ok: false, msg: 'Step 2 should be named <code>run tests</code> and run <code>npm test</code>.' };
+    return { ok: true, log: 'one job, two steps, read exactly as you meant them' };
+  }
+},
+{
+  id: 2,
+  title: 'The word that turns into true',
+  story: '<p>Every workflow needs a trigger — what makes it run. The setting is called <code>on</code>.</p>' +
+         '<p>And <code>on</code> is one of the words YAML treats as a yes/no value. Written bare as a ' +
+         'key, some readers see the boolean <code>true</code> instead of the word, and the trigger ' +
+         'quietly disappears — the same trap as <code>NO</code> becoming false in the earlier lab, ' +
+         'except this time it is a <em>key</em>, not a value.</p>' +
+         '<p>Quote it and it stays the word you typed.</p>',
+  voice: { who: 'Maya', line: '"It is the Norway problem again, wearing a different hat."' },
+  brief: ['keep the job and its two steps',
+          'add a trigger so the workflow runs on <code>push</code>',
+          'the trigger must be read as the key <code>on</code>, not as <code>true</code>'],
+  start: 'name: build\n\non: push\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - name: checkout\n        uses: actions/checkout@v4\n      - name: run tests\n        run: npm test\n',
+  hints: ['Run it first — the output tells you which key the trigger actually landed under.',
+          'The fix is the same one you used for <code>NO</code>: quote marks.',
+          'Write <code>"on": push</code>'],
+  validate: function (w) {
+    if (!w.ok) return { ok: false, msg: w.error.msg };
+    if (w.onBecameBoolean) return { ok: false, msg: 'The trigger was read under the key <code>true</code>, not <code>on</code>. Quote the key so YAML keeps it as a word.' };
+    if (w.trigger === undefined) return { ok: false, msg: 'There is no trigger at all, so nothing would ever start this workflow.' };
+    if (w.trigger !== 'push') return { ok: false, msg: 'The trigger should be <code>push</code>; it is <code>' + JSON.stringify(w.trigger) + '</code>.' };
+    var j = w.jobs.filter(function (x) { return x.id === 'test'; })[0];
+    if (!j || j.steps.length !== 2) return { ok: false, msg: 'Keep the job and its two steps from the last chapter.' };
+    return { ok: true, log: 'trigger read as the word "on"; the workflow runs on every push' };
+  }
+},
+{
+  id: 3,
+  title: 'Two jobs, and one that waits',
+  story: '<p>Add a second job that deploys. It must not run until the tests have passed — deploying a ' +
+         'broken build is the thing CI exists to prevent.</p>' +
+         '<p>By default jobs run <strong>at the same time</strong>, which is fast and wrong here. ' +
+         '<code>needs</code> makes one wait for another.</p>' +
+         '<p>Watch the order line in the output. Without <code>needs</code> it shows both jobs starting ' +
+         'immediately; with it, one clearly follows the other.</p>',
+  voice: { who: 'Priya', line: '"Parallel by default. If order matters, you have to say so."' },
+  brief: ['keep the <code>test</code> job exactly as it is',
+          'add a second job called <code>deploy</code>, also on <code>ubuntu-latest</code>',
+          'it has one step named <code>ship it</code> that runs <code>./deploy.sh</code>',
+          'it must not start until <code>test</code> has finished'],
+  start: 'name: build\n\n"on": push\n\njobs:\n  test:\n    runs-on: ubuntu-latest\n    steps:\n      - name: checkout\n        uses: actions/checkout@v4\n      - name: run tests\n        run: npm test\n',
+  hints: ['The second job sits alongside <code>test</code>, at the same indentation.',
+          'One extra setting makes it wait. It names the job it waits for.',
+          'Add <code>needs: test</code> to the deploy job.'],
+  validate: function (w) {
+    if (!w.ok) return { ok: false, msg: w.error.msg };
+    if (w.onBecameBoolean || w.trigger !== 'push') return { ok: false, msg: 'Keep the quoted <code>"on": push</code> trigger from the last chapter.' };
+    var t = w.jobs.filter(function (x) { return x.id === 'test'; })[0];
+    var d = w.jobs.filter(function (x) { return x.id === 'deploy'; })[0];
+    if (!t || t.steps.length !== 2) return { ok: false, msg: 'The <code>test</code> job and its two steps must stay as they were.' };
+    if (!d) return { ok: false, msg: 'There is no <code>deploy</code> job. Jobs found: ' + w.jobs.map(function (x) { return x.id; }).join(', ') + '.' };
+    if (d.runsOn !== 'ubuntu-latest') return { ok: false, msg: 'The deploy job should run on <code>ubuntu-latest</code>.' };
+    if (d.steps.length !== 1) return { ok: false, msg: 'The deploy job has ' + d.steps.length + ' step(s); it should have exactly 1.' };
+    if (d.steps[0].name !== 'ship it' || d.steps[0].run !== './deploy.sh')
+      return { ok: false, msg: 'The step should be named <code>ship it</code> and run <code>./deploy.sh</code>.' };
+    if (!d.needs) return { ok: false, msg: 'Nothing makes deploy wait, so it would start at the same time as the tests — and could ship a broken build.' };
+    var needs = Array.isArray(d.needs) ? d.needs : [d.needs];
+    if (needs.indexOf('test') === -1) return { ok: false, msg: 'Deploy waits for <code>' + needs.join(', ') + '</code>; it should wait for <code>test</code>.' };
+    if (w.order.join(',') !== 'test,deploy') return { ok: false, msg: 'The resulting order is <code>' + w.order.join(' -> ') + '</code>; it should be test then deploy.' };
+    return { ok: true, log: 'tests run first, deploy waits for them — a broken build never ships' };
+  }
+}
+];
+
+function runScene(sc, ta, out, runBtn, card) {
+  if (solved[sc.id]) return;
+  var w = workflow(ta.value);
+  var pre = out.querySelector('.parsed');
+  var verdict = out.querySelector('.verdict');
+  out.classList.add('show');
+  pre.textContent = describeWorkflow(w);
+  document.getElementById('s-branch').textContent = w.jobs ? w.jobs.length : 0;
+  document.getElementById('s-commits').textContent = w.ok && !w.notes.length ? 'clean' : 'issues';
+  var v = sc.validate(w);
+  if (!v.ok) {
+    verdict.className = 'verdict bad';
+    verdict.innerHTML = '<span class="lbl">\u2717 Not yet \u2014 </span>' + v.msg;
+    return;
+  }
+  verdict.className = 'verdict good';
+  verdict.innerHTML = '<span class="lbl">\u2713 Valid. </span>' + v.log;
+  solveScene(sc, card, runBtn, ta);
+}
+
+/* ---------- engine ---------- */
+var solved = {}, reported = false;
+
+function buildScenes() {
+  var host = document.getElementById('scenes');
+  SCENES.forEach(function (sc, idx) {
+    var card = document.createElement('section');
+    card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+    card.id = 'scene-' + sc.id;
+
+    var head = document.createElement('div');
+    head.className = 'scene-head';
+    head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+      '<h2 class="scene-title">' + sc.title + '</h2>' +
+      '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+    head.addEventListener('click', function () {
+      if (!card.classList.contains('locked')) card.classList.toggle('open');
+    });
+    card.appendChild(head);
+
+    if (idx !== 0) {
+      var note = document.createElement('p');
+      note.className = 'locked-note';
+      note.textContent = 'Locked — finish the step above first.';
+      card.appendChild(note);
+    }
+
+    var body = document.createElement('div');
+    body.className = 'scene-body';
+    body.innerHTML = sc.story +
+      '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+      '<div class="brief"><h4>Make all of this true</h4><ul>' +
+      sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="editor-label"><span>.github/workflows/build.yml — spaces only, no Tab key</span><span>step ' + sc.id + ' of 3</span></div>';
+
+    var ta = document.createElement('textarea');
+    ta.className = 'editor'; ta.style.minHeight = '240px';
+    ta.value = sc.start;
+    ta.spellcheck = false;
+    ta.setAttribute('aria-label', 'Commands for step ' + sc.id);
+    body.appendChild(ta);
+
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+    var runBtn = document.createElement('button');
+    runBtn.className = 'run'; runBtn.type = 'button'; runBtn.textContent = 'Read the workflow';
+    var hintBtn = document.createElement('button');
+    hintBtn.className = 'ghost'; hintBtn.type = 'button'; hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'ghost'; resetBtn.type = 'button'; resetBtn.textContent = 'Start over';
+    row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+    body.appendChild(row);
+
+    var hints = document.createElement('div');
+    hints.className = 'hints';
+    sc.hints.forEach(function (h, hi) {
+      var el = document.createElement('div');
+      el.className = 'hint';
+      el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+      hints.appendChild(el);
+    });
+    body.appendChild(hints);
+
+    var out = document.createElement('div');
+    out.className = 'out';
+    out.innerHTML = '<div class="out-head">what the CI system would do with this file</div>' +
+                    '<pre class="parsed"></pre><div class="verdict"></div>';
+    body.appendChild(out);
+
+    card.appendChild(body);
+    host.appendChild(card);
+
+    var shown = 0;
+    hintBtn.addEventListener('click', function () {
+      if (shown >= sc.hints.length) return;
+      hints.children[shown].classList.add('show');
+      shown++;
+      hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+    });
+    resetBtn.addEventListener('click', function () {
+      if (solved[sc.id]) return;
+      ta.value = sc.start; out.classList.remove('show'); ta.focus();
+    });
+    runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
+    });
+  });
+}
+
+function solveScene(sc, card, runBtn, ta) {
+  solved[sc.id] = true;
+  card.classList.remove('active');
+  card.classList.add('solved', 'collapsible');
+  card.querySelector('.scene-state').textContent = 'done';
+  runBtn.textContent = 'Done';
+  ta.readOnly = true;
+
+  var count = Object.keys(solved).length;
+  document.getElementById('s-step').textContent = count + '/' + SCENES.length;
+  document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+
+  if (count === SCENES.length) { finish(); return; }
+
+  card.classList.remove('open');
+  var next = SCENES[SCENES.indexOf(sc) + 1];
+  var nextCard = document.getElementById('scene-' + next.id);
+  nextCard.classList.remove('locked');
+  nextCard.classList.add('active', 'open', 'collapsible');
+  nextCard.querySelector('.scene-state').textContent = 'active';
+  var note = nextCard.querySelector('.locked-note');
+  if (note) note.parentNode.removeChild(note);
+  nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+  // Fired only after every step's validator passed against the simulated repository.
+  if (!reported) {
+    reported = true;
+    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  }
+  var finale = document.getElementById('finale');
+  finale.style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+buildScenes();
+</script>
+</body>
+</html>

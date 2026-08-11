@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Docker Task 3: Running It, and Reaching It</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; color:#f8fafc;
+         padding:2rem 1.5rem 4rem; margin:0; line-height:1.6; }
+  .container { max-width:900px; margin:0 auto; }
+  .panel { background:#1e293b; padding:2rem; border-radius:12px; border:1px solid #334155;
+           box-shadow:0 10px 25px rgba(0,0,0,.5); }
+  h1 { color:#38bdf8; margin:.6rem 0 .4rem; font-size:1.75rem; }
+  h2 { color:#38bdf8; font-size:1.1rem; }
+  .badge { display:inline-block; background:#0284c7; color:#fff; padding:.25rem .75rem;
+           border-radius:9999px; font-size:.875rem; font-weight:600; }
+  .lede { color:#cbd5e1; }
+  code { background:#0b1220; padding:.1rem .35rem; border-radius:4px; color:#a5f3fc; font-size:.92em; }
+  pre { background:#090d16; color:#a5f3fc; padding:1rem; border-radius:8px; overflow-x:auto;
+        border:1px solid #1e293b; font-size:.85rem; margin:.75rem 0 0; }
+
+  #status { position:sticky; top:0; z-index:20; margin:1.25rem 0; padding:.85rem 1.1rem;
+            background:#16213a; border:1px solid #334155; border-radius:12px; display:flex;
+            flex-wrap:wrap; gap:.75rem 1.5rem; align-items:center;
+            font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
+  #status .item { display:flex; align-items:center; gap:.45rem; color:#94a3b8; }
+  #status .val { color:#e2e8f0; font-weight:700; }
+  #bar { flex:1 1 160px; min-width:140px; height:8px; background:#0f172a; border-radius:999px;
+         overflow:hidden; border:1px solid #334155; }
+  #fill { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#10b981); transition:width .45s ease; }
+
+  .scene { border:1px solid #334155; border-radius:12px; background:#1a2437; margin-bottom:1.1rem; overflow:hidden; }
+  .scene.locked { opacity:.55; }
+  .scene.active { border-color:#38bdf8; box-shadow:0 0 0 1px rgba(56,189,248,.25); }
+  .scene.solved { border-color:#10b981; background:#101f1c; }
+  .scene-head { display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; }
+  .scene.solved .scene-head, .scene.collapsible .scene-head { cursor:pointer; }
+  .scene-num { flex:none; width:1.9rem; height:1.9rem; border-radius:8px; background:#0b1220;
+               border:1px solid #334155; color:#94a3b8; display:flex; align-items:center;
+               justify-content:center; font-weight:700; font-size:.85rem; }
+  .scene.active .scene-num { background:#0284c7; border-color:#38bdf8; color:#fff; }
+  .scene.solved .scene-num { background:#065f46; border-color:#10b981; color:#d1fae5; }
+  .scene-title { font-weight:700; color:#f1f5f9; flex:1; }
+  .scene-state { font-size:.75rem; font-family:ui-monospace,Consolas,monospace; color:#64748b;
+                 text-transform:uppercase; letter-spacing:.04em; }
+  .scene.solved .scene-state { color:#34d399; }
+  .scene-body { padding:0 1.25rem 1.35rem; display:none; }
+  .scene.open .scene-body { display:block; }
+  .scene-body p { color:#cbd5e1; }
+
+  .voice { border-left:3px solid #c084fc; background:#1b1630; padding:.65rem .9rem;
+           border-radius:0 8px 8px 0; margin:.9rem 0; color:#e9d5ff; font-size:.92rem; }
+  .voice strong { color:#c084fc; }
+  .brief { background:#16213a; border:1px solid #334155; border-left:4px solid #f59e0b;
+           border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:.9rem 0; font-size:.92rem; color:#e2e8f0; }
+  .brief h4 { margin:0 0 .35rem; color:#fbbf24; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; }
+  .brief ul { margin:.4rem 0 0; padding-left:1.1rem; }
+  .brief li { margin-bottom:.2rem; }
+
+  .editor-label { display:flex; justify-content:space-between; align-items:baseline;
+                  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-top:1rem; }
+  textarea.editor { width:100%; min-height:120px; background:#060910; color:#a5f3fc;
+                    border:1px solid #334155; border-radius:8px; padding:.85rem 1rem;
+                    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; line-height:1.7;
+                    resize:vertical; white-space:pre; overflow-x:auto; }
+  textarea.editor:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.2); }
+  .btn-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.85rem; align-items:center; }
+  button { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:.6rem 1.15rem;
+           font-weight:700; cursor:pointer; font-size:.88rem; font-family:inherit; transition:background .15s ease; }
+  button:hover { background:#38bdf8; }
+  button.ghost { background:#24324a; color:#cbd5e1; }
+  button.ghost:hover { background:#334155; }
+  .scene.solved button.run { background:#10b981; cursor:default; }
+
+  .out { margin-top:.9rem; display:none; }
+  .out.show { display:block; }
+  .out-head { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-bottom:.35rem; }
+  .parsed { background:#060910; border:1px solid #1e293b; border-radius:8px; padding:.8rem 1rem;
+            font-family:ui-monospace,Consolas,monospace; font-size:.8rem; white-space:pre-wrap;
+            color:#cbd5e1; margin:0; }
+  .verdict { margin-top:.7rem; font-size:.9rem; padding:.7rem .9rem; border-radius:8px; }
+  .verdict.bad { background:#2a1215; border:1px solid #7f1d1d; color:#fca5a5; }
+  .verdict.good { background:#052e22; border:1px solid #10b981; color:#6ee7b7; font-weight:600; }
+  .verdict .lbl { font-weight:700; }
+
+  .hints { margin-top:.8rem; }
+  .hint { display:none; background:#0b1220; border:1px dashed #475569; border-radius:8px;
+          padding:.6rem .9rem; margin-bottom:.5rem; font-size:.88rem; color:#cbd5e1; }
+  .hint.show { display:block; }
+  .hint b { color:#94a3b8; }
+  .locked-note { padding:0 1.25rem 1.1rem; color:#64748b; font-size:.88rem; }
+
+  #finale { display:none; margin-top:1.5rem; }
+  #done-banner { display:none; margin-top:1.25rem; background:#052e22; border:1px solid #10b981;
+                 color:#6ee7b7; padding:1.1rem 1.25rem; border-radius:10px; font-weight:bold; }
+  #done-banner p { color:#a7f3d0; font-weight:normal; margin:.6rem 0 0; font-size:.9rem; }
+  .debrief { margin-top:1.5rem; }
+  .debrief li { margin-bottom:.35rem; color:#cbd5e1; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="panel">
+    <span class="badge">Docker Level 3</span>
+    <h1>Docker: Running It, and Reaching It</h1>
+
+    <h2>Two separate questions</h2>
+    <p class="lede">
+      Building an image is one skill. Running one and getting a request into it is another, and it
+      is where most first days with Docker are actually spent.
+    </p>
+    <p class="lede">
+      A container is deliberately sealed off. It has its own network, its own view of the world,
+      and by default nothing on your machine can reach inside it. That isolation is the feature —
+      it is also why a perfectly healthy container can look completely broken.
+    </p>
+    <p class="lede">
+      This lab is three of those moments, and the commands that tell you which one you are in:
+      <code>docker ps</code>, <code>docker ps -a</code>, and <code>docker logs</code>.
+    </p>
+
+    <h2>Your turn</h2>
+    <p class="lede">
+      You will type real Docker commands. This page runs them against a model of containers and
+      ports, then tells you honestly whether a request would arrive. Nothing is marked correct
+      unless the shop actually answers.
+    </p>
+    <div id="status" role="status" aria-live="polite">
+      <span class="item">RUNNING <span class="val" id="s-branch">0</span></span>
+      <span class="item">REACHABLE <span class="val" id="s-commits">no</span></span>
+      <span class="item">STEP <span class="val" id="s-step">0/3</span></span>
+      <div id="bar" role="img" aria-label="Progress"><div id="fill"></div></div>
+    </div>
+    <div id="scenes"></div>
+    <div id="finale"><div id="done-banner">Done — your points have been awarded.</div></div>
+  </div>
+</div>
+
+<script>
+
+/* =========================================================================
+   A small Docker engine. It runs the commands you type against a model of
+   containers, published ports and environment, then answers the only
+   question that matters: can anything actually reach the app? Every check
+   inspects that model, not the text you typed.
+   ========================================================================= */
+
+// What the image itself declares. The app inside listens on 3000 and refuses
+// to start without a database address — both facts the learner has to discover.
+var IMAGE = {
+  'nerdlab/shop:1.0': { listens: 3000, needsEnv: ['DB_URL'] }
+};
+
+function newEngine() {
+  return { containers: [], log: [], hostPorts: {} };
+}
+
+function parseRun(argv) {
+  var opts = { ports: [], env: {}, name: null, detached: false, image: null, badFlags: [] };
+  for (var i = 0; i < argv.length; i++) {
+    var a = argv[i];
+    if (a === '-d' || a === '--detach') { opts.detached = true; continue; }
+    if (a === '-p' || a === '--publish') { opts.ports.push(argv[++i] || ''); continue; }
+    if (/^-p=?.+/.test(a) && a !== '-p') { opts.ports.push(a.replace(/^-p=?/, '')); continue; }
+    if (a === '-e' || a === '--env') {
+      var kv = (argv[++i] || '').split('=');
+      if (kv[0]) opts.env[kv[0]] = kv.slice(1).join('=');
+      continue;
+    }
+    if (a === '--name') { opts.name = argv[++i]; continue; }
+    if (a.charAt(0) === '-') { opts.badFlags.push(a); continue; }
+    if (!opts.image) { opts.image = a; continue; }
+  }
+  return opts;
+}
+
+function runContainer(eng, opts) {
+  var spec = IMAGE[opts.image];
+  var c = {
+    name: opts.name || ('brave_' + (eng.containers.length + 1)),
+    image: opts.image, ports: [], env: opts.env, status: 'running', logs: []
+  };
+  if (!spec) {
+    c.status = 'error';
+    c.logs.push('no such image: ' + opts.image);
+    eng.containers.push(c);
+    say(eng, '  Unable to find image "' + opts.image + '" locally');
+    return c;
+  }
+  c.listens = spec.listens;
+
+  // -p HOST:CONTAINER — the order is the thing everybody gets wrong
+  opts.ports.forEach(function (p) {
+    var bits = String(p).split(':');
+    if (bits.length !== 2 || !bits[0] || !bits[1]) { c.logs.push('cannot understand -p ' + p); return; }
+    var host = parseInt(bits[0], 10), inside = parseInt(bits[1], 10);
+    c.ports.push({ host: host, container: inside });
+    eng.hostPorts[host] = c;
+  });
+
+  var missing = (spec.needsEnv || []).filter(function (k) { return !opts.env[k]; });
+  if (missing.length) {
+    c.status = 'exited';
+    c.exitCode = 1;
+    c.logs.push('starting shop v1.0');
+    missing.forEach(function (k) { c.logs.push('FATAL: ' + k + ' is not set — cannot start without a database address'); });
+    c.logs.push('process exited with code 1');
+  } else {
+    c.logs.push('starting shop v1.0');
+    c.logs.push('listening on port ' + spec.listens + ' inside the container');
+  }
+  eng.containers.push(c);
+  say(eng, '  ' + (c.status === 'running' ? 'started' : 'started and exited') + ' container ' + c.name);
+  return c;
+}
+
+function say(eng, line) { eng.log.push(line); }
+
+function curlHost(eng, port) {
+  var c = eng.hostPorts[port];
+  if (!c) return { ok: false, why: 'nothing is published on port ' + port + ' of your machine' };
+  if (c.status !== 'running') return { ok: false, why: 'the container behind port ' + port + ' is not running (' + c.status + ')' };
+  var mapping = c.ports.filter(function (p) { return p.host === port; })[0];
+  if (mapping.container !== c.listens) {
+    return { ok: false, why: 'traffic is forwarded to port ' + mapping.container + ' inside the container, but the app listens on ' + c.listens };
+  }
+  return { ok: true };
+}
+
+function execute(text) {
+  var eng = newEngine();
+  text.replace(/\r\n?/g, '\n').split('\n').forEach(function (raw) {
+    var line = raw.trim();
+    if (!line || line.charAt(0) === '#') return;
+    say(eng, '$ ' + line);
+
+    var argv = line.split(/\s+/);
+    if (argv[0] !== 'docker' && argv[0] !== 'curl') {
+      say(eng, '  this lab understands docker commands, plus: curl localhost:PORT');
+      return;
+    }
+    if (argv[0] === 'curl') {
+      var m = /localhost:(\d+)/.exec(line);
+      if (!m) { say(eng, '  try: curl localhost:8080'); return; }
+      var res = curlHost(eng, parseInt(m[1], 10));
+      say(eng, res.ok ? '  200 OK — the shop answered' : '  connection refused: ' + res.why);
+      return;
+    }
+
+    var sub = argv[1];
+    if (sub === 'run') { runContainer(eng, parseRun(argv.slice(2))); return; }
+    if (sub === 'ps') {
+      var all = argv.indexOf('-a') !== -1;
+      var list = eng.containers.filter(function (c) { return all || c.status === 'running'; });
+      if (!list.length) { say(eng, '  (no containers' + (all ? '' : ' running — try docker ps -a') + ')'); return; }
+      list.forEach(function (c) {
+        say(eng, '  ' + c.name + '  ' + c.image + '  ' + c.status +
+          (c.exitCode !== undefined ? ' (' + c.exitCode + ')' : '') +
+          '  ports: ' + (c.ports.length ? c.ports.map(function (p) { return p.host + '->' + p.container; }).join(', ') : 'none published'));
+      });
+      return;
+    }
+    if (sub === 'logs') {
+      var target = argv[2];
+      var c2 = eng.containers.filter(function (c) { return c.name === target; })[0] || eng.containers[eng.containers.length - 1];
+      if (!c2) { say(eng, '  no such container'); return; }
+      c2.logs.forEach(function (l) { say(eng, '  ' + l); });
+      return;
+    }
+    if (sub === 'stop' || sub === 'rm') {
+      var t = argv[2];
+      eng.containers.forEach(function (c) { if (c.name === t) c.status = 'exited'; });
+      say(eng, '  ' + t);
+      return;
+    }
+    say(eng, '  this lab does not know that command');
+  });
+  return eng;
+}
+
+function describeEngine(eng) {
+  var out = eng.log.join('\n') + '\n\n';
+  out += 'containers:\n';
+  if (!eng.containers.length) out += '  (none)\n';
+  eng.containers.forEach(function (c) {
+    out += '  ' + c.name + '  ' + c.image + '  ' + c.status + '\n';
+    out += '      app inside listens on : ' + (c.listens || '(unknown)') + '\n';
+    out += '      published             : ' +
+      (c.ports.length ? c.ports.map(function (p) { return 'your machine ' + p.host + ' -> container ' + p.container; }).join('; ') : 'nothing') + '\n';
+    var envKeys = Object.keys(c.env);
+    out += '      environment           : ' + (envKeys.length ? envKeys.join(', ') : 'none set') + '\n';
+  });
+  return out;
+}
+
+function running(eng) { return eng.containers.filter(function (c) { return c.status === 'running'; }); }
+
+var TASK_ID = 18;
+
+var SCENES = [
+{
+  id: 1,
+  title: 'It is running, and nobody can reach it',
+  story: '<p>The image is built. Maya starts it, the container is running, and the shop is not there.</p>' +
+         '<p>A container gets its own private network. The app really is listening — inside. Nothing on ' +
+         'your machine forwards to it until you say so, and by default nothing does.</p>' +
+         '<p><code>-p</code> publishes a port: <code>-p HOST:CONTAINER</code>. Traffic arriving on the ' +
+         'first number is forwarded to the second, inside.</p>',
+  voice: { who: 'Priya', line: '"Running and reachable are different questions. It is running."' },
+  brief: ['run <code>nerdlab/shop:1.0</code> in the background with <code>-d</code>',
+          'set <code>DB_URL</code> to <code>postgres://db/shop</code> with <code>-e</code>',
+          'publish it so <code>curl localhost:8080</code> answers',
+          'the app inside listens on 3000 — find that out from the output if you have not already'],
+  start: '# start it, then try to reach it\ndocker run -d -e DB_URL=postgres://db/shop nerdlab/shop:1.0\ncurl localhost:8080\n',
+  hints: ['Add a <code>-p</code> flag to the run command. Two numbers, separated by a colon.',
+          'The first number is the port on your machine, the second is the port inside the container.',
+          '<code>-p 8080:3000</code>'],
+  validate: function (eng) {
+    var c = eng.containers[0];
+    if (!c) return { ok: false, msg: 'No container was started.' };
+    if (c.status === 'error') return { ok: false, msg: 'That image does not exist. Use <code>nerdlab/shop:1.0</code>.' };
+    if (c.status === 'exited') return { ok: false, msg: 'The container started and exited. Keep the <code>-e DB_URL=...</code> from the starting command.' };
+    if (!c.ports.length) return { ok: false, msg: 'Nothing is published, so your machine has no way in. Add <code>-p</code>.' };
+    var res = curlHost(eng, 8080);
+    if (!res.ok) return { ok: false, msg: 'A request to <code>localhost:8080</code> still fails — ' + res.why + '.' };
+    return { ok: true, log: 'port 8080 on your machine now forwards to 3000 inside; the shop answers' };
+  }
+},
+{
+  id: 2,
+  title: 'The two numbers are not interchangeable',
+  story: '<p>Dev copies the command, changes it slightly, and it stops working again. His version reads ' +
+         '<code>-p 3000:8080</code>.</p>' +
+         '<p>The order is <strong>outside first, inside second</strong>. Written the other way round, ' +
+         'Docker dutifully forwards port 3000 of your machine to port 8080 inside — where nothing is ' +
+         'listening. No error. Just a connection that goes nowhere.</p>' +
+         '<p>Fix the mapping so that <code>curl localhost:3000</code> reaches the shop. The app inside ' +
+         'still listens on 3000, so both numbers being 3000 is correct here — and worth seeing, because ' +
+         'it is why the mistake hides so well.</p>',
+  voice: { who: 'Maya', line: '"Both numbers are 3000 and it works. One of them being 3000 is a coincidence."' },
+  brief: ['keep the environment variable',
+          'make <code>curl localhost:3000</code> answer',
+          'the container must still be running'],
+  start: '# Dev\'s version — reversed\ndocker run -d -p 3000:8080 -e DB_URL=postgres://db/shop nerdlab/shop:1.0\ncurl localhost:3000\n',
+  hints: ['Read the output: it says which port traffic is forwarded to, and which port the app uses.',
+          'You want port 3000 of your machine going to port 3000 inside.',
+          '<code>-p 3000:3000</code>'],
+  validate: function (eng) {
+    var c = eng.containers[0];
+    if (!c) return { ok: false, msg: 'No container was started.' };
+    if (c.status !== 'running') return { ok: false, msg: 'The container is not running (' + c.status + '). Keep <code>-e DB_URL=...</code>.' };
+    var res = curlHost(eng, 3000);
+    if (!res.ok) return { ok: false, msg: '<code>curl localhost:3000</code> still fails — ' + res.why + '.' };
+    return { ok: true, log: 'mapping corrected; the request reaches the app' };
+  }
+},
+{
+  id: 3,
+  title: 'The container that will not stay up',
+  story: '<p>A colleague runs the same image on their machine and it exits immediately. ' +
+         '<code>docker ps</code> shows nothing at all, which is confusing until you know that ' +
+         '<code>docker ps</code> only lists <em>running</em> containers.</p>' +
+         '<p><code>docker ps -a</code> shows the dead ones too, and <code>docker logs</code> shows what ' +
+         'the app said on its way out. Almost every "it just exits" turns out to be written plainly in ' +
+         'the logs.</p>',
+  voice: { who: 'Priya', line: '"It did not vanish. It told you why it left, and then it left."' },
+  brief: ['run it without the database address and let it fail',
+          'use <code>docker ps -a</code> and <code>docker logs</code> to find out why',
+          'then start it properly: running, published on 8080, and answering'],
+  start: 'docker run -d --name shop nerdlab/shop:1.0\ndocker ps\ndocker ps -a\ndocker logs shop\n',
+  hints: ['The logs name the setting that is missing.',
+          'Add another run command at the bottom with the missing piece and a published port.',
+          '<code>docker run -d --name shop2 -p 8080:3000 -e DB_URL=postgres://db/shop nerdlab/shop:1.0</code>'],
+  validate: function (eng) {
+    var died = eng.containers.filter(function (c) { return c.status === 'exited'; });
+    if (!died.length) return { ok: false, msg: 'Leave the first, broken run in place — seeing it exit and reading the logs is the point of this chapter.' };
+    var looked = eng.log.some(function (l) { return /^\$ docker logs/.test(l); });
+    if (!looked) return { ok: false, msg: 'Use <code>docker logs</code> to read why it exited before fixing it.' };
+    var up = running(eng);
+    if (!up.length) return { ok: false, msg: 'Nothing is running yet. Start it again with the missing environment variable.' };
+    var res = curlHost(eng, 8080);
+    if (!res.ok) return { ok: false, msg: 'The working container is not reachable on 8080 — ' + res.why + '.' };
+    return { ok: true, log: 'you read the logs, found the missing setting, and started it correctly' };
+  }
+}
+];
+
+function runScene(sc, ta, out, runBtn, card) {
+  if (solved[sc.id]) return;
+  var eng = execute(ta.value);
+  var pre = out.querySelector('.parsed');
+  var verdict = out.querySelector('.verdict');
+  out.classList.add('show');
+  pre.textContent = describeEngine(eng);
+  document.getElementById('s-branch').textContent = running(eng).length;
+  document.getElementById('s-commits').textContent = curlHost(eng, 8080).ok || curlHost(eng, 3000).ok ? 'yes' : 'no';
+  var v = sc.validate(eng);
+  if (!v.ok) {
+    verdict.className = 'verdict bad';
+    verdict.innerHTML = '<span class="lbl">\u2717 Not yet \u2014 </span>' + v.msg;
+    return;
+  }
+  verdict.className = 'verdict good';
+  verdict.innerHTML = '<span class="lbl">\u2713 Working. </span>' + v.log;
+  solveScene(sc, card, runBtn, ta);
+}
+
+/* ---------- engine ---------- */
+var solved = {}, reported = false;
+
+function buildScenes() {
+  var host = document.getElementById('scenes');
+  SCENES.forEach(function (sc, idx) {
+    var card = document.createElement('section');
+    card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
+    card.id = 'scene-' + sc.id;
+
+    var head = document.createElement('div');
+    head.className = 'scene-head';
+    head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
+      '<h2 class="scene-title">' + sc.title + '</h2>' +
+      '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
+    head.addEventListener('click', function () {
+      if (!card.classList.contains('locked')) card.classList.toggle('open');
+    });
+    card.appendChild(head);
+
+    if (idx !== 0) {
+      var note = document.createElement('p');
+      note.className = 'locked-note';
+      note.textContent = 'Locked — finish the step above first.';
+      card.appendChild(note);
+    }
+
+    var body = document.createElement('div');
+    body.className = 'scene-body';
+    body.innerHTML = sc.story +
+      '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
+      '<div class="brief"><h4>Make all of this true</h4><ul>' +
+      sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul></div>' +
+      '<div class="editor-label"><span>terminal — one command per line</span><span>step ' + sc.id + ' of 3</span></div>';
+
+    var ta = document.createElement('textarea');
+    ta.className = 'editor';
+    ta.value = sc.start;
+    ta.spellcheck = false;
+    ta.setAttribute('aria-label', 'Commands for step ' + sc.id);
+    body.appendChild(ta);
+
+    var row = document.createElement('div');
+    row.className = 'btn-row';
+    var runBtn = document.createElement('button');
+    runBtn.className = 'run'; runBtn.type = 'button'; runBtn.textContent = 'Run the commands';
+    var hintBtn = document.createElement('button');
+    hintBtn.className = 'ghost'; hintBtn.type = 'button'; hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
+    var resetBtn = document.createElement('button');
+    resetBtn.className = 'ghost'; resetBtn.type = 'button'; resetBtn.textContent = 'Start over';
+    row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
+    body.appendChild(row);
+
+    var hints = document.createElement('div');
+    hints.className = 'hints';
+    sc.hints.forEach(function (h, hi) {
+      var el = document.createElement('div');
+      el.className = 'hint';
+      el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
+      hints.appendChild(el);
+    });
+    body.appendChild(hints);
+
+    var out = document.createElement('div');
+    out.className = 'out';
+    out.innerHTML = '<div class="out-head">what Docker did, and what is reachable</div>' +
+                    '<pre class="parsed"></pre><div class="verdict"></div>';
+    body.appendChild(out);
+
+    card.appendChild(body);
+    host.appendChild(card);
+
+    var shown = 0;
+    hintBtn.addEventListener('click', function () {
+      if (shown >= sc.hints.length) return;
+      hints.children[shown].classList.add('show');
+      shown++;
+      hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
+    });
+    resetBtn.addEventListener('click', function () {
+      if (solved[sc.id]) return;
+      ta.value = sc.start; out.classList.remove('show'); ta.focus();
+    });
+    runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
+    ta.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
+    });
+  });
+}
+
+function solveScene(sc, card, runBtn, ta) {
+  solved[sc.id] = true;
+  card.classList.remove('active');
+  card.classList.add('solved', 'collapsible');
+  card.querySelector('.scene-state').textContent = 'done';
+  runBtn.textContent = 'Done';
+  ta.readOnly = true;
+
+  var count = Object.keys(solved).length;
+  document.getElementById('s-step').textContent = count + '/' + SCENES.length;
+  document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
+
+  if (count === SCENES.length) { finish(); return; }
+
+  card.classList.remove('open');
+  var next = SCENES[SCENES.indexOf(sc) + 1];
+  var nextCard = document.getElementById('scene-' + next.id);
+  nextCard.classList.remove('locked');
+  nextCard.classList.add('active', 'open', 'collapsible');
+  nextCard.querySelector('.scene-state').textContent = 'active';
+  var note = nextCard.querySelector('.locked-note');
+  if (note) note.parentNode.removeChild(note);
+  nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function finish() {
+  // Fired only after every step's validator passed against the simulated repository.
+  if (!reported) {
+    reported = true;
+    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  }
+  var finale = document.getElementById('finale');
+  finale.style.display = 'block';
+  document.getElementById('done-banner').style.display = 'block';
+  finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+buildScenes();
+</script>
+</body>
+</html>
