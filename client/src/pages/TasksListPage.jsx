@@ -63,9 +63,10 @@ const TasksListPage = () => {
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex flex-col md:flex-row items-center justify-between gap-4 glass-panel p-4 rounded-2xl border border-slate-800">
-        {/* Category Tabs */}
-        <div className="flex items-center space-x-2 overflow-x-auto w-full md:w-auto pb-2 md:pb-0">
+      <div className="glass-panel p-4 rounded-2xl border border-slate-800 space-y-4">
+        {/* Category Tabs — every module stays on screen, so these wrap onto as
+            many rows as they need rather than scrolling sideways. */}
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleCategorySelect('all')}
             className={`px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition-colors ${
@@ -92,8 +93,8 @@ const TasksListPage = () => {
         </div>
 
         {/* Search & Difficulty Select */}
-        <div className="flex items-center space-x-3 w-full md:w-auto">
-          <div className="relative flex-1 md:w-64">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4 border-t border-slate-800/70">
+          <div className="relative flex-1">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
