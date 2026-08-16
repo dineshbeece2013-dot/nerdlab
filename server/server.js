@@ -14,6 +14,7 @@ const userRoutes = require('./routes/userRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 const progressRoutes = require('./routes/progressRoutes');
 const leaderboardRoutes = require('./routes/leaderboardRoutes');
+const certificateRoutes = require('./routes/certificateRoutes');
 const logRoutes = require('./routes/logRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 
@@ -61,6 +62,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api/progress', progressRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/certificates', certificateRoutes);
 app.use('/api/logs', logRoutes);
 app.use('/api/admin', adminRoutes);
 

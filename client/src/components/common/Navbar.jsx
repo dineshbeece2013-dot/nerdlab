@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Award,
   ShieldAlert,
+  ShieldCheck,
   Menu,
   X,
   Code2,
@@ -73,6 +74,15 @@ const Navbar = () => {
                 >
                   <Award className="w-4 h-4" />
                   <span>Leaderboard</span>
+                </Link>
+                <Link
+                  to="/certificates"
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center space-x-2 ${
+                    isActive('/certificates') ? 'bg-sky-500/10 text-sky-400 border border-sky-500/20' : 'text-slate-300 hover:text-white hover:bg-slate-800/50'
+                  }`}
+                >
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>Certificates</span>
                 </Link>
                 {isAdmin && (
                   <Link
@@ -177,6 +187,13 @@ const Navbar = () => {
                 className="block px-3 py-2 rounded-lg text-base font-medium text-slate-200 hover:bg-slate-800"
               >
                 Leaderboard
+              </Link>
+              <Link
+                to="/certificates"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-lg text-base font-medium text-slate-200 hover:bg-slate-800"
+              >
+                Certificates
               </Link>
               <Link
                 to="/profile"

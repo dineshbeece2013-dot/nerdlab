@@ -1,5 +1,6 @@
 const ProgressModel = require('../models/progressModel');
 const TaskModel = require('../models/taskModel');
+const CertificateModel = require('../models/certificateModel');
 const ResponseHandler = require('../utils/responseHandler');
 
 class ProgressController {
@@ -50,12 +51,30 @@ class ProgressController {
 
       const progress = await ProgressModel.recordTaskCompletion(userId, taskId, score, timeSpentSeconds);
 
+      // Labs flagged awards_certificate issue one on completion. issueForTask is
+      // idempotent, so replaying the completion signal never mints a second code.
+      let certificate = null;
+      let certificateIsNew = false;
+      if (task.awards_certificate) {
+        const issued = await CertificateModel.issueForTask(userId, task, req.user.name);
+        certificate = issued.certificate;
+        certificateIsNew = issued.isNew;
+      }
+
       if (req.logActivity && !alreadyCompleted) {
         await req.logActivity('Complete Task', {
           taskId: task.id,
           title: task.title,
           pointsEarned: task.points,
           timeSpentSeconds,
+        });
+      }
+
+      if (req.logActivity && certificateIsNew) {
+        await req.logActivity('Issue Certificate', {
+          taskId: task.id,
+          title: task.title,
+          certificateCode: certificate.certificate_code,
         });
       }
 
@@ -66,6 +85,8 @@ class ProgressController {
           progress,
           pointsEarned: alreadyCompleted ? 0 : task.points,
           alreadyCompleted,
+          certificate,
+          certificateIsNew,
         }
       );
     } catch (err) {

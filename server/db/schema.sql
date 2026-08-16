@@ -96,6 +96,8 @@ CREATE TABLE tasks (
     file_path TEXT NOT NULL,
     -- Listed in the catalogue but not yet playable; the lab file may be a placeholder.
     is_coming_soon BOOLEAN NOT NULL DEFAULT FALSE,
+    -- Completing this task issues a certificate. Off by default.
+    awards_certificate BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -152,14 +154,26 @@ CREATE TABLE leaderboard (
 );
 
 -- 12. Certificates Table
+-- Issued either for a whole course or for a single task; exactly one of
+-- course_id / task_id is set. title and recipient_name are snapshotted at issue
+-- time so a certificate never changes after it has been awarded.
 CREATE TABLE certificates (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    course_id INT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    course_id INT REFERENCES courses(id) ON DELETE CASCADE,
+    task_id INT REFERENCES tasks(id) ON DELETE CASCADE,
+    title VARCHAR(200),
+    recipient_name VARCHAR(150),
     certificate_code VARCHAR(100) UNIQUE NOT NULL,
     issued_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     UNIQUE(user_id, course_id)
 );
+
+-- One certificate per student per task. Partial, so the per-course rows
+-- (task_id IS NULL) are not affected by it.
+CREATE UNIQUE INDEX certificates_user_task_uniq
+    ON certificates (user_id, task_id)
+    WHERE task_id IS NOT NULL;
 
 -- 13. Application Settings (SMTP credentials, sender identity, ...)
 CREATE TABLE app_settings (

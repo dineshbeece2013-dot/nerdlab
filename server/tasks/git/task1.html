@@ -3,607 +3,1162 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Git Task 1: The Friday Afternoon Branch</title>
+<title>Git Task 1: Git, Finally Explained</title>
 <style>
-  * { box-sizing: border-box; }
-  body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#0f172a; color:#f8fafc;
-         padding:2rem 1.5rem 4rem; margin:0; line-height:1.6; }
-  .container { max-width:900px; margin:0 auto; }
-  .panel { background:#1e293b; padding:2rem; border-radius:12px; border:1px solid #334155;
-           box-shadow:0 10px 25px rgba(0,0,0,.5); }
-  h1 { color:#38bdf8; margin:.6rem 0 .4rem; font-size:1.75rem; }
-  h2 { color:#38bdf8; font-size:1.1rem; }
-  .badge { display:inline-block; background:#0284c7; color:#fff; padding:.25rem .75rem;
-           border-radius:9999px; font-size:.875rem; font-weight:600; }
-  .lede { color:#cbd5e1; }
-  code { background:#0b1220; padding:.1rem .35rem; border-radius:4px; color:#a5f3fc; font-size:.92em; }
-  pre { background:#090d16; color:#a5f3fc; padding:1rem; border-radius:8px; overflow-x:auto;
-        border:1px solid #1e293b; font-size:.85rem; margin:.75rem 0 0; }
-
-  #status { position:sticky; top:0; z-index:20; margin:1.25rem 0; padding:.85rem 1.1rem;
-            background:#16213a; border:1px solid #334155; border-radius:12px; display:flex;
-            flex-wrap:wrap; gap:.75rem 1.5rem; align-items:center;
-            font-family:ui-monospace,Consolas,monospace; font-size:.85rem; }
-  #status .item { display:flex; align-items:center; gap:.45rem; color:#94a3b8; }
-  #status .val { color:#e2e8f0; font-weight:700; }
-  #bar { flex:1 1 160px; min-width:140px; height:8px; background:#0f172a; border-radius:999px;
-         overflow:hidden; border:1px solid #334155; }
-  #fill { height:100%; width:0%; background:linear-gradient(90deg,#0ea5e9,#10b981); transition:width .45s ease; }
-
-  .scene { border:1px solid #334155; border-radius:12px; background:#1a2437; margin-bottom:1.1rem; overflow:hidden; }
-  .scene.locked { opacity:.55; }
-  .scene.active { border-color:#38bdf8; box-shadow:0 0 0 1px rgba(56,189,248,.25); }
-  .scene.solved { border-color:#10b981; background:#101f1c; }
-  .scene-head { display:flex; align-items:center; gap:.75rem; padding:1rem 1.25rem; }
-  .scene.solved .scene-head, .scene.collapsible .scene-head { cursor:pointer; }
-  .scene-num { flex:none; width:1.9rem; height:1.9rem; border-radius:8px; background:#0b1220;
-               border:1px solid #334155; color:#94a3b8; display:flex; align-items:center;
-               justify-content:center; font-weight:700; font-size:.85rem; }
-  .scene.active .scene-num { background:#0284c7; border-color:#38bdf8; color:#fff; }
-  .scene.solved .scene-num { background:#065f46; border-color:#10b981; color:#d1fae5; }
-  .scene-title { font-weight:700; color:#f1f5f9; flex:1; }
-  .scene-state { font-size:.75rem; font-family:ui-monospace,Consolas,monospace; color:#64748b;
-                 text-transform:uppercase; letter-spacing:.04em; }
-  .scene.solved .scene-state { color:#34d399; }
-  .scene-body { padding:0 1.25rem 1.35rem; display:none; }
-  .scene.open .scene-body { display:block; }
-  .scene-body p { color:#cbd5e1; }
-
-  .voice { border-left:3px solid #c084fc; background:#1b1630; padding:.65rem .9rem;
-           border-radius:0 8px 8px 0; margin:.9rem 0; color:#e9d5ff; font-size:.92rem; }
-  .voice strong { color:#c084fc; }
-  .brief { background:#16213a; border:1px solid #334155; border-left:4px solid #f59e0b;
-           border-radius:0 8px 8px 0; padding:.8rem 1rem; margin:.9rem 0; font-size:.92rem; color:#e2e8f0; }
-  .brief h4 { margin:0 0 .35rem; color:#fbbf24; font-size:.8rem; text-transform:uppercase; letter-spacing:.06em; }
-  .brief ul { margin:.4rem 0 0; padding-left:1.1rem; }
-  .brief li { margin-bottom:.2rem; }
-
-  .editor-label { display:flex; justify-content:space-between; align-items:baseline;
-                  font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-top:1rem; }
-  textarea.editor { width:100%; min-height:120px; background:#060910; color:#a5f3fc;
-                    border:1px solid #334155; border-radius:8px; padding:.85rem 1rem;
-                    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; line-height:1.7;
-                    resize:vertical; white-space:pre; overflow-x:auto; }
-  textarea.editor:focus { outline:none; border-color:#38bdf8; box-shadow:0 0 0 2px rgba(56,189,248,.2); }
-  .btn-row { display:flex; flex-wrap:wrap; gap:.6rem; margin-top:.85rem; align-items:center; }
-  button { background:#0ea5e9; color:#fff; border:none; border-radius:8px; padding:.6rem 1.15rem;
-           font-weight:700; cursor:pointer; font-size:.88rem; font-family:inherit; transition:background .15s ease; }
-  button:hover { background:#38bdf8; }
-  button.ghost { background:#24324a; color:#cbd5e1; }
-  button.ghost:hover { background:#334155; }
-  .scene.solved button.run { background:#10b981; cursor:default; }
-
-  .out { margin-top:.9rem; display:none; }
-  .out.show { display:block; }
-  .out-head { font-family:ui-monospace,Consolas,monospace; font-size:.75rem; color:#64748b; margin-bottom:.35rem; }
-  .parsed { background:#060910; border:1px solid #1e293b; border-radius:8px; padding:.8rem 1rem;
-            font-family:ui-monospace,Consolas,monospace; font-size:.8rem; white-space:pre-wrap;
-            color:#cbd5e1; margin:0; }
-  .verdict { margin-top:.7rem; font-size:.9rem; padding:.7rem .9rem; border-radius:8px; }
-  .verdict.bad { background:#2a1215; border:1px solid #7f1d1d; color:#fca5a5; }
-  .verdict.good { background:#052e22; border:1px solid #10b981; color:#6ee7b7; font-weight:600; }
-  .verdict .lbl { font-weight:700; }
-
-  .hints { margin-top:.8rem; }
-  .hint { display:none; background:#0b1220; border:1px dashed #475569; border-radius:8px;
-          padding:.6rem .9rem; margin-bottom:.5rem; font-size:.88rem; color:#cbd5e1; }
-  .hint.show { display:block; }
-  .hint b { color:#94a3b8; }
-  .locked-note { padding:0 1.25rem 1.1rem; color:#64748b; font-size:.88rem; }
-
-  #finale { display:none; margin-top:1.5rem; }
-  #done-banner { display:none; margin-top:1.25rem; background:#052e22; border:1px solid #10b981;
-                 color:#6ee7b7; padding:1.1rem 1.25rem; border-radius:10px; font-weight:bold; }
-  #done-banner p { color:#a7f3d0; font-weight:normal; margin:.6rem 0 0; font-size:.9rem; }
-  .debrief { margin-top:1.5rem; }
-  .debrief li { margin-bottom:.35rem; color:#cbd5e1; }
+  /* Platform palette — matches the other NerdLab labs (slate/sky) rather than
+     the standalone version this lab was adapted from. */
+  :root{
+    --bg:#0f172a; --panel:#1e293b; --panel2:#16213a; --border:#334155;
+    --text:#f8fafc; --muted:#94a3b8; --green:#10b981; --green-dim:#059669;
+    --gold:#f59e0b; --gold-bright:#fbbf24; --red:#f87171; --blue:#38bdf8;
+    --sky:#0ea5e9; --term-bg:#060910; --code:#a5f3fc;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;
+    line-height:1.6;
+  }
+  .topbar{
+    display:flex; justify-content:flex-end; align-items:center; flex-wrap:wrap; gap:8px;
+    padding:.6rem 1.5rem; background:var(--panel2); border-bottom:1px solid var(--border);
+    font-size:.82em; color:var(--muted);
+  }
+  .topbar a{color:var(--blue); text-decoration:none;}
+  .topbar a:hover{text-decoration:underline;}
+  header{
+    padding:1.8rem 1.5rem 1.2rem; text-align:center; border-bottom:1px solid var(--border);
+    background:var(--panel2);
+  }
+  header h1{margin:0 0 .4rem; font-size:1.75rem; color:var(--blue);}
+  header p{margin:0 auto; color:#cbd5e1; max-width:660px;}
+  .badges{
+    display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin:1.1rem auto .3rem; max-width:620px;
+  }
+  .badge{
+    font-size:1.4em; opacity:.25; filter:grayscale(1); transition:.35s;
+    background:#0b1220; border:1px solid var(--border); border-radius:10px;
+    width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+    cursor:default;
+  }
+  .badge.earned{opacity:1; filter:none; transform:scale(1.08); border-color:var(--gold);
+    box-shadow:0 0 12px rgba(245,158,11,.3);}
+  .progress-wrap{max-width:520px; margin:.9rem auto 0;}
+  .progress-bar{height:8px; background:#0f172a; border-radius:999px; overflow:hidden; border:1px solid var(--border);}
+  .progress-fill{height:100%; width:0%; background:linear-gradient(90deg,var(--sky),var(--green)); transition:width .45s ease;}
+  .progress-text{font-size:.82em; color:var(--muted); margin-top:6px;
+                 font-family:ui-monospace,Consolas,monospace;}
+  nav{
+    display:flex; flex-wrap:wrap; gap:6px; justify-content:center;
+    padding:.9rem .75rem; border-bottom:1px solid var(--border); position:sticky; top:0;
+    background:rgba(15,23,42,.97); z-index:10;
+  }
+  nav button{
+    background:#0b1220; color:#cbd5e1; border:1px solid var(--border);
+    padding:.45rem .9rem; border-radius:9999px; cursor:pointer; font-size:.85em;
+    font-family:inherit; transition:.15s;
+  }
+  nav button:hover{border-color:var(--blue); color:#fff;}
+  nav button.active{background:var(--sky); border-color:var(--blue); color:#fff; font-weight:700;}
+  main{max-width:880px; margin:0 auto; padding:1.8rem 1.25rem 5rem;}
+  section{display:none;}
+  section.active{display:block; animation:fade .3s ease;}
+  @keyframes fade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+  h2{color:var(--blue); border-bottom:1px solid var(--border); padding-bottom:.5rem; font-size:1.25rem;}
+  h3{color:var(--gold-bright); margin-top:1.8rem; font-size:1rem;}
+  .card{
+    background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding:1.1rem 1.25rem; margin:1rem 0;
+  }
+  .card p{margin:.4rem 0 0; color:#cbd5e1;}
+  .card p:first-of-type{margin-top:0;}
+  .scenario{border-left:4px solid var(--blue);}
+  .scenario .tag{color:var(--blue); font-weight:700; font-size:.75em; letter-spacing:.06em; text-transform:uppercase;}
+  .explain{border-left:4px solid var(--gold);}
+  .explain .tag{color:var(--gold-bright); font-weight:700; font-size:.75em; letter-spacing:.06em; text-transform:uppercase;}
+  .problem{border-left:4px solid var(--red);}
+  .problem .tag{color:var(--red); font-weight:700; font-size:.75em; letter-spacing:.06em; text-transform:uppercase;}
+  code, .inline-code{
+    background:#0b1220; border-radius:4px;
+    padding:.1rem .35rem; font-family:ui-monospace,Consolas,monospace; color:var(--code); font-size:.92em;
+  }
+  .diagram{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    flex-wrap:wrap; margin:1.4rem 0; text-align:center;
+  }
+  .diagram .box{
+    background:var(--panel2); border:1px solid var(--border); border-radius:10px;
+    padding:.85rem 1rem; min-width:150px;
+  }
+  .diagram .box b{display:block; color:#f1f5f9;}
+  .diagram .box span{font-size:.78em; color:var(--muted);}
+  .diagram .arrow{color:var(--gold-bright); font-size:1.4em;}
+  .terminal{
+    background:var(--term-bg); border:1px solid var(--border); border-radius:10px;
+    padding:.9rem; font-family:ui-monospace,Consolas,monospace; margin-top:.8rem;
+  }
+  .terminal .line{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .terminal .prompt{color:var(--gold-bright); white-space:nowrap; font-size:.88rem;}
+  .terminal input{
+    flex:1; min-width:180px; background:transparent; border:none; outline:none;
+    color:#fff; font-family:inherit; font-size:.9rem; padding:.3rem 0;
+  }
+  .terminal input::placeholder{color:#475569;}
+  .terminal button{
+    background:var(--sky); border:none; color:#fff; padding:.4rem .9rem;
+    border-radius:7px; cursor:pointer; font-size:.82rem; font-weight:700; font-family:inherit;
+  }
+  .terminal button:hover{background:var(--blue);}
+  .terminal pre{
+    white-space:pre-wrap; color:#6ee7b7; margin:.6rem 0 0; font-size:.85rem; min-height:1em;
+  }
+  .file-edit{
+    background:var(--term-bg); border:1px solid var(--border); border-radius:10px;
+    margin-top:.8rem; overflow:hidden;
+  }
+  .file-edit .file-name{
+    background:var(--panel2); border-bottom:1px solid var(--border);
+    padding:.4rem .8rem; font-size:.8em; color:#f1f5f9;
+    font-family:ui-monospace,Consolas,monospace;
+  }
+  .file-edit .file-name span{color:var(--muted);}
+  .file-edit textarea{
+    display:block; width:100%; background:transparent; border:none; outline:none;
+    resize:vertical; color:var(--code); padding:.8rem; font-size:.85rem; line-height:1.6;
+    font-family:ui-monospace,Consolas,monospace;
+  }
+  .file-edit.resolved{border-color:var(--green);}
+  .feedback{margin-top:.5rem; font-size:.88rem; font-weight:600;}
+  .feedback.ok{color:var(--green);}
+  .feedback.bad{color:var(--red);}
+  .hint{color:var(--muted); font-size:.83rem; margin-top:.4rem; font-style:italic; display:none;}
+  .task-instructions{font-size:.92rem; color:#cbd5e1; margin:0 0 .5rem;
+                     font-family:'Segoe UI',Tahoma,sans-serif;}
+  .quiz label{
+    display:block; background:#0b1220; border:1px solid var(--border);
+    border-radius:8px; padding:.6rem .8rem; margin:.4rem 0; cursor:pointer; color:#e2e8f0;
+    font-size:.92rem; transition:.15s;
+  }
+  .quiz label:hover{border-color:var(--blue);}
+  .quiz input[type=radio]{margin-right:8px; accent-color:var(--sky);}
+  .quiz button{
+    margin-top:.6rem; background:var(--sky); border:none; color:#fff;
+    padding:.45rem 1rem; border-radius:7px; cursor:pointer; font-weight:700;
+    font-family:inherit; font-size:.85rem;
+  }
+  .quiz button:hover{background:var(--blue);}
+  #order-pool, #order-answer{
+    display:flex; gap:8px; flex-wrap:wrap; min-height:46px; padding:.6rem;
+    border:1px dashed var(--border); border-radius:10px; margin:.5rem 0;
+  }
+  #order-answer{border-style:solid; background:#0b1220;}
+  .chip{
+    background:var(--panel2); border:1px solid var(--border); color:#f1f5f9;
+    padding:.45rem .8rem; border-radius:8px; cursor:pointer;
+    font-family:ui-monospace,Consolas,monospace; font-size:.85rem; transition:.15s;
+  }
+  .chip:hover{border-color:var(--gold-bright);}
+  .btn{
+    background:var(--sky); border:none; color:#fff; padding:.5rem 1rem;
+    border-radius:8px; cursor:pointer; margin-right:.5rem; margin-top:.6rem;
+    font-weight:700; font-family:inherit; font-size:.85rem;
+  }
+  .btn:hover{background:var(--blue);}
+  .btn.secondary{background:#24324a; border:1px solid var(--border); color:#cbd5e1;}
+  .btn.secondary:hover{background:var(--border);}
+  table{width:100%; border-collapse:collapse; margin-top:1rem;}
+  th,td{border:1px solid var(--border); padding:.55rem .7rem; text-align:left; font-size:.88rem;
+        color:#cbd5e1;}
+  th{background:var(--panel2); color:#f1f5f9;}
+  .celebrate{
+    display:none; text-align:center; padding:1.5rem; margin-top:1.4rem;
+    border:1px solid var(--green); border-radius:12px; background:#052e22;
+  }
+  .celebrate h3{margin-top:0; color:#6ee7b7;}
+  .celebrate p{color:#a7f3d0; font-size:.92rem;}
+  .cert-note{
+    margin-top:1rem; padding:.9rem 1rem; border-radius:10px;
+    background:#16213a; border:1px solid var(--gold); color:#fde68a; font-size:.9rem;
+  }
+  .cert-note strong{color:var(--gold-bright);}
 </style>
 </head>
 <body>
-<div class="container">
-  <div class="panel">
-    <span class="badge">Git Level 1</span>
-    <h1>Git: Trying Things Without Fear</h1>
 
-    <h2>What is Git?</h2>
-    <p class="lede">
-      Imagine writing an essay and saving copies as you go: <em>essay.doc</em>,
-      <em>essay-final.doc</em>, <em>essay-final-REAL.doc</em>. It works, badly. You cannot
-      remember what changed between them, and you certainly cannot let a friend edit one
-      without losing track of which is which.
-    </p>
-    <p class="lede">
-      <strong>Git</strong> is the tool that does this properly. It keeps the history of a
-      folder: every time you tell it to, it takes a snapshot you can return to later. That
-      one idea buys you two things. You can always get an earlier version back. And you can
-      try something risky on the side, knowing the version that works is untouched.
-    </p>
-    <p class="lede">
-      Almost every software team on earth uses it, which is why it is the first thing anyone
-      teaches you.
-    </p>
-
-    <h2>Your turn</h2>
-    <p class="lede">
-      Maya has a website folder with two files in it and no history at all. She wants to try
-      out a new login page — but she is not sure the idea is any good, and the site currently
-      works. She needs a way to experiment that cannot damage what is already there.
-    </p>
-    <p class="lede">
-      You will type real Git commands in the boxes below. This page runs a small copy of Git
-      and shows you what happened — what is saved, what is not, and which line of work you
-      are standing on. Nothing is marked correct unless the repository really ends up in the
-      right state.
-    </p>
-
-    <div id="status" role="status" aria-live="polite">
-      <span class="item">BRANCH <span class="val" id="s-branch">—</span></span>
-      <span class="item">COMMITS <span class="val" id="s-commits">0</span></span>
-      <span class="item">STEP <span class="val" id="s-step">0/4</span></span>
-      <div id="bar" role="img" aria-label="Progress"><div id="fill"></div></div>
-    </div>
-
-    <div id="scenes"></div>
-
-    <div id="finale">
-      <div id="done-banner">
-        The working site is safe and the new page is merged — your points have been awarded.
-        <p>Maya went home at six.</p>
-      </div>
-      <div class="debrief">
-        <h2>What you learned</h2>
-        <ul>
-          <li><strong>A commit is a snapshot you can return to.</strong> Nothing is saved to history until you commit it.</li>
-          <li><strong>Staging is choosing what goes in the snapshot.</strong> <code>git add</code> selects; <code>git commit</code> saves.</li>
-          <li><strong>A branch is a separate line of work.</strong> Experiment there and the working version stays untouched.</li>
-          <li><strong>Merging brings the work back</strong> once you are happy with it.</li>
-        </ul>
-      </div>
-    </div>
-  </div>
+<div class="topbar">
+  <a href="#" onclick="resetProgress(); return false;">Reset progress</a>
 </div>
 
+<header>
+  <h1>Git, Finally Explained</h1>
+  <p>The end of <code>Report_Final_v2_REALLY_FINAL.docx</code>. Learn what <code>git init</code>, <code>git add</code> and <code>git commit</code> actually do — through a group project you have basically already lived through.</p>
+  <div class="badges" id="badges">
+    <div class="badge" data-id="init" title="Historian">🕰️</div>
+    <div class="badge" data-id="add" title="Selector">✅</div>
+    <div class="badge" data-id="commit" title="Version Saver">💾</div>
+    <div class="badge" data-id="status" title="Status Checker">🔍</div>
+    <div class="badge" data-id="log" title="Archivist">📖</div>
+    <div class="badge" data-id="branch" title="Branch Bold">🌿</div>
+    <div class="badge" data-id="merge" title="Peacemaker">🔀</div>
+    <div class="badge" data-id="rebase" title="Straightliner">🧵</div>
+    <div class="badge" data-id="quiz" title="Concept Master">🧠</div>
+    <div class="badge" data-id="order" title="Sequencer">🔢</div>
+    <div class="badge" data-id="final" title="Shipped It">🏁</div>
+  </div>
+  <div class="progress-wrap">
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+    <div class="progress-text" id="progress-text">0 / 11 exercises complete</div>
+  </div>
+</header>
+
+<nav id="tabs">
+  <button data-target="basics" class="active">1. The Problem</button>
+  <button data-target="init">2. git init</button>
+  <button data-target="add">3. git add</button>
+  <button data-target="commit">4. git commit</button>
+  <button data-target="statuslog">5. status &amp; log</button>
+  <button data-target="branch">6. Branches</button>
+  <button data-target="mergerebase">7. Merge &amp; Rebase</button>
+  <button data-target="story">8. Full Story</button>
+  <button data-target="challenges">9. Challenges</button>
+  <button data-target="cheatsheet">10. Cheat Sheet</button>
+</nav>
+
+<main>
+
+<!-- ============ 1. BASICS ============ -->
+<section id="basics" class="active">
+  <h2>You already know this pain</h2>
+  <div class="card problem">
+    <div class="tag">The problem</div>
+    <p>You and a partner, <b>Jordan</b>, are writing a group report. It goes like this: you email <code>report.docx</code>. Jordan edits it and emails back <code>report_v2.docx</code>. You add more and save <code>report_v2_FINAL.docx</code>. Jordan makes one more fix: <code>report_v2_FINAL_ACTUALLY_FINAL.docx</code>. Now nobody is sure which file has everyone's latest edits, and someone's paragraph just got overwritten by accident.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">What Git actually is</div>
+    <p>Git is <b>automatic, precise version history for a folder</b> — like the "Version History" feature in Google Docs, except it works on any file, tracks exactly what changed and why, and never overwrites anything by accident. Instead of renaming files, you keep <i>one file</i>, and Git remembers every version of it forever.</p>
+  </div>
+
+  <h3>The three places your work lives</h3>
+  <div class="diagram">
+    <div class="box"><b>📝 Working File</b><span>the doc open on your screen right now</span></div>
+    <div class="arrow">→</div>
+    <div class="box"><b>✅ Staging Area</b><span>the edits you've chosen to include in the next saved version</span></div>
+    <div class="arrow">→</div>
+    <div class="box"><b>📚 History</b><span>every version ever saved, labeled and permanent</span></div>
+  </div>
+  <div class="card">
+    <p><code>git add</code> is you saying "these specific edits are ready to be part of the next version." <code>git commit</code> is you actually saving that version with a label, permanently, so you can always come back to it. No more file-name chaos — just one file and a real history behind it.</p>
+  </div>
+</section>
+
+<!-- ============ 2. INIT ============ -->
+<section id="init">
+  <h2>git init — turn on version history for this folder</h2>
+  <div class="card scenario">
+    <div class="tag">Scenario</div>
+    <p>You made a folder called <code>project-report</code> and started an outline in <code>report.txt</code>. Right now, this is just a regular folder — if you overwrite something by mistake, it's gone. There's no history yet, because you haven't told Git to start keeping one.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">What actually happens</div>
+    <p><code>git init</code> creates a hidden <code>.git</code> folder inside <code>project-report</code>. That's where every future saved version will live. This is the one-time switch that turns on version history for this specific folder — like clicking "Enable Version History" for the first time. Nothing is saved yet; it just gets things ready.</p>
+  </div>
+
+  <h3>🎯 Your turn</h3>
+  <div class="terminal" id="term-init">
+    <p class="task-instructions">Turn on version history for the <code>project-report</code> folder:</p>
+    <div class="line">
+      <span class="prompt">project-report $</span>
+      <input type="text" id="init-input" autocomplete="off" spellcheck="false" placeholder="type a git command...">
+      <button onclick="checkInit()">Run</button>
+    </div>
+    <pre id="init-output"></pre>
+    <div class="feedback" id="init-feedback"></div>
+    <div class="hint" id="init-hint">Hint: two words — "git" and "init".</div>
+  </div>
+</section>
+
+<!-- ============ 3. ADD ============ -->
+<section id="add">
+  <h2>git add — choose what counts as "done"</h2>
+  <div class="card scenario">
+    <div class="tag">Scenario</div>
+    <p>You just finished writing the Introduction in <code>report.txt</code>. You also have a messy list of half-formed ideas typed at the bottom of the same file — not ready to be part of an official version yet. Before saving a real version, you need to tell Git exactly what should be included.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">What actually happens</div>
+    <p><code>git add report.txt</code> moves your edits into the <b>staging area</b> — a holding spot for "changes ready to be part of the next version." This step exists precisely so you're never forced to save everything blindly; you decide what's ready. <code>git add .</code> stages every changed file at once, when everything really is ready.</p>
+  </div>
+
+  <h3>🎯 Your turn</h3>
+  <div class="terminal" id="term-add">
+    <p class="task-instructions">Stage your finished Introduction in <code>report.txt</code>:</p>
+    <div class="line">
+      <span class="prompt">project-report $</span>
+      <input type="text" id="add-input" autocomplete="off" spellcheck="false" placeholder="type a git command...">
+      <button onclick="checkAdd()">Run</button>
+    </div>
+    <pre id="add-output"></pre>
+    <div class="feedback" id="add-feedback"></div>
+    <div class="hint" id="add-hint">Hint: <code>git add report.txt</code> (or <code>git add .</code> to stage everything changed).</div>
+  </div>
+</section>
+
+<!-- ============ 4. COMMIT ============ -->
+<section id="commit">
+  <h2>git commit — save a labeled version, permanently</h2>
+  <div class="card scenario">
+    <div class="tag">Scenario</div>
+    <p>Your Introduction is staged. Now make it official: save this exact version with a short label describing what it is, so you (and Jordan) can always find it again.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">What actually happens</div>
+    <p><code>git commit -m "message"</code> takes everything staged and saves it as a permanent version in the history — like naming a save point in Google Docs' version history instead of relying on a vague auto-save timestamp. The message says what changed and why. This version can never be silently overwritten; it's there forever, ready to return to.</p>
+  </div>
+
+  <h3>🎯 Your turn</h3>
+  <div class="terminal" id="term-commit">
+    <p class="task-instructions">Save this version with a message (try: "Add introduction section"):</p>
+    <div class="line">
+      <span class="prompt">project-report $</span>
+      <input type="text" id="commit-input" autocomplete="off" spellcheck="false" placeholder='git commit -m "..."'>
+      <button onclick="checkCommit()">Run</button>
+    </div>
+    <pre id="commit-output"></pre>
+    <div class="feedback" id="commit-feedback"></div>
+    <div class="hint" id="commit-hint">Hint: <code>git commit -m "your message"</code> — the message needs quotes.</div>
+  </div>
+</section>
+
+<!-- ============ 5. STATUS & LOG ============ -->
+<section id="statuslog">
+  <h2>git status &amp; git log — answer "what changed?" and "what's the history?"</h2>
+  <div class="card scenario">
+    <div class="tag">Scenario</div>
+    <p>Jordan texts you: <i>"did you save the intro yet? what else changed since?"</i> Instead of guessing from file names, you can just ask Git directly.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">git status</div>
+    <p>A live, exact answer to "what's changed since the last saved version?" — which files are staged and ready, which are edited but not yet staged, which are brand new. It never changes anything; it just reports the truth.</p>
+  </div>
+
+  <h3>🎯 Try it: git status</h3>
+  <div class="terminal" id="term-status">
+    <p class="task-instructions">Check what's changed in <code>project-report</code> right now:</p>
+    <div class="line">
+      <span class="prompt">project-report $</span>
+      <input type="text" id="status-input" autocomplete="off" spellcheck="false" placeholder="type a git command...">
+      <button onclick="checkStatus()">Run</button>
+    </div>
+    <pre id="status-output"></pre>
+    <div class="feedback" id="status-feedback"></div>
+    <div class="hint" id="status-hint">Hint: two words — "git" and "status".</div>
+  </div>
+
+  <div class="card explain">
+    <div class="tag">git log</div>
+    <p>This is literally the Version History panel: every saved version, in order, with its label and date. No more scrolling through emails trying to remember which attachment was newest.</p>
+  </div>
+
+  <h3>🎯 Try it: git log</h3>
+  <div class="terminal" id="term-log">
+    <p class="task-instructions">Pull up the full version history for <code>project-report</code>:</p>
+    <div class="line">
+      <span class="prompt">project-report $</span>
+      <input type="text" id="log-input" autocomplete="off" spellcheck="false" placeholder="type a git command...">
+      <button onclick="checkLog()">Run</button>
+    </div>
+    <pre id="log-output"></pre>
+    <div class="feedback" id="log-feedback"></div>
+    <div class="hint" id="log-hint">Hint: two words — "git" and "log".</div>
+  </div>
+</section>
+
+<!-- ============ 6. BRANCH ============ -->
+<section id="branch">
+  <h2>Branches — try a risky rewrite without touching the version everyone trusts</h2>
+  <div class="card scenario">
+    <div class="tag">Scenario</div>
+    <p>Jordan wants to try restructuring the whole report around a different argument. It might be great — or it might be a dead end. Either way, you don't want to risk the version your team is currently relying on for tomorrow's deadline.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">Why not just copy the file?</div>
+    <p>You could duplicate <code>report.txt</code> into <code>report_alt.txt</code> — but then you're back to the file-name chaos from the start, and there's no clean way to pull just the good parts back in later.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">What actually happens</div>
+    <p>A <b>branch</b> is a separate, parallel version of the <i>same</i> file's history. <code>git checkout -b restructure</code> creates a branch called <code>restructure</code> and switches to it. Jordan can now rewrite freely — the trusted <code>main</code> version is completely untouched. If the rewrite works, its changes can be merged back into <code>main</code>; if not, the branch is simply abandoned and nothing is lost.</p>
+  </div>
+
+  <h3>🎯 Your turn</h3>
+  <div class="terminal" id="term-branch">
+    <p class="task-instructions">Create and switch to a branch called <code>restructure</code> to try the risky rewrite safely:</p>
+    <div class="line">
+      <span class="prompt">project-report (main) $</span>
+      <input type="text" id="branch-input" autocomplete="off" spellcheck="false" placeholder="type a git command...">
+      <button onclick="checkBranch()">Run</button>
+    </div>
+    <pre id="branch-output"></pre>
+    <div class="feedback" id="branch-feedback"></div>
+    <div class="hint" id="branch-hint">Hint: <code>git checkout -b restructure</code> — the <code>-b</code> means "create it, then switch to it."</div>
+  </div>
+</section>
+
+<!-- ============ 6b. MERGE & REBASE ============ -->
+<section id="mergerebase">
+  <h2>Merging — combining two branches back together</h2>
+  <div class="card scenario">
+    <div class="tag">Scenario</div>
+    <p>Jordan's rewrite on <code>restructure</code> turned out great. Meanwhile you kept working on <code>main</code> and, without realizing it, edited the exact same paragraph. Time to bring <code>restructure</code> back into <code>main</code>.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">What actually happens</div>
+    <p><code>git merge restructure</code> (run while on <code>main</code>) combines the two histories. If you and Jordan touched different parts of the file, Git merges them automatically — no conflict, no fuss. But since you both edited the <i>exact same lines</i>, Git can't guess which version you want. That's a <b>merge conflict</b>. Git pauses and marks the disputed spot right inside the file:</p>
+  </div>
+  <div class="terminal" style="margin-top:0;">
+    <pre style="color:#f87171;">&lt;&lt;&lt;&lt;&lt;&lt;&lt; HEAD
+Your version of the paragraph...
+=======
+Jordan's version of the paragraph...
+&gt;&gt;&gt;&gt;&gt;&gt;&gt; restructure</pre>
+  </div>
+  <div class="card explain">
+    <div class="tag">How you resolve it</div>
+    <p>Open the file and edit it by hand: delete the <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>/<code>=======</code>/<code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> markers and keep whichever wording (or a blend of both) you actually want. Then it's the normal rhythm again — <code>git add</code> marks it resolved, and <code>git commit</code> finishes the merge (Git already fills in a sensible default message for you).</p>
+  </div>
+
+  <h3>🎯 Your turn: work through a real conflict</h3>
+  <div class="terminal" id="term-merge">
+    <div class="line" id="merge-line-1">
+      <span class="prompt">project-report (main) $</span>
+      <input type="text" id="merge-input-1" autocomplete="off" spellcheck="false" placeholder="step 1: merge the restructure branch into main">
+      <button onclick="checkMerge(1)">Run</button>
+    </div>
+    <pre id="merge-output-1"></pre>
+    <div class="feedback" id="merge-feedback-1"></div>
+    <div class="hint" id="merge-1-hint">Hint: <code>git merge restructure</code></div>
+
+    <div id="merge-editor" style="display:none; margin-top:1rem;">
+      <p class="task-instructions">Git paused and wrote the conflict markers into <code>report.txt</code>. Open it and fix it by hand: delete the <code>&lt;&lt;&lt;&lt;&lt;&lt;&lt;</code>, <code>=======</code> and <code>&gt;&gt;&gt;&gt;&gt;&gt;&gt;</code> lines, and keep the wording you actually want — yours, Jordan's, or a blend of both.</p>
+      <div class="file-edit">
+        <div class="file-name">📄 report.txt <span>— editable</span></div>
+        <textarea id="report-text" rows="11" spellcheck="false" autocomplete="off"></textarea>
+      </div>
+      <button class="btn" onclick="saveReport()">💾 Save file</button>
+      <button class="btn secondary" onclick="resetReport()">Undo my edits</button>
+      <div class="feedback" id="report-feedback"></div>
+      <div class="hint" id="report-hint">Hint: delete the three marker lines completely, keep the paragraph you want, then click Save file.</div>
+    </div>
+
+    <div class="line" id="merge-line-2" style="display:none; margin-top:1rem;">
+      <span class="prompt">project-report (main|MERGING) $</span>
+      <input type="text" id="merge-input-2" autocomplete="off" spellcheck="false" placeholder="step 2: mark report.txt as resolved, now that you've edited it by hand">
+      <button onclick="checkMerge(2)">Run</button>
+    </div>
+    <pre id="merge-output-2"></pre>
+    <div class="feedback" id="merge-feedback-2"></div>
+
+    <div class="line" id="merge-line-3" style="display:none; margin-top:1rem;">
+      <span class="prompt">project-report (main|MERGING) $</span>
+      <input type="text" id="merge-input-3" autocomplete="off" spellcheck="false" placeholder="step 3: finish the merge">
+      <button onclick="checkMerge(3)">Run</button>
+    </div>
+    <pre id="merge-output-3"></pre>
+    <div class="feedback" id="merge-feedback-3"></div>
+  </div>
+
+  <h2 style="margin-top:2.5rem;">Rebasing — a cleaner alternative to merging</h2>
+  <div class="card scenario">
+    <div class="tag">Scenario</div>
+    <p>Before merging, Jordan wants the <code>restructure</code> branch's history to look like it was written straight on top of the latest <code>main</code> — one clean line instead of a fork-and-rejoin with a merge commit.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">Merge vs. rebase</div>
+    <p><b>Merge</b> keeps both histories exactly as they happened and adds one extra "joining" commit — honest, but the timeline visibly branches and rejoins. <b>Rebase</b> takes your branch's commits and replays them one by one on top of the latest <code>main</code>, as if you'd written them there all along — the result is a single straight line, easier to read later.</p>
+  </div>
+  <div class="card explain">
+    <div class="tag">The one rule</div>
+    <p>Rebasing rewrites commit history (new commit IDs). That's fine for a branch only you're working on — but never rebase a branch other people have already pulled and built on top of; use merge for anything shared.</p>
+  </div>
+
+  <h3>🎯 Your turn</h3>
+  <div class="terminal" id="term-rebase">
+    <p class="task-instructions">While on <code>restructure</code>, replay its commits cleanly on top of the latest <code>main</code>:</p>
+    <div class="line">
+      <span class="prompt">project-report (restructure) $</span>
+      <input type="text" id="rebase-input" autocomplete="off" spellcheck="false" placeholder="type a git command...">
+      <button onclick="checkRebase()">Run</button>
+    </div>
+    <pre id="rebase-output"></pre>
+    <div class="feedback" id="rebase-feedback"></div>
+    <div class="hint" id="rebase-hint">Hint: <code>git rebase main</code></div>
+  </div>
+</section>
+
+<!-- ============ 7. FULL STORY ============ -->
+<section id="story">
+  <h2>The full story, start to finish</h2>
+  <div class="card">
+    <p>Here's the whole <code>project-report</code> project, told as one timeline — notice there is still only ever <b>one file</b>, <code>report.txt</code>, the whole time:</p>
+  </div>
+  <table>
+    <tr><th>#</th><th>What happened</th><th>Command</th><th>What it solved</th></tr>
+    <tr><td>1</td><td>Started the project folder</td><td><code>git init</code></td><td>Turned on version history for <code>project-report</code></td></tr>
+    <tr><td>2</td><td>Wrote the Introduction</td><td><i>(editing report.txt)</i></td><td>Just an edit on your screen — not yet part of any saved version</td></tr>
+    <tr><td>3</td><td>Decided the Intro was ready</td><td><code>git add report.txt</code></td><td>Staged: marked exactly what should be saved next</td></tr>
+    <tr><td>4</td><td>Saved it as an official version</td><td><code>git commit -m "Add introduction section"</code></td><td>Permanent, labeled version #1 — replaces "report_v1.docx" forever</td></tr>
+    <tr><td>5</td><td>Jordan asked what changed</td><td><code>git status</code></td><td>Instant, precise answer instead of guessing from filenames</td></tr>
+    <tr><td>6</td><td>You added the Conclusion</td><td><code>git add .</code> then <code>git commit -m "Add conclusion"</code></td><td>Version #2 saved, no overwritten work, no renamed files</td></tr>
+    <tr><td>7</td><td>Reviewed the whole history</td><td><code>git log</code></td><td>Full version history, replacing a folder full of "FINAL" files</td></tr>
+    <tr><td>8</td><td>Jordan tried a risky rewrite</td><td><code>git checkout -b restructure</code></td><td>Safe parallel version — <code>main</code> stayed untouched for the deadline</td></tr>
+    <tr><td>9</td><td>Merged the rewrite back in — hit a conflict on a shared paragraph</td><td><code>git merge restructure</code> → resolve → <code>git add</code> → <code>git commit</code></td><td>Both sets of edits combined into one version, safely</td></tr>
+    <tr><td>10</td><td>Wanted a clean, linear history before merging next time</td><td><code>git rebase main</code></td><td>Branch replayed on top of the latest <code>main</code> — no messy fork-and-rejoin</td></tr>
+  </table>
+  <div class="card explain">
+    <div class="tag">The takeaway</div>
+    <p>Every one of those "FINAL_v2_ACTUALLY_FINAL" moments from the intro is solved by exactly one of these commands. That's the whole point of Git: the rhythm of <b>edit → stage → save a labeled version</b>, with a real history behind it instead of a pile of filenames.</p>
+  </div>
+</section>
+
+<!-- ============ 8. CHALLENGES ============ -->
+<section id="challenges">
+  <h2>Challenges</h2>
+
+  <h3>Quiz</h3>
+  <div class="card quiz" id="quiz1">
+    <p><b>1.</b> What does <code>git init</code> actually do?</p>
+    <label><input type="radio" name="q1"> Emails your file to your teammate</label>
+    <label><input type="radio" name="q1" data-correct="true"> Turns on version history for this specific folder</label>
+    <label><input type="radio" name="q1"> Permanently deletes old drafts</label>
+    <label><input type="radio" name="q1"> Renames your file to "FINAL"</label>
+    <button onclick="checkQuiz('q1')">Check answer</button>
+    <div class="feedback" id="q1-feedback"></div>
+  </div>
+
+  <div class="card quiz" id="quiz2">
+    <p><b>2.</b> What is the staging area for?</p>
+    <label><input type="radio" name="q2"> It's the trash — staged files get deleted</label>
+    <label><input type="radio" name="q2" data-correct="true"> Choosing exactly which edits should be part of the next saved version</label>
+    <label><input type="radio" name="q2"> A second copy of the file emailed to a partner</label>
+    <label><input type="radio" name="q2"> The place where you physically type</label>
+    <button onclick="checkQuiz('q2')">Check answer</button>
+    <div class="feedback" id="q2-feedback"></div>
+  </div>
+
+  <div class="card quiz" id="quiz3">
+    <p><b>3.</b> Which command actually saves a permanent, named version in history?</p>
+    <label><input type="radio" name="q3"> git add</label>
+    <label><input type="radio" name="q3"> git status</label>
+    <label><input type="radio" name="q3" data-correct="true"> git commit</label>
+    <label><input type="radio" name="q3"> git init</label>
+    <button onclick="checkQuiz('q3')">Check answer</button>
+    <div class="feedback" id="q3-feedback"></div>
+  </div>
+
+  <div class="card quiz" id="quiz4">
+    <p><b>4.</b> True or false: you need to run <code>git init</code> again before every saved version.</p>
+    <label><input type="radio" name="q4"> True</label>
+    <label><input type="radio" name="q4" data-correct="true"> False — it only runs once, when the project starts being tracked</label>
+    <button onclick="checkQuiz('q4')">Check answer</button>
+    <div class="feedback" id="q4-feedback"></div>
+  </div>
+
+  <div class="card quiz" id="quiz5">
+    <p><b>5.</b> Why is a branch better than just duplicating the file into "report_alt.txt"?</p>
+    <label><input type="radio" name="q5"> It isn't — they're exactly the same thing</label>
+    <label><input type="radio" name="q5" data-correct="true"> A branch shares the same history and can be merged back in cleanly, instead of creating a separate untracked file</label>
+    <label><input type="radio" name="q5"> Branches automatically email your teammate</label>
+    <label><input type="radio" name="q5"> Duplicating a file is faster and does the same job</label>
+    <button onclick="checkQuiz('q5')">Check answer</button>
+    <div class="feedback" id="q5-feedback"></div>
+  </div>
+
+  <div class="card quiz" id="quiz6">
+    <p><b>6.</b> What actually causes a merge conflict?</p>
+    <label><input type="radio" name="q6"> Running <code>git init</code> a second time</label>
+    <label><input type="radio" name="q6" data-correct="true"> Two branches changed the exact same lines in different ways</label>
+    <label><input type="radio" name="q6"> Forgetting to write a commit message</label>
+    <label><input type="radio" name="q6"> Running <code>git status</code> too often</label>
+    <button onclick="checkQuiz('q6')">Check answer</button>
+    <div class="feedback" id="q6-feedback"></div>
+  </div>
+
+  <div class="card quiz" id="quiz7">
+    <p><b>7.</b> Why should you avoid rebasing a branch that others have already pulled?</p>
+    <label><input type="radio" name="q7"> Rebase is slower than merge</label>
+    <label><input type="radio" name="q7" data-correct="true"> It rewrites commit history/IDs, which breaks everyone else's copy of that branch</label>
+    <label><input type="radio" name="q7"> Rebase permanently deletes the branch</label>
+    <label><input type="radio" name="q7"> It isn't a real git command</label>
+    <button onclick="checkQuiz('q7')">Check answer</button>
+    <div class="feedback" id="q7-feedback"></div>
+  </div>
+
+  <h3>Put the steps in order</h3>
+  <div class="card">
+    <p class="task-instructions">Click the three commands below in the order you'd run them for a brand-new project.</p>
+    <div id="order-pool"></div>
+    <p style="color:var(--muted); font-size:.82em; margin:.5rem 0 0;">Your sequence:</p>
+    <div id="order-answer"></div>
+    <button class="btn" onclick="checkOrder()">Check order</button>
+    <button class="btn secondary" onclick="resetOrder()">Reset</button>
+    <div class="feedback" id="order-feedback"></div>
+  </div>
+
+  <h3>Final challenge: ship the presentation</h3>
+  <div class="card scenario">
+    <div class="tag">Scenario</div>
+    <p>You started a new folder called <code>final-presentation</code> and wrote your talking points into <code>slides.txt</code>. Turn on history, stage it, and save the first official version — all three steps, in order.</p>
+  </div>
+  <div class="terminal" id="term-big">
+    <div class="line" id="big-line-1">
+      <span class="prompt">final-presentation $</span>
+      <input type="text" id="big-input-1" autocomplete="off" spellcheck="false" placeholder="step 1: turn on version history here">
+      <button onclick="checkBig(1)">Run</button>
+    </div>
+    <pre id="big-output-1"></pre>
+    <div class="feedback" id="big-feedback-1"></div>
+
+    <div class="line" id="big-line-2" style="display:none; margin-top:1rem;">
+      <span class="prompt">final-presentation $</span>
+      <input type="text" id="big-input-2" autocomplete="off" spellcheck="false" placeholder="step 2: stage slides.txt">
+      <button onclick="checkBig(2)">Run</button>
+    </div>
+    <pre id="big-output-2"></pre>
+    <div class="feedback" id="big-feedback-2"></div>
+
+    <div class="line" id="big-line-3" style="display:none; margin-top:1rem;">
+      <span class="prompt">final-presentation $</span>
+      <input type="text" id="big-input-3" autocomplete="off" spellcheck="false" placeholder='step 3: save it with a message'>
+      <button onclick="checkBig(3)">Run</button>
+    </div>
+    <pre id="big-output-3"></pre>
+    <div class="feedback" id="big-feedback-3"></div>
+  </div>
+
+  <div class="celebrate" id="celebrate">
+    <h3>🎉 No more "FINAL_v2" — lab complete!</h3>
+    <p>You've walked through every core Git concept, hands-on, using a story that maps 1:1 to what each command actually does — and you'll never have to name a file "FINAL_v2_ACTUALLY_FINAL" again.</p>
+    <div class="cert-note">
+      🏅 <strong>Certificate issued.</strong> Your certificate for this lab has been added to your
+      NerdLab profile — open <strong>Certificates</strong> from the menu to view it.
+    </div>
+  </div>
+</section>
+
+<!-- ============ 9. CHEAT SHEET ============ -->
+<section id="cheatsheet">
+  <h2>Cheat sheet</h2>
+  <table>
+    <tr><th>Command</th><th>What it does</th><th>Real-life equivalent</th></tr>
+    <tr><td><code>git init</code></td><td>Starts tracking history in this folder (run once)</td><td>Turning on "Version History" for the first time</td></tr>
+    <tr><td><code>git add &lt;file&gt;</code></td><td>Stages a file for the next snapshot</td><td>Marking these edits "ready" to be part of the next save</td></tr>
+    <tr><td><code>git add .</code></td><td>Stages every changed file</td><td>Marking everything you changed as ready</td></tr>
+    <tr><td><code>git commit -m "msg"</code></td><td>Permanently saves the staged snapshot</td><td>Naming and saving a version, for good</td></tr>
+    <tr><td><code>git status</code></td><td>Shows what's changed / staged / untracked</td><td>"What's changed since I last saved?"</td></tr>
+    <tr><td><code>git log</code></td><td>Shows history of all commits</td><td>Opening the Version History panel</td></tr>
+    <tr><td><code>git checkout -b &lt;name&gt;</code></td><td>Creates and switches to a new branch</td><td>A safe copy that can still be merged back later</td></tr>
+    <tr><td><code>git branch</code></td><td>Lists existing branches</td><td>Listing every in-progress alternate version</td></tr>
+    <tr><td><code>git merge &lt;branch&gt;</code></td><td>Combines another branch's history into your current one</td><td>Bringing an alternate version back into the main one</td></tr>
+    <tr><td><code>git rebase &lt;branch&gt;</code></td><td>Replays your commits on top of another branch's latest work</td><td>Rewriting your notes to read as one clean line, not a fork-and-rejoin</td></tr>
+  </table>
+  <div class="card explain" style="margin-top:1.4rem;">
+    <div class="tag">Remember</div>
+    <p>The core loop is always: <b>edit a file → <code>git add</code> → <code>git commit</code></b>. Status, log, and branches just help you see and safely navigate that history — no renamed files required.</p>
+  </div>
+</section>
+
+</main>
+
 <script>
-/* =========================================================================
-   A small Git. Every check below inspects the repository this builds —
-   which commits exist, what each one contains, which branch points where —
-   not the text you typed.
-   ========================================================================= */
-function newRepo() {
-  return {
-    initialized: false,
-    // files present in the working directory from the start
-    work: { 'index.html': 'v1', 'style.css': 'v1' },
-    staged: {},          // filename -> content, waiting for the next commit
-    commits: {},         // id -> { msg, parent, tree, id }
-    branches: {},        // name -> commit id
-    head: null,          // current branch name
-    next: 1,
-    log: []
-  };
+/* ---------- platform completion contract ---------- */
+// The platform records this lab as done — and issues the certificate — only
+// when this message is posted, and it is posted only after all 11 exercises
+// have genuinely passed.
+var TASK_ID = 1;
+var reportedComplete = false;
+function reportCompletion(){
+  if(reportedComplete) return;
+  reportedComplete = true;
+  try {
+    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  } catch(e){ /* opened outside the platform — nothing to report to */ }
 }
 
-function headCommit(r) { return r.head && r.branches[r.head] ? r.commits[r.branches[r.head]] : null; }
-function treeOf(r) { var c = headCommit(r); return c ? c.tree : {}; }
+/* ---------- navigation ---------- */
+const tabs = document.querySelectorAll('#tabs button');
+const sections = document.querySelectorAll('main > section');
+tabs.forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    tabs.forEach(b=>b.classList.remove('active'));
+    sections.forEach(s=>s.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.target).classList.add('active');
+    window.scrollTo({top:0, behavior:'smooth'});
+  });
+});
 
-// Every commit reachable from a branch tip, newest first.
-function history(r, branch) {
-  var out = [], id = r.branches[branch];
-  while (id) { var c = r.commits[id]; if (!c) break; out.push(c); id = c.parent; }
-  return out;
+/* ---------- progress + badge tracking ---------- */
+const TOTAL = 11;
+// These 11 ids are the only ones that count toward the progress bar, the
+// badges, and the completion signal — one per badge shown above.
+const SERVER_TASK_IDS = ['init','add','commit','status','log','branch','merge','rebase','quiz','order','final'];
+const completed = new Set();
+
+// Local-only bookkeeping for the quiz (all 7 questions must be answered
+// correctly before the single 'quiz' task counts as done).
+const quizAnswered = new Set();
+const QUIZ_IDS = ['q1','q2','q3','q4','q5','q6','q7'];
+
+/* ---------- local persistence ----------
+   Progress is stored in this browser only. The platform is told about the lab
+   as a whole (see reportCompletion), never about individual steps.            */
+const STORE_PROGRESS = 'gitPractice.completed';
+
+function storeGet(key){
+  try { return window.localStorage.getItem(key); } catch(e){ return null; }
+}
+function storeSet(key, val){
+  try { window.localStorage.setItem(key, val); } catch(e){ /* private mode — session only */ }
+}
+function saveProgress(){
+  storeSet(STORE_PROGRESS, JSON.stringify([...completed]));
+}
+function loadProgress(){
+  const raw = storeGet(STORE_PROGRESS);
+  if(!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(id => SERVER_TASK_IDS.includes(id)) : [];
+  } catch(e){ return []; }
+}
+function resetProgress(){
+  if(!confirm('Clear all your progress on this browser and start over?')) return;
+  try { window.localStorage.removeItem(STORE_PROGRESS); } catch(e){}
+  try { window.localStorage.removeItem('gitPractice.reportTxt'); } catch(e){}
+  location.reload();
 }
 
-function say(r, line) { r.log.push(line); }
+function markDone(id){
+  if(!completed.has(id)){
+    completed.add(id);
+    updateProgress();
+    const el = document.querySelector('.badge[data-id="'+id+'"]');
+    if(el) el.classList.add('earned');
+    if(SERVER_TASK_IDS.includes(id)){
+      saveProgress();
+    }
+  }
+}
+function restoreDone(id){
+  if(!completed.has(id)){
+    completed.add(id);
+    updateProgress();
+    const el = document.querySelector('.badge[data-id="'+id+'"]');
+    if(el) el.classList.add('earned');
+  }
+}
+function updateProgress(){
+  const pct = Math.round((completed.size/TOTAL)*100);
+  document.getElementById('progress-fill').style.width = pct+'%';
+  document.getElementById('progress-text').textContent = completed.size+' / '+TOTAL+' exercises complete';
+  if(completed.size >= TOTAL){
+    document.getElementById('celebrate').style.display='block';
+    reportCompletion();
+  }
+}
 
-function run(r, raw) {
-  var line = raw.trim();
-  if (!line || line.charAt(0) === '#') return;
+// Restore progress saved in this browser (e.g. from a previous session)
+const SAVED_COMPLETED = loadProgress();
+SAVED_COMPLETED.forEach(id => restoreDone(id));
+if(SAVED_COMPLETED.includes('quiz')){
+  QUIZ_IDS.forEach(q => quizAnswered.add(q));
+}
+SAVED_COMPLETED.forEach(id => {
+  if(id === 'quiz'){
+    QUIZ_IDS.forEach(q=>{
+      const fb = document.getElementById(q+'-feedback');
+      if(fb && !fb.textContent){
+        fb.textContent = '✅ Already completed in a previous session.';
+        fb.className = 'feedback ok';
+      }
+    });
+  } else if(id === 'final'){
+    document.getElementById('big-line-2').style.display = 'flex';
+    document.getElementById('big-line-3').style.display = 'flex';
+    const fb = document.getElementById('big-feedback-3');
+    if(fb && !fb.textContent){
+      fb.textContent = '✅ Already completed in a previous session.';
+      fb.className = 'feedback ok';
+    }
+  } else if(id === 'merge'){
+    showEditor();
+    document.querySelector('#merge-editor .file-edit').classList.add('resolved');
+    document.getElementById('merge-line-2').style.display = 'flex';
+    document.getElementById('merge-line-3').style.display = 'flex';
+    const fb = document.getElementById('merge-feedback-3');
+    if(fb && !fb.textContent){
+      fb.textContent = '✅ Already completed in a previous session.';
+      fb.className = 'feedback ok';
+    }
+  } else {
+    const fb = document.getElementById(id+'-feedback');
+    if(fb && !fb.textContent){
+      fb.textContent = '✅ Already completed in a previous session.';
+      fb.className = 'feedback ok';
+    }
+  }
+});
 
-  var m;
-  if (!/^git\s/.test(line)) {
-    // Let learners create a file, since the story asks for one.
-    if ((m = /^(?:touch|echo\s+.*?>)\s*([\w./-]+)$/.exec(line))) {
-      r.work[m[1]] = 'v1';
-      say(r, '$ ' + line);
+function norm(s){ return (s||'').trim().replace(/\s+/g,' '); }
+
+const attempts = {};
+function bumpAttempt(id){
+  attempts[id] = (attempts[id]||0)+1;
+  if(attempts[id] >= 2){
+    const h = document.getElementById(id+'-hint');
+    if(h) h.style.display='block';
+  }
+}
+
+/* ---------- git init ---------- */
+function checkInit(){
+  const v = norm(document.getElementById('init-input').value);
+  const out = document.getElementById('init-output');
+  const fb = document.getElementById('init-feedback');
+  if(/^git\s+init$/i.test(v)){
+    out.textContent = 'Initialized empty Git repository in ~/project-report/.git/\nVersion history is now ON for this folder.';
+    fb.textContent = '✅ Correct! Badge earned: 🕰️ Historian';
+    fb.className = 'feedback ok';
+    markDone('init');
+  } else {
+    fb.textContent = '❌ Not quite — try again.';
+    fb.className = 'feedback bad';
+    bumpAttempt('init');
+  }
+}
+
+/* ---------- git add ---------- */
+function checkAdd(){
+  const v = norm(document.getElementById('add-input').value);
+  const out = document.getElementById('add-output');
+  const fb = document.getElementById('add-feedback');
+  if(/^git\s+add\s+(report\.txt|\.)$/i.test(v)){
+    out.textContent = 'Changes staged:\n  new file:   report.txt\nReady to be part of the next saved version.';
+    fb.textContent = '✅ Correct! Badge earned: ✅ Selector';
+    fb.className = 'feedback ok';
+    markDone('add');
+  } else {
+    fb.textContent = '❌ Not quite — try again.';
+    fb.className = 'feedback bad';
+    bumpAttempt('add');
+  }
+}
+
+/* ---------- git commit ---------- */
+function checkCommit(){
+  const v = norm(document.getElementById('commit-input').value);
+  const out = document.getElementById('commit-output');
+  const fb = document.getElementById('commit-feedback');
+  const m = v.match(/^git\s+commit\s+-m\s+["'](.+)["']$/i);
+  if(m && m[1].trim().length > 0){
+    out.textContent = '[main (root-commit) a1b2c3d] '+m[1]+'\nSaved as a permanent version.\n 1 file changed, 1 insertion(+)';
+    fb.textContent = '✅ Correct! Badge earned: 💾 Version Saver';
+    fb.className = 'feedback ok';
+    markDone('commit');
+  } else {
+    fb.textContent = '❌ Not quite — remember the message needs quotes around it.';
+    fb.className = 'feedback bad';
+    bumpAttempt('commit');
+  }
+}
+
+/* ---------- git status ---------- */
+function checkStatus(){
+  const v = norm(document.getElementById('status-input').value);
+  const out = document.getElementById('status-output');
+  const fb = document.getElementById('status-feedback');
+  if(/^git\s+status$/i.test(v)){
+    out.textContent = 'On branch main\nChanges not staged for commit:\n  modified:   report.txt\n\nno changes added to commit';
+    fb.textContent = '✅ Correct! Badge earned: 🔍 Status Checker';
+    fb.className = 'feedback ok';
+    markDone('status');
+  } else {
+    fb.textContent = '❌ Not quite — try again.';
+    fb.className = 'feedback bad';
+    bumpAttempt('status');
+  }
+}
+
+/* ---------- git log ---------- */
+function checkLog(){
+  const v = norm(document.getElementById('log-input').value);
+  const out = document.getElementById('log-output');
+  const fb = document.getElementById('log-feedback');
+  if(/^git\s+log$/i.test(v)){
+    out.textContent = 'commit b2c3d4e (HEAD -> main)\nAuthor: You\nDate:   today\n\n    Add conclusion\n\ncommit a1b2c3d\nAuthor: You\nDate:   yesterday\n\n    Add introduction section';
+    fb.textContent = '✅ Correct! Badge earned: 📖 Archivist';
+    fb.className = 'feedback ok';
+    markDone('log');
+  } else {
+    fb.textContent = '❌ Not quite — try again.';
+    fb.className = 'feedback bad';
+    bumpAttempt('log');
+  }
+}
+
+/* ---------- git branch ---------- */
+function checkBranch(){
+  const v = norm(document.getElementById('branch-input').value);
+  const out = document.getElementById('branch-output');
+  const fb = document.getElementById('branch-feedback');
+  if(/^git\s+checkout\s+-b\s+restructure$/i.test(v)){
+    out.textContent = "Switched to a new branch 'restructure'";
+    fb.textContent = '✅ Correct! Badge earned: 🌿 Branch Bold';
+    fb.className = 'feedback ok';
+    markDone('branch');
+  } else {
+    fb.textContent = '❌ Not quite — try again.';
+    fb.className = 'feedback bad';
+    bumpAttempt('branch');
+  }
+}
+
+/* ---------- report.txt editor (resolve the conflict by hand) ---------- */
+const STORE_REPORT = 'gitPractice.reportTxt';
+
+const CONFLICT_TEXT = [
+  'Introduction',
+  '',
+  'Remote work has changed how student teams collaborate.',
+  '',
+  '<<<<<<< HEAD',
+  'Our findings show the biggest gain is flexible scheduling.',
+  '=======',
+  'Our findings show the biggest gain is clearer written communication.',
+  '>>>>>>> restructure',
+  '',
+  'Conclusion'
+].join('\n');
+
+const MARKER_RE = /^\s*(<{7}|={7}|>{7})/m;
+
+function reportEl(){ return document.getElementById('report-text'); }
+
+function showEditor(){
+  document.getElementById('merge-editor').style.display = 'block';
+}
+
+function resetReport(){
+  reportEl().value = CONFLICT_TEXT;
+  const fb = document.getElementById('report-feedback');
+  fb.textContent = 'File restored to the conflicted version.';
+  fb.className = 'feedback';
+  document.querySelector('#merge-editor .file-edit').classList.remove('resolved');
+}
+
+function saveReport(){
+  const v = reportEl().value;
+  const fb = document.getElementById('report-feedback');
+  if(MARKER_RE.test(v)){
+    fb.textContent = '❌ Saved, but Git still sees conflict markers in the file — delete every <<<<<<<, ======= and >>>>>>> line.';
+    fb.className = 'feedback bad';
+    bumpAttempt('report');
+    return;
+  }
+  if(!v.trim()){
+    fb.textContent = '❌ The file is empty — keep at least the paragraph you want.';
+    fb.className = 'feedback bad';
+    bumpAttempt('report');
+    return;
+  }
+  fb.textContent = '✅ Saved. The markers are gone — now tell Git the conflict is resolved.';
+  fb.className = 'feedback ok';
+  document.querySelector('#merge-editor .file-edit').classList.add('resolved');
+  storeSet(STORE_REPORT, v);
+  document.getElementById('merge-line-2').style.display = 'flex';
+}
+
+// seed the editor: the student's own saved version if there is one
+(function initReport(){
+  const saved = storeGet(STORE_REPORT);
+  reportEl().value = saved !== null ? saved : CONFLICT_TEXT;
+})();
+
+/* ---------- merge conflict (3-step walkthrough) ---------- */
+function checkMerge(step){
+  const v = norm(document.getElementById('merge-input-'+step).value);
+  const out = document.getElementById('merge-output-'+step);
+  const fb = document.getElementById('merge-feedback-'+step);
+  let ok = false;
+  if(step === 1 && /^git\s+merge\s+restructure$/i.test(v)){
+    out.textContent = 'Auto-merging report.txt\nCONFLICT (content): Merge conflict in report.txt\nAutomatic merge failed; fix conflicts and then commit the result.';
+    ok = true;
+  } else if(step === 2 && /^git\s+add\s+(report\.txt|\.)$/i.test(v)){
+    // Step 2 only counts once the file on screen genuinely has no markers left.
+    const cur = reportEl().value;
+    if(MARKER_RE.test(cur) || !cur.trim()){
+      fb.textContent = '❌ report.txt still has conflict markers in it — fix the file above first.';
+      fb.className = 'feedback bad';
       return;
     }
-    say(r, '$ ' + line);
-    say(r, "  this lab only understands git commands (and touch)");
-    return;
+    out.textContent = 'Conflict marked as resolved: report.txt';
+    ok = true;
+  } else if(step === 3 && /^git\s+commit(\s+-m\s+["'].+["'])?$/i.test(v)){
+    out.textContent = "Merge made by the 'ort' strategy.\n report.txt | 4 +---\n 1 file changed, 1 insertion(+), 3 deletions(-)";
+    ok = true;
   }
-  say(r, '$ ' + line);
-  var args = line.replace(/^git\s+/, '');
-
-  if (/^init$/.test(args)) {
-    if (r.initialized) { say(r, '  already a repository'); return; }
-    r.initialized = true; r.head = 'main'; r.branches['main'] = null;
-    say(r, '  initialised empty repository on branch main');
-    return;
-  }
-  if (!r.initialized) { say(r, '  not a git repository — run git init first'); return; }
-
-  if ((m = /^add\s+(.+)$/.exec(args))) {
-    var what = m[1].trim();
-    var picked = (what === '.' || what === '-A' || what === '--all')
-      ? Object.keys(r.work)
-      : what.split(/\s+/);
-    var added = 0;
-    picked.forEach(function (f) {
-      if (r.work.hasOwnProperty(f)) { r.staged[f] = r.work[f]; added++; }
-      else say(r, "  pathspec '" + f + "' did not match any file");
-    });
-    if (added) say(r, '  staged ' + added + ' file(s)');
-    return;
-  }
-
-  if ((m = /^commit\s+(?:-m|--message)\s*(?:=\s*)?(["'])(.*?)\1\s*$/.exec(args)) ||
-      (m = /^commit\s+-am\s*(["'])(.*?)\1\s*$/.exec(args))) {
-    var msg = m[2];
-    if (/^commit\s+-am/.test(args)) { Object.keys(r.work).forEach(function (f) { r.staged[f] = r.work[f]; }); }
-    if (Object.keys(r.staged).length === 0) { say(r, '  nothing staged to commit'); return; }
-    if (!msg.trim()) { say(r, '  empty commit message'); return; }
-    var tree = {}; var base = treeOf(r);
-    Object.keys(base).forEach(function (f) { tree[f] = base[f]; });
-    Object.keys(r.staged).forEach(function (f) { tree[f] = r.staged[f]; });
-    var id = 'c' + (r.next++);
-    r.commits[id] = { id: id, msg: msg, parent: r.branches[r.head], tree: tree };
-    r.branches[r.head] = id;
-    r.staged = {};
-    say(r, '  [' + r.head + ' ' + id + '] ' + msg);
-    return;
-  }
-  if (/^commit\b/.test(args)) { say(r, '  this lab needs a message: git commit -m "..."'); return; }
-
-  if ((m = /^(?:checkout\s+-b|switch\s+-c)\s+([\w./-]+)$/.exec(args))) {
-    if (r.branches.hasOwnProperty(m[1])) { say(r, "  branch '" + m[1] + "' already exists"); return; }
-    r.branches[m[1]] = r.branches[r.head];
-    r.head = m[1];
-    say(r, "  created branch '" + m[1] + "' and switched to it");
-    return;
-  }
-  if ((m = /^(?:checkout|switch)\s+([\w./-]+)$/.exec(args))) {
-    if (!r.branches.hasOwnProperty(m[1])) { say(r, "  no branch named '" + m[1] + "'"); return; }
-    r.head = m[1];
-    say(r, "  switched to branch '" + m[1] + "'");
-    return;
-  }
-  if ((m = /^branch\s+([\w./-]+)$/.exec(args))) {
-    if (!r.branches.hasOwnProperty(m[1])) r.branches[m[1]] = r.branches[r.head];
-    say(r, "  created branch '" + m[1] + "' (still on " + r.head + ")");
-    return;
-  }
-  if (/^branch$/.test(args)) {
-    Object.keys(r.branches).forEach(function (b) { say(r, '  ' + (b === r.head ? '* ' : '  ') + b); });
-    return;
-  }
-
-  if ((m = /^merge\s+([\w./-]+)$/.exec(args))) {
-    var from = m[1];
-    if (!r.branches.hasOwnProperty(from)) { say(r, "  no branch named '" + from + "'"); return; }
-    var target = r.branches[r.head], source = r.branches[from];
-    if (!source) { say(r, '  nothing to merge'); return; }
-    var reach = history(r, from).map(function (c) { return c.id; });
-    if (reach.indexOf(target) !== -1) {
-      r.branches[r.head] = source;             // fast-forward
-      say(r, '  fast-forward: ' + r.head + ' now at ' + source);
+  if(ok){
+    if(step === 3){
+      fb.textContent = '✅ Merge complete — badge earned: 🔀 Peacemaker';
+      fb.className = 'feedback ok';
+      markDone('merge');
+    } else if(step === 1){
+      fb.textContent = '✅ Step 1 done — Git stopped on a conflict. Edit report.txt below.';
+      fb.className = 'feedback ok';
+      showEditor();
     } else {
-      var tree = {}; var a = treeOf(r), b = r.commits[source].tree;
-      Object.keys(a).forEach(function (f) { tree[f] = a[f]; });
-      Object.keys(b).forEach(function (f) { tree[f] = b[f]; });
-      var id = 'c' + (r.next++);
-      r.commits[id] = { id: id, msg: "Merge branch '" + from + "'", parent: target, tree: tree, merged: source };
-      r.branches[r.head] = id;
-      say(r, '  merged ' + from + ' into ' + r.head);
+      fb.textContent = '✅ Step '+step+' done.';
+      fb.className = 'feedback ok';
+      document.getElementById('merge-line-'+(step+1)).style.display = 'flex';
     }
-    return;
+  } else {
+    fb.textContent = '❌ Not quite — try again.';
+    fb.className = 'feedback bad';
+    if(step === 1) bumpAttempt('merge-1');
   }
-
-  if (/^status$/.test(args)) {
-    say(r, '  on branch ' + r.head);
-    var st = Object.keys(r.staged);
-    say(r, st.length ? '  staged: ' + st.join(', ') : '  nothing staged');
-    var untracked = Object.keys(r.work).filter(function (f) { return !treeOf(r)[f] && !r.staged[f]; });
-    if (untracked.length) say(r, '  not tracked yet: ' + untracked.join(', '));
-    return;
-  }
-  if (/^log/.test(args)) {
-    var h = history(r, r.head);
-    if (!h.length) say(r, '  no commits yet');
-    h.forEach(function (c) { say(r, '  ' + c.id + '  ' + c.msg); });
-    return;
-  }
-  say(r, '  this lab does not know that command');
 }
 
-function execute(text) {
-  var r = newRepo();
-  text.replace(/\r\n?/g, '\n').split('\n').forEach(function (l) { run(r, l); });
-  return r;
+/* ---------- rebase ---------- */
+function checkRebase(){
+  const v = norm(document.getElementById('rebase-input').value);
+  const out = document.getElementById('rebase-output');
+  const fb = document.getElementById('rebase-feedback');
+  if(/^git\s+rebase\s+main$/i.test(v)){
+    out.textContent = 'First, rewinding head to replay your work on top of it...\nApplying: Restructure the argument\nSuccessfully rebased and updated refs/heads/restructure.';
+    fb.textContent = '✅ Correct! Badge earned: 🧵 Straightliner';
+    fb.className = 'feedback ok';
+    markDone('rebase');
+  } else {
+    fb.textContent = '❌ Not quite — try again.';
+    fb.className = 'feedback bad';
+    bumpAttempt('rebase');
+  }
 }
 
-// A readable picture of where the repository ended up.
-function describe(r) {
-  if (!r.initialized) return 'No repository here yet.';
-  var out = 'branch you are on : ' + r.head + '\n';
-  Object.keys(r.branches).forEach(function (b) {
-    var h = history(r, b);
-    out += 'branch ' + b + (b === r.head ? ' (you are here)' : '') + ' : ' +
-           (h.length ? h.length + ' commit(s), newest "' + h[0].msg + '"' : 'no commits') + '\n';
+/* ---------- quizzes ---------- */
+function checkQuiz(name){
+  const selected = document.querySelector('input[name="'+name+'"]:checked');
+  const fb = document.getElementById(name+'-feedback');
+  if(!selected){
+    fb.textContent = 'Pick an answer first.';
+    fb.className = 'feedback bad';
+    return;
+  }
+  if(selected.dataset.correct === 'true'){
+    quizAnswered.add(name);
+    if(QUIZ_IDS.every(q=>quizAnswered.has(q))){
+      fb.textContent = '✅ Correct! 🎉 Quiz complete — badge earned: 🧠 Concept Master';
+      markDone('quiz');
+    } else {
+      fb.textContent = '✅ Correct!';
+    }
+    fb.className = 'feedback ok';
+  } else {
+    fb.textContent = '❌ Not quite — try another option.';
+    fb.className = 'feedback bad';
+  }
+}
+
+/* ---------- order challenge ---------- */
+const ORDER_CORRECT = ['git init','git add','git commit'];
+let orderPool = ['git commit','git init','git add'];
+let orderAnswer = [];
+function renderOrder(){
+  const pool = document.getElementById('order-pool');
+  const ans = document.getElementById('order-answer');
+  pool.innerHTML = '';
+  orderPool.forEach(cmd=>{
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.textContent = cmd;
+    c.onclick = ()=>{
+      orderAnswer.push(cmd);
+      orderPool.splice(orderPool.indexOf(cmd),1);
+      renderOrder();
+    };
+    pool.appendChild(c);
   });
-  var t = treeOf(r);
-  out += 'files saved on this branch : ' + (Object.keys(t).length ? Object.keys(t).join(', ') : 'none') + '\n';
-  var st = Object.keys(r.staged);
-  out += 'waiting to be saved : ' + (st.length ? st.join(', ') : 'nothing') + '\n';
-  return out;
-}
-
-var TASK_ID = 1;
-
-var SCENES = [
-{
-  id: 1,
-  title: 'Take the first snapshot',
-  story: '<p>The folder has two files in it, <code>index.html</code> and <code>style.css</code>, and no history at all. ' +
-         'If Maya breaks something now, there is nothing to go back to.</p>' +
-         '<p>Saving in Git is two steps, and the split is the point: first you <em>choose</em> which files go in ' +
-         'the snapshot, then you take it. Choosing is <code>git add</code>. Taking it is <code>git commit</code>, ' +
-         'with a short message saying what changed.</p>',
-  voice: { who: 'Priya', line: '"Start the history before you need it. Nobody has ever regretted a first commit."' },
-  brief: ['turn the folder into a repository',
-          'put both files in the snapshot',
-          'save them with any message you like'],
-  start: '# one command per line\n\n',
-  hints: ['Three commands. The first one starts the repository.',
-          'To choose every file at once, <code>git add .</code> — the dot means "everything here".',
-          '<code>git init</code>, then <code>git add .</code>, then <code>git commit -m "first commit"</code>'],
-  validate: function (r) {
-    if (!r.initialized) return { ok: false, msg: 'There is still no repository. <code>git init</code> creates one in this folder.' };
-    var h = history(r, r.head);
-    if (!h.length) {
-      return { ok: false, msg: Object.keys(r.staged).length
-        ? 'The files are chosen but not saved yet. A snapshot is only taken when you commit it.'
-        : 'Nothing has been saved. Choose the files with <code>git add</code>, then save with <code>git commit -m "..."</code>.' };
-    }
-    var t = treeOf(r);
-    if (!t['index.html'] || !t['style.css']) {
-      return { ok: false, msg: 'The snapshot is missing a file. It has ' + (Object.keys(t).join(', ') || 'nothing') +
-                               ' — it needs both index.html and style.css.' };
-    }
-    return { ok: true, log: 'first snapshot saved, both files in it' };
-  }
-},
-{
-  id: 2,
-  title: 'Step off the working version',
-  story: '<p>Now the idea. Maya could edit the site directly — and if the idea fails at 5:30 she is unpicking ' +
-         'her own changes in a hurry.</p>' +
-         '<p>Instead she starts a <strong>branch</strong>: a second line of work that begins as an exact copy ' +
-         'of what is there now. Anything she does on it leaves the original line untouched.</p>',
-  voice: { who: 'Priya', line: '"Branch first, experiment second. The order is the whole trick."' },
-  brief: ['start the repository and save the first snapshot again (the box starts empty each time)',
-          'create a branch called <code>feature/login</code>',
-          'end up standing on that branch, not on <code>main</code>'],
-  start: 'git init\ngit add .\ngit commit -m "first commit"\n\n',
-  hints: ['One command creates a branch and moves you onto it in one go.',
-          'It is <code>checkout</code> with a <code>-b</code> flag, or the newer <code>switch -c</code>.',
-          '<code>git checkout -b feature/login</code>'],
-  validate: function (r) {
-    if (!history(r, 'main').length) return { ok: false, msg: 'Keep the first three lines — the branch has to start from a saved snapshot.' };
-    if (!r.branches.hasOwnProperty('feature/login')) {
-      return { ok: false, msg: 'There is no branch called <code>feature/login</code> yet. Branches here: ' + Object.keys(r.branches).join(', ') + '.' };
-    }
-    if (r.head !== 'feature/login') {
-      return { ok: false, msg: 'The branch exists, but you are still standing on <code>' + r.head +
-                               '</code>. Creating a branch and moving onto it are two different things — <code>-b</code> does both.' };
-    }
-    if (r.branches['feature/login'] !== r.branches['main']) {
-      return { ok: false, msg: 'The branch should start as an exact copy of main. Create it straight after the first commit, before changing anything.' };
-    }
-    return { ok: true, log: 'on feature/login, starting from the same snapshot as main' };
-  }
-},
-{
-  id: 3,
-  title: 'Work on the side',
-  story: '<p>Maya writes the new page and saves it on her branch.</p>' +
-         '<p>This is the moment the branch earns its keep: the new file exists on <code>feature/login</code> ' +
-         'and does not exist on <code>main</code> at all. The working site has not changed by a single character.</p>',
-  voice: { who: 'Priya', line: '"Two lines of work, one folder. Main is still exactly what is live."' },
-  brief: ['create a file called <code>login.html</code> (use <code>touch login.html</code>)',
-          'save it on the <code>feature/login</code> branch',
-          '<code>main</code> must still have only the two original files'],
-  start: 'git init\ngit add .\ngit commit -m "first commit"\ngit checkout -b feature/login\n\n',
-  hints: ['Create the file, choose it, save it — the same add-then-commit pattern as step 1.',
-          'You can add one file by name rather than using the dot.',
-          '<code>touch login.html</code>, then <code>git add login.html</code>, then <code>git commit -m "add login page"</code>'],
-  validate: function (r) {
-    if (r.head !== 'feature/login') return { ok: false, msg: 'You need to be on <code>feature/login</code> when you save, otherwise the work lands on the wrong line.' };
-    var fh = history(r, 'feature/login'), mh = history(r, 'main');
-    if (fh.length <= mh.length) return { ok: false, msg: 'Nothing new has been saved on the branch yet. Create <code>login.html</code>, add it, then commit.' };
-    if (!r.commits[r.branches['feature/login']].tree['login.html']) {
-      return { ok: false, msg: 'A snapshot was saved, but <code>login.html</code> is not in it. Did you <code>git add login.html</code> before committing?' };
-    }
-    if (r.commits[r.branches['main']] && r.commits[r.branches['main']].tree['login.html']) {
-      return { ok: false, msg: 'The new file has ended up on <code>main</code> too. It should exist only on the branch at this point.' };
-    }
-    return { ok: true, log: 'login.html saved on the branch; main untouched' };
-  }
-},
-{
-  id: 4,
-  title: 'Bring it back',
-  story: '<p>The idea worked. Now the new page has to join the real site.</p>' +
-         '<p><strong>Merging</strong> takes the work from one branch and folds it into another. Maya moves back ' +
-         'onto <code>main</code> first — you always merge <em>into</em> the branch you are standing on — and pulls ' +
-         'the branch in.</p>',
-  voice: { who: 'Priya', line: '"Stand where you want the work to land, then merge."' },
-  brief: ['go back to <code>main</code>',
-          'merge <code>feature/login</code> into it',
-          '<code>main</code> ends up with all three files'],
-  start: 'git init\ngit add .\ngit commit -m "first commit"\ngit checkout -b feature/login\ntouch login.html\ngit add login.html\ngit commit -m "add login page"\n\n',
-  hints: ['Two commands: move, then merge.',
-          'Moving to an existing branch does not need the <code>-b</code> flag.',
-          '<code>git checkout main</code>, then <code>git merge feature/login</code>'],
-  validate: function (r) {
-    if (r.head !== 'main') return { ok: false, msg: 'You are standing on <code>' + r.head + '</code>. Move to <code>main</code> first — the merge lands on the branch you are on.' };
-    var t = treeOf(r);
-    if (!t['login.html']) return { ok: false, msg: 'main still does not have <code>login.html</code>. Merge the branch in with <code>git merge feature/login</code>.' };
-    if (!t['index.html'] || !t['style.css']) return { ok: false, msg: 'The original files have gone missing from main. Keep the earlier lines as they are.' };
-    return { ok: true, log: 'main now has all three files; the site and the new page are one line of work again' };
-  }
-}
-];
-
-/* ---------- engine ---------- */
-var solved = {}, reported = false;
-
-function buildScenes() {
-  var host = document.getElementById('scenes');
-  SCENES.forEach(function (sc, idx) {
-    var card = document.createElement('section');
-    card.className = 'scene' + (idx === 0 ? ' active open' : ' locked');
-    card.id = 'scene-' + sc.id;
-
-    var head = document.createElement('div');
-    head.className = 'scene-head';
-    head.innerHTML = '<span class="scene-num">' + sc.id + '</span>' +
-      '<h2 class="scene-title">' + sc.title + '</h2>' +
-      '<span class="scene-state">' + (idx === 0 ? 'active' : 'locked') + '</span>';
-    head.addEventListener('click', function () {
-      if (!card.classList.contains('locked')) card.classList.toggle('open');
-    });
-    card.appendChild(head);
-
-    if (idx !== 0) {
-      var note = document.createElement('p');
-      note.className = 'locked-note';
-      note.textContent = 'Locked — finish the step above first.';
-      card.appendChild(note);
-    }
-
-    var body = document.createElement('div');
-    body.className = 'scene-body';
-    body.innerHTML = sc.story +
-      '<div class="voice"><strong>' + sc.voice.who + ':</strong> ' + sc.voice.line + '</div>' +
-      '<div class="brief"><h4>Make all of this true</h4><ul>' +
-      sc.brief.map(function (b) { return '<li>' + b + '</li>'; }).join('') + '</ul></div>' +
-      '<div class="editor-label"><span>terminal — one command per line</span><span>step ' + sc.id + ' of 4</span></div>';
-
-    var ta = document.createElement('textarea');
-    ta.className = 'editor';
-    ta.value = sc.start;
-    ta.spellcheck = false;
-    ta.setAttribute('aria-label', 'Commands for step ' + sc.id);
-    body.appendChild(ta);
-
-    var row = document.createElement('div');
-    row.className = 'btn-row';
-    var runBtn = document.createElement('button');
-    runBtn.className = 'run'; runBtn.type = 'button'; runBtn.textContent = 'Run the commands';
-    var hintBtn = document.createElement('button');
-    hintBtn.className = 'ghost'; hintBtn.type = 'button'; hintBtn.textContent = 'Hint (' + sc.hints.length + ' left)';
-    var resetBtn = document.createElement('button');
-    resetBtn.className = 'ghost'; resetBtn.type = 'button'; resetBtn.textContent = 'Start over';
-    row.appendChild(runBtn); row.appendChild(hintBtn); row.appendChild(resetBtn);
-    body.appendChild(row);
-
-    var hints = document.createElement('div');
-    hints.className = 'hints';
-    sc.hints.forEach(function (h, hi) {
-      var el = document.createElement('div');
-      el.className = 'hint';
-      el.innerHTML = '<b>Hint ' + (hi + 1) + ':</b> ' + h;
-      hints.appendChild(el);
-    });
-    body.appendChild(hints);
-
-    var out = document.createElement('div');
-    out.className = 'out';
-    out.innerHTML = '<div class="out-head">what Git did, and where the repository ended up</div>' +
-                    '<pre class="parsed"></pre><div class="verdict"></div>';
-    body.appendChild(out);
-
-    card.appendChild(body);
-    host.appendChild(card);
-
-    var shown = 0;
-    hintBtn.addEventListener('click', function () {
-      if (shown >= sc.hints.length) return;
-      hints.children[shown].classList.add('show');
-      shown++;
-      hintBtn.textContent = shown >= sc.hints.length ? 'No hints left' : 'Hint (' + (sc.hints.length - shown) + ' left)';
-    });
-    resetBtn.addEventListener('click', function () {
-      if (solved[sc.id]) return;
-      ta.value = sc.start; out.classList.remove('show'); ta.focus();
-    });
-    runBtn.addEventListener('click', function () { runScene(sc, ta, out, runBtn, card); });
-    ta.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runScene(sc, ta, out, runBtn, card); }
-    });
+  ans.innerHTML = '';
+  orderAnswer.forEach((cmd,i)=>{
+    const c = document.createElement('div');
+    c.className = 'chip';
+    c.textContent = (i+1)+'. '+cmd;
+    c.onclick = ()=>{
+      orderAnswer.splice(i,1);
+      orderPool.push(cmd);
+      renderOrder();
+    };
+    ans.appendChild(c);
   });
 }
-
-function runScene(sc, ta, out, runBtn, card) {
-  if (solved[sc.id]) return;
-  var repo = execute(ta.value);
-  var pre = out.querySelector('.parsed');
-  var verdict = out.querySelector('.verdict');
-  out.classList.add('show');
-  pre.textContent = repo.log.join('\n') + '\n\n' + describe(repo);
-
-  document.getElementById('s-branch').textContent = repo.head || '—';
-  document.getElementById('s-commits').textContent = repo.head ? history(repo, repo.head).length : 0;
-
-  var v = sc.validate(repo);
-  if (!v.ok) {
-    verdict.className = 'verdict bad';
-    verdict.innerHTML = '<span class="lbl">✗ Not yet — </span>' + v.msg;
+function checkOrder(){
+  const fb = document.getElementById('order-feedback');
+  if(orderAnswer.length < 3){
+    fb.textContent = 'Place all three commands first.';
+    fb.className = 'feedback bad';
     return;
   }
-  verdict.className = 'verdict good';
-  verdict.innerHTML = '<span class="lbl">✓ Done. </span>' + v.log;
-  solveScene(sc, card, runBtn, ta);
-}
-
-function solveScene(sc, card, runBtn, ta) {
-  solved[sc.id] = true;
-  card.classList.remove('active');
-  card.classList.add('solved', 'collapsible');
-  card.querySelector('.scene-state').textContent = 'done';
-  runBtn.textContent = 'Done';
-  ta.readOnly = true;
-
-  var count = Object.keys(solved).length;
-  document.getElementById('s-step').textContent = count + '/' + SCENES.length;
-  document.getElementById('fill').style.width = (count / SCENES.length * 100) + '%';
-
-  if (count === SCENES.length) { finish(); return; }
-
-  card.classList.remove('open');
-  var next = SCENES[SCENES.indexOf(sc) + 1];
-  var nextCard = document.getElementById('scene-' + next.id);
-  nextCard.classList.remove('locked');
-  nextCard.classList.add('active', 'open', 'collapsible');
-  nextCard.querySelector('.scene-state').textContent = 'active';
-  var note = nextCard.querySelector('.locked-note');
-  if (note) note.parentNode.removeChild(note);
-  nextCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-function finish() {
-  // Fired only after every step's validator passed against the simulated repository.
-  if (!reported) {
-    reported = true;
-    window.parent.postMessage({ type: 'TASK_COMPLETED', taskId: TASK_ID }, '*');
+  if(JSON.stringify(orderAnswer) === JSON.stringify(ORDER_CORRECT)){
+    fb.textContent = '✅ Correct order! Badge earned: 🔢 Sequencer';
+    fb.className = 'feedback ok';
+    markDone('order');
+  } else {
+    fb.textContent = '❌ Not quite that order — click chips in your sequence to send them back and retry.';
+    fb.className = 'feedback bad';
   }
-  var finale = document.getElementById('finale');
-  finale.style.display = 'block';
-  document.getElementById('done-banner').style.display = 'block';
-  finale.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function resetOrder(){
+  orderPool = ['git commit','git init','git add'];
+  orderAnswer = [];
+  document.getElementById('order-feedback').textContent = '';
+  renderOrder();
+}
+renderOrder();
+
+/* ---------- big multi-step challenge ---------- */
+function checkBig(step){
+  const v = norm(document.getElementById('big-input-'+step).value);
+  const out = document.getElementById('big-output-'+step);
+  const fb = document.getElementById('big-feedback-'+step);
+  let ok = false;
+  if(step === 1 && /^git\s+init$/i.test(v)){
+    out.textContent = 'Initialized empty Git repository in ~/final-presentation/.git/';
+    ok = true;
+  } else if(step === 2 && /^git\s+add\s+(slides\.txt|\.)$/i.test(v)){
+    out.textContent = 'Changes staged:\n  new file:   slides.txt';
+    ok = true;
+  } else if(step === 3){
+    const m = v.match(/^git\s+commit\s+-m\s+["'](.+)["']$/i);
+    if(m && m[1].trim().length > 0){
+      out.textContent = '[main (root-commit) f9e8d7c] '+m[1]+'\nShipped — permanently saved in history.\n 1 file changed, 1 insertion(+)';
+      ok = true;
+    }
+  }
+  if(ok){
+    if(step === 3){
+      fb.textContent = '✅ Step 3 done — badge earned: 🏁 Shipped It';
+      markDone('final');
+    } else {
+      fb.textContent = '✅ Step '+step+' done.';
+      document.getElementById('big-line-'+(step+1)).style.display = 'flex';
+    }
+    fb.className = 'feedback ok';
+  } else {
+    fb.textContent = '❌ Not quite — check the hints in earlier sections and try again.';
+    fb.className = 'feedback bad';
+  }
 }
 
-buildScenes();
+updateProgress();
 </script>
 </body>
 </html>

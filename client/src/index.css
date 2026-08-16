@@ -66,3 +66,26 @@ iframe.lab-frame {
   width: 100%;
   border: none;
 }
+
+/* Printing a certificate: hide the app chrome and print only the sheet.
+   The browser's print dialog is what turns it into a PDF. */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #certificate-print-area,
+  #certificate-print-area * {
+    visibility: visible;
+  }
+  #certificate-print-area {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    padding: 0;
+    background: #ffffff;
+  }
+  @page {
+    size: landscape;
+    margin: 12mm;
+  }
+}

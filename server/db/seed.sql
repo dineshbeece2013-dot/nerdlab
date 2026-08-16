@@ -48,7 +48,7 @@ ON CONFLICT (id) DO UPDATE SET
 -- Every category has a real lab. is_coming_soon stays in the schema so a new
 -- category can be announced before its lab is written.
 INSERT INTO tasks (id, module_id, category_id, title, slug, description, difficulty, points, estimated_minutes, file_path, is_coming_soon) VALUES
-(1, 1, 1, 'Git Task 1: Trying Things Without Fear', 'git-task-1', 'What Git is and why it exists, then a working repository you build yourself: take the first snapshot, branch off to try an idea, and merge it back without ever risking the version that works.', 'Easy', 100, 25, 'tasks/git/task1.html', FALSE),
+(1, 1, 1, 'Git Task 1: Git, Finally Explained', 'git-task-1', 'The end of Report_Final_v2_REALLY_FINAL.docx. Eleven hands-on exercises built around a group report you have basically already lived through: init, add, commit, status, log, branches, a merge conflict you fix by hand, and rebase. Awards a certificate.', 'Easy', 100, 35, 'tasks/git/task1.html', FALSE),
 (12, 1, 1, 'Git Task 2: Undoing Things Safely', 'git-task-2', 'Three different undos and how to pick one. Throw away an unsaved edit, take back a commit that is still yours, and correct a commit the whole team already has — without rewriting history everyone shares.', 'Medium', 150, 25, 'tasks/git/task2.html', FALSE),
 (13, 1, 1, 'Git Task 3: When Two People Edit One File', 'git-task-3', 'Cause a merge conflict on purpose, read what Git actually wrote into the file, and finish the merge. Conflicts stop being frightening once you have made one deliberately.', 'Medium', 150, 25, 'tasks/git/task3.html', FALSE),
 (2, 2, 2, 'Docker Task 1: The Same App Everywhere', 'docker-task-1', 'Why an app that runs on one laptop fails on another, and how a Dockerfile fixes it. Write one, then make the rebuild fast, the image small, and the container stop running as administrator.', 'Easy', 150, 30, 'tasks/docker/task1.html', FALSE),
@@ -81,6 +81,10 @@ ON CONFLICT (id) DO UPDATE SET
   estimated_minutes = EXCLUDED.estimated_minutes,
   file_path = EXCLUDED.file_path,
   is_coming_soon = EXCLUDED.is_coming_soon;
+
+-- Which labs award a certificate on completion. Authoritative: this is the
+-- single place the list lives, so re-seeding always reconciles it.
+UPDATE tasks SET awards_certificate = (id IN (1));
 
 -- Reset Sequences to avoid ID collisions
 SELECT setval('categories_id_seq', (SELECT MAX(id) FROM categories));

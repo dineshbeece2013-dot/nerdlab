@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { authService } from '../services/authService';
+import { certificateService } from '../services/certificateService';
 import AlertBanner from '../components/common/AlertBanner';
-import { User, Mail, Shield, Save, Camera } from 'lucide-react';
+import { User, Mail, Shield, Save, Camera, Award, ShieldCheck } from 'lucide-react';
 
 const ProfilePage = () => {
   const { user, updateUserData } = useAuth();
@@ -12,6 +14,24 @@ const ProfilePage = () => {
   const [avatarUrl, setAvatarUrl] = useState(user?.avatar_url || '');
   const [notification, setNotification] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [certificates, setCertificates] = useState([]);
+  const [certsLoading, setCertsLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await certificateService.getMyCertificates();
+        setCertificates(res.data);
+      } catch (err) {
+        // The profile form still works without them, so a failure here is not
+        // worth an error banner over the whole page.
+        console.error('Failed to load certificates:', err.message);
+      } finally {
+        setCertsLoading(false);
+      }
+    };
+    load();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -139,6 +159,59 @@ const ProfilePage = () => {
             </button>
           </div>
         </form>
+      </div>
+
+      {/* Certificates earned — issued automatically when a lab that awards one
+          is completed. */}
+      <div className="glass-panel rounded-3xl border border-slate-800 p-8 space-y-6">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+              <Award className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-white">My Certificates</h2>
+              <p className="text-xs text-slate-400">Earned by completing labs that award one</p>
+            </div>
+          </div>
+          {certificates.length > 0 && (
+            <Link to="/certificates" className="text-sm text-sky-400 hover:text-sky-300 font-semibold">
+              View all
+            </Link>
+          )}
+        </div>
+
+        {certsLoading ? (
+          <p className="text-sm text-slate-400">Loading certificates...</p>
+        ) : certificates.length === 0 ? (
+          <p className="text-sm text-slate-400">
+            No certificates yet.{' '}
+            <Link to="/tasks" className="text-sky-400 hover:text-sky-300 font-semibold">
+              Browse the labs
+            </Link>{' '}
+            to earn your first one.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {certificates.map((cert) => (
+              <li
+                key={cert.id}
+                className="flex items-center justify-between gap-4 bg-slate-900/60 border border-slate-800 rounded-2xl px-4 py-3"
+              >
+                <div className="flex items-center space-x-3 min-w-0">
+                  <ShieldCheck className="w-5 h-5 text-emerald-400 flex-shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-white truncate">{cert.title}</p>
+                    <p className="text-xs text-slate-400 font-mono truncate">{cert.certificate_code}</p>
+                  </div>
+                </div>
+                <span className="text-xs text-slate-400 whitespace-nowrap">
+                  {cert.issued_at ? new Date(cert.issued_at).toLocaleDateString() : ''}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
