@@ -2,11 +2,13 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { taskService } from '../services/taskService';
 import { progressService } from '../services/progressService';
+import { certificateService } from '../services/certificateService';
 import { useTaskTimer } from '../hooks/useTaskTimer';
 import TaskIframeViewer from '../components/tasks/TaskIframeViewer';
+import CertificateSheet from '../components/certificates/CertificateSheet';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import AlertBanner from '../components/common/AlertBanner';
-import { ArrowLeft, Clock, CheckCircle2, Award, Terminal, RefreshCw, ListChecks, Hourglass } from 'lucide-react';
+import { ArrowLeft, Clock, CheckCircle2, Award, Terminal, RefreshCw, ListChecks, Hourglass, Printer } from 'lucide-react';
 
 const TaskDetailPage = () => {
   const { id } = useParams();
@@ -17,8 +19,13 @@ const TaskDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [completing, setCompleting] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [certificate, setCertificate] = useState(null);
+  const certificateRef = useRef(null);
 
-  const { seconds, formatTime } = useTaskTimer(task?.id, progress?.time_spent_seconds || 0);
+  const isCompleted = !!progress && progress.status === 'completed';
+
+  // A finished lab has nothing left to time, so the clock stops with it.
+  const { seconds, formatTime } = useTaskTimer(task?.id, progress?.time_spent_seconds || 0, !isCompleted);
 
   useEffect(() => {
     // Always open a lab at the top, including when arriving from a scrolled
@@ -60,6 +67,14 @@ const TaskDetailPage = () => {
     try {
       const res = await progressService.completeTask(id, 100, secondsRef.current);
       setProgress(res.data.progress);
+      if (res.data.certificate) {
+        setCertificate(res.data.certificate);
+        // The learner finishes at the bottom of the lab, so bring the
+        // certificate to them rather than leaving it below the fold.
+        window.setTimeout(() => {
+          certificateRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+      }
       setNotification(
         res.data.alreadyCompleted
           ? { type: 'info', message: 'All steps complete. You already earned the points for this lab.' }
@@ -75,6 +90,26 @@ const TaskDetailPage = () => {
       setCompleting(false);
     }
   }, [id]);
+
+  // Reopening a lab that was finished in an earlier session: the completion
+  // response is long gone, so look the certificate up instead.
+  useEffect(() => {
+    if (!task || !task.awards_certificate || !isCompleted || certificate) return;
+
+    let cancelled = false;
+    certificateService
+      .getMyCertificates()
+      .then((res) => {
+        if (cancelled) return;
+        const mine = res.data.find((c) => c.task_id === task.id);
+        if (mine) setCertificate(mine);
+      })
+      .catch((err) => console.error('Failed to load certificate:', err.message));
+
+    return () => {
+      cancelled = true;
+    };
+  }, [task, isCompleted, certificate]);
 
   if (loading) {
     return <LoadingSpinner fullPage label="Initializing DevOps Lab Environment..." />;
@@ -113,8 +148,6 @@ const TaskDetailPage = () => {
     );
   }
 
-  const isCompleted = progress && progress.status === 'completed';
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
       {/* Top Header Navigation Bar — sticky so the timer and status stay in view
@@ -140,8 +173,11 @@ const TaskDetailPage = () => {
         {/* Timer, Points, and Action */}
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-300 font-mono text-sm">
-            <Clock className="w-4 h-4 text-sky-400 animate-pulse" />
-            <span>{formatTime}</span>
+            {/* Stops pulsing when the clock stops, so a finished lab does not
+                look like it is still counting. */}
+            <Clock className={`w-4 h-4 ${isCompleted ? 'text-slate-500' : 'text-sky-400 animate-pulse'}`} />
+            <span className={isCompleted ? 'text-slate-400' : undefined}>{formatTime}</span>
+            {isCompleted && <span className="text-[10px] uppercase tracking-wider text-slate-500">final</span>}
           </div>
 
           <div className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 font-bold text-sm">
@@ -200,6 +236,46 @@ const TaskDetailPage = () => {
         taskUrl={task.lab_url || taskService.getTaskHtmlUrl(task.id)}
         onTaskComplete={handleAllStepsComplete}
       />
+
+      {/* The certificate is shown where the learner actually finishes — at the
+          foot of the lab — rather than only on the certificates page. */}
+      {certificate && (
+        <div ref={certificateRef} className="glass-panel rounded-3xl border border-amber-500/30 p-6 sm:p-8 space-y-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/30 text-amber-400 flex items-center justify-center">
+                <Award className="w-5 h-5" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-white">Your certificate</h2>
+                <p className="text-xs text-slate-400">
+                  Saved to your profile — code{' '}
+                  <span className="font-mono text-slate-300">{certificate.certificate_code}</span>
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => window.print()}
+                className="px-4 py-2 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/30 text-sky-400 text-sm font-semibold rounded-xl flex items-center space-x-1.5 transition-colors"
+              >
+                <Printer className="w-4 h-4" />
+                <span>Print / Save PDF</span>
+              </button>
+              <Link
+                to="/certificates"
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 text-slate-300 text-sm font-semibold rounded-xl transition-colors"
+              >
+                All certificates
+              </Link>
+            </div>
+          </div>
+
+          <div id="certificate-print-area" className="overflow-x-auto">
+            <CertificateSheet certificate={certificate} recipientName={certificate.recipient_name} />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

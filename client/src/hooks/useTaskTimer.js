@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
 import { progressService } from '../services/progressService';
 
-export const useTaskTimer = (taskId, initialTimeSpent = 0) => {
+/**
+ * Counts the time spent in a lab and pulses it to the server.
+ *
+ * `running` stops both the tick and the sync — once a lab is completed there is
+ * nothing left to time, and a timer that keeps climbing on a finished lab both
+ * looks broken and keeps inflating the recorded duration.
+ */
+export const useTaskTimer = (taskId, initialTimeSpent = 0, running = true) => {
   const [seconds, setSeconds] = useState(initialTimeSpent);
   const secondsRef = useRef(seconds);
   secondsRef.current = seconds;
@@ -11,7 +18,7 @@ export const useTaskTimer = (taskId, initialTimeSpent = 0) => {
   }, [initialTimeSpent]);
 
   useEffect(() => {
-    if (!taskId) return;
+    if (!taskId || !running) return;
 
     // Timer tick every second
     const interval = setInterval(() => {
@@ -29,7 +36,7 @@ export const useTaskTimer = (taskId, initialTimeSpent = 0) => {
       clearInterval(interval);
       clearInterval(syncInterval);
     };
-  }, [taskId]);
+  }, [taskId, running]);
 
   const formatTime = () => {
     const mins = Math.floor(seconds / 60);
@@ -40,5 +47,6 @@ export const useTaskTimer = (taskId, initialTimeSpent = 0) => {
   return {
     seconds,
     formatTime: formatTime(),
+    running,
   };
 };

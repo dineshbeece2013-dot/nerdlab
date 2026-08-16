@@ -57,7 +57,10 @@ class ProgressController {
       let certificateIsNew = false;
       if (task.awards_certificate) {
         const issued = await CertificateModel.issueForTask(userId, task, req.user.name);
-        certificate = issued.certificate;
+        // The inserted row has no category on it; the certificates listing gets
+        // one from a join, so add it here too or the same certificate renders
+        // differently depending on where it came from.
+        certificate = { ...issued.certificate, category_name: task.category_name };
         certificateIsNew = issued.isNew;
       }
 
