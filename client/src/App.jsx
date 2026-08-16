@@ -4,7 +4,6 @@ import { useAuth } from './context/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import LoadingSpinner from './components/common/LoadingSpinner';
 import Navbar from './components/common/Navbar';
-import Footer from './components/common/Footer';
 
 // Public pages
 const LandingPage = lazy(() => import('./pages/LandingPage'));
@@ -181,7 +180,6 @@ const App = () => {
           </Routes>
         </Suspense>
       </main>
-      <Footer />
     </div>
   );
 };
